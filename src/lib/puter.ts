@@ -116,6 +116,39 @@ export async function puterGetUser(): Promise<PuterUser | null> {
   }
 }
 
+export type PuterModel = {
+  id: string;
+  provider?: string;
+  name?: string;
+  aliases?: string[];
+  context?: number;
+  max_tokens?: number;
+  cost?: unknown;
+};
+
+export async function puterListModels(): Promise<PuterModel[]> {
+  const puter = await ensurePuter();
+  if (!puter.ai.listModels) return [];
+  try {
+    return await puter.ai.listModels();
+  } catch {
+    return [];
+  }
+}
+
+function normalizeMessages(messages: Array<{ role: string; content: string }>) {
+  return messages
+    .map((m) => ({
+      role: m.role === "assistant" ? "assistant" as const : "user" as const,
+      content: typeof m.content === "string" ? m.content : String(m.content ?? ""),
+    }))
+    .filter((m) => m.content.trim());
+}
+
+function isInvalidModelError(message: string) {
+  return /model.*(not found|invalid|unavailable)|unknown model|unsupported model/i.test(message);
+}
+
 export function extractPuterText(response: unknown): string {
   if (response == null) return "";
   if (typeof response === "string") return response;
@@ -163,12 +196,20 @@ export async function puterFreeChat(
 ): Promise<{ ok: boolean; text: string; model?: string; error?: string }> {
   const puter = await ensurePuter();
   if (!(await puterIsSignedIn())) return { ok:false, text:"", error:"PUTER_SIGN_IN_REQUIRED" };
-  const models = opts?.model ? [opts.model, ...FREE_MODELS] : [...FREE_MODELS];
+  const requested = opts?.model && !opts.model.startsWith("openrouter:") ? opts.model : DEFAULT_FREE_MODEL;
+  const models = [requested, ...FREE_MODELS.filter((m) => m !== requested), "gpt-5.6-luna", "gpt-5-nano"];
+  const unique = [...new Set(models)];
   const unique = [...new Set(models)];
   let lastError = "";
   for (const model of unique) {
     try {
-      const response = await puter.ai.chat(messages, { model, stream:true, compaction:true });
+      const safeMessages = normalizeMessages(messages);
+      const response = await puter.ai.chat(safeMessages, {
+        model,
+        stream: true,
+        compaction: true,
+        normalize: true,
+      });
       if (response && typeof (response as AsyncIterable<unknown>)[Symbol.asyncIterator] === "function") {
         let full = "";
         for await (const part of response as AsyncIterable<Record<string, unknown>>) {
@@ -183,7 +224,11 @@ export async function puterFreeChat(
         if (text.trim()) { opts?.onDelta?.(text); return {ok:true,text,model}; }
         lastError = "Empty response from " + model;
       }
-    } catch (e) { lastError = e instanceof Error ? e.message : String(e); }
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
+      if (/no usage left|insufficient_funds|quota|402/i.test(lastError)) break;
+      if (isInvalidModelError(lastError)) continue;
+    }
   }
   return {ok:false,text:"",error:lastError || "All free models failed"};
 }
