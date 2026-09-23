@@ -33,12 +33,12 @@ export function ChatPanel() {
   const stepIndex = streamText.includes("```") ? 3 : streamText.length > 80 ? 2 : streamText.length > 0 ? 1 : 0;
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col overflow-hidden overscroll-none md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-        <span className="text-xs font-medium text-muted">แชท</span>
-        <ModelSelect />
+    <section className="flex h-[100dvh] min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden overscroll-none md:h-full md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
+      <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <span className="shrink-0 text-xs font-medium text-muted">แชท</span>
+        <div className="min-w-0 max-w-[72vw] overflow-hidden"><ModelSelect /></div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 scrollbar-none">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 pb-5 scrollbar-none sm:px-4">
         <ol className="space-y-4">
           {project.messages.map((m) => (
             <MessageBubble key={m.id} message={m} />
@@ -89,7 +89,7 @@ export function ChatPanel() {
           ))}
         </div>
       ) : null}
-      <div className="sticky bottom-0 z-10 shrink-0 bg-bg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+      <div className="sticky bottom-0 z-10 shrink-0 border-t border-border/60 bg-bg px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
         <PromptBox placeholder="บอกสิ่งที่อยากเปลี่ยน…" />
       </div>
     </section>
@@ -108,7 +108,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   }
   return (
     <li>
-      <p className="text-sm leading-relaxed text-fg">{message.content}</p>
+      <p className="max-w-full break-words text-sm leading-relaxed text-fg">{extractDisplayText(message.content)}</p>
     </li>
   );
 }
