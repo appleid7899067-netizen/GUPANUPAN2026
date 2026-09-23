@@ -24,7 +24,7 @@ export type PuterAPI = {
   ai: {
     chat: (
       messages: Array<{ role: string; content: string }> | string,
-      options?: { model?: string; stream?: boolean; tools?: unknown[]; compaction?: boolean },
+      options?: { model?: string; stream?: boolean; tools?: unknown[]; compaction?: boolean; normalize?: boolean },
     ) => Promise<unknown> | AsyncIterable<unknown>;
   };
   fs?: unknown;
@@ -208,6 +208,7 @@ export async function puterFreeChat(
         stream: true,
         compaction: true,
         normalize: true,
+        ...(opts?.webSearch ? { tools: [{ type: "web_search" }] } : {}),
       });
       if (response && typeof (response as AsyncIterable<unknown>)[Symbol.asyncIterator] === "function") {
         let full = "";
