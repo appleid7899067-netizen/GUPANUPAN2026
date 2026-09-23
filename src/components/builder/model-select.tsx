@@ -37,7 +37,7 @@ export function ModelSelect({ className }: { className?: string }) {
     <label className={cn("inline-flex items-center gap-1.5 text-xs text-muted", className)}>
       <span className="hidden sm:inline">โมเดล</span>
       <select
-        value={modelId}
+        value={selected}
         onChange={(e) => setModelId(e.target.value)}
         className="max-w-[11rem] truncate rounded-full border border-border bg-surface px-2 py-1 text-xs text-fg outline-none focus:border-accent sm:max-w-[14rem]"
         aria-label="เลือกโมเดล"
