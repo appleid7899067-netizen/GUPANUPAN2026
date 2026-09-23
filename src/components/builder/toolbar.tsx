@@ -1,3 +1,4 @@
+import { ModelSelect } from "./model-select";
 import { usePuterAuth } from "@/lib/puter-auth";
 import { Link } from "@tanstack/react-router";
 import { Menu, Monitor, Moon, Plus, Sun } from "lucide-react";
@@ -46,18 +47,18 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
 
   return (
     <header className="flex h-11 shrink-0 items-center gap-1 px-2">
-      <Tooltip label="Projects">
+      <Tooltip label="โปรเจกต์">
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Projects"
+          aria-label="โปรเจกต์"
           onClick={() => setSidebarOpen(true)}
         >
           <Menu />
         </Button>
       </Tooltip>
-      <Tooltip label="New project">
-        <Button variant="ghost" size="icon-sm" aria-label="New project" onClick={newProject}>
+      <Tooltip label="โปรเจกต์ใหม่">
+        <Button variant="ghost" size="icon-sm" aria-label="โปรเจกต์ใหม่" onClick={newProject}>
           <Plus />
         </Button>
       </Tooltip>
@@ -70,11 +71,11 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
               type="button"
               onClick={() => setMobilePane(pane)}
               className={cn(
-                "h-7 rounded-full px-3 text-xs font-medium capitalize",
+                "h-7 rounded-full px-3 text-xs font-medium",
                 mobilePane === pane ? "bg-surface text-fg shadow-border" : "text-muted",
               )}
             >
-              {pane === "preview" ? "App" : "Chat"}
+              {pane === "preview" ? "พรีวิว" : "แชท"}
             </button>
           ))}
         </div>
@@ -84,11 +85,11 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
 
       {!inEditor ? <div className="flex-1" /> : <div className="hidden flex-1 md:block" />}
 
-      <Tooltip label={`Theme: ${theme}`}>
+      <Tooltip label={`ธีม: ${theme}`}>
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Toggle theme"
+          aria-label="สลับธีม"
           onClick={() => setTheme(nextTheme)}
         >
           <ThemeIcon />
@@ -101,6 +102,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
       >
         GuPanu
       </Link>
+      <ModelSelect className="hidden md:inline-flex" />
       <PuterSessionButton />
     </header>
   );

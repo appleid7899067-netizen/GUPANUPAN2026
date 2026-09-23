@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { uid } from "@/lib/utils";
+import { DEFAULT_MODEL_ID } from "@/lib/models";
 import type {
   ChatMessage,
   EditorTab,
@@ -42,6 +43,8 @@ type BuilderState = {
   generating: boolean;
   streamText: string;
   draft: string;
+  modelId: string;
+  setModelId: (id: string) => void;
   setTheme: (theme: ThemeChoice) => void;
   setDevice: (device: PreviewDevice) => void;
   setEditorTab: (tab: EditorTab) => void;
@@ -77,6 +80,8 @@ export const useBuilder = create<BuilderState>()(
       generating: false,
       streamText: "",
       draft: "",
+      modelId: DEFAULT_MODEL_ID,
+      setModelId: (modelId) => set({ modelId }),
       setTheme: (theme) => set({ theme }),
       setDevice: (device) => set({ device }),
       setEditorTab: (editorTab) => set({ editorTab }),
@@ -185,6 +190,7 @@ export const useBuilder = create<BuilderState>()(
         projects: s.projects,
         activeId: s.activeId,
         theme: s.theme,
+        modelId: s.modelId,
       }),
     },
   ),

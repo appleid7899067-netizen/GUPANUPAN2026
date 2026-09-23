@@ -5,6 +5,7 @@ export type GeneratePayload = {
   prompt: string;
   html: string;
   history: { role: "user" | "assistant"; content: string }[];
+  model?: string;
 };
 
 function buildMessages(payload: GeneratePayload): Array<{ role: string; content: string }> {
@@ -37,7 +38,10 @@ export async function streamGenerate(
 ): Promise<string> {
   try {
     if (await puterIsSignedIn()) {
-      const result = await puterFreeChat(buildMessages(payload), { onDelta });
+      const result = await puterFreeChat(buildMessages(payload), {
+        onDelta,
+        model: payload.model,
+      });
       if (result.ok && result.text.trim()) return result.text;
       if (result.error && result.error !== "PUTER_SIGN_IN_REQUIRED") {
         console.warn("[GuPanu] Puter free model:", result.error);
