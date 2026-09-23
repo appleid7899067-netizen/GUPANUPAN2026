@@ -42,7 +42,7 @@ export function liveStatusFor(prompt: string, phase: "start"|"plan"|"act"|"verif
 
 export function validateHtmlArtifact(raw: string) {
   const html = /<!doctype html|<html[\s>]/i.test(raw);
-  const complete = /<head[\s>][\s\S]*<body[\s>][\s\S]*<\\/body>[\s>][\s\S]*<\\/html>/i.test(raw);
+  const complete = /<head[\s>][\s\S]*<body[\s>][\s\S]*<\/body>[\s>][\s\S]*<\/html>/i.test(raw);
   const suggestions = /```suggestions[\s\S]*\\[[\s\S]*\\][\s\S]*```/i.test(raw);
   const evidence = [html ? "html_detected" : "", complete ? "complete_document_detected" : "", suggestions ? "suggestions_detected" : ""].filter(Boolean);
   return { ok: html && complete, html, complete, suggestions, evidence };
