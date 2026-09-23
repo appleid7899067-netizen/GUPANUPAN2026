@@ -58,14 +58,17 @@ export function extractDisplayText(raw: string): string {
     .replace(/\`\`\`(?:html|htm|xml)?\s*\n[\s\S]*?\`\`\`/gi, "")
     .trim();
 
-  // Some models omit the HTML fence. Never dump a generated document into chat.
-  if (/<(?:!doctype|html|head|body|script|style|div|section|main)\b/i.test(text)) {
-    const firstTag = text.search(/<(?:!doctype|html|head|body|script|style|div|section|main)\b/i);
-    const before = firstTag > 0 ? text.slice(0, firstTag).trim() : "";
-    return before || "สร้างหน้าเว็บให้แล้ว ดูผลลัพธ์ได้ที่พรีวิว";
+  // Some models omit code fences. Never dump generated HTML, JSON data, or
+  // JavaScript into the conversation bubble. Those artifacts belong in preview.
+  const sourceStart = text.search(
+    /(?:<!doctype|<html|<head|<body|<script|<style|<div|<section|<main|(?:^|\\n)\\s*[\\[{].*(?:question|answers|correct|explanation)\\s*[:"]|(?:^|\\n)\\s*(?:const|let|var|function)\\s+[A-Za-z_$]|document\\.getElementById|querySelector\\(|addEventListener\\()/i,
+  );
+  if (sourceStart >= 0) {
+    const before = text.slice(0, sourceStart).trim();
+    return before || "สร้างให้แล้ว ดูผลลัพธ์ได้ที่พรีวิว";
   }
 
-  text = text.replace(/\`\`\`[\s\S]*?\`\`\`/g, "").trim();
+  text = text.replace(/\\`\\`\\`[\\s\\S]*?\\`\\`\\`/g, "").trim();
   return text;
 }
 
