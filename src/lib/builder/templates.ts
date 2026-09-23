@@ -216,6 +216,65 @@ const harbor = wrap(
 </div>`,
 );
 
+
+function makeCatalogTemplate(title: string, category: string, style: string, accent: string, features: string[]): ExampleApp {
+  const themes: Record<string, [string,string,string]> = {
+    minimal:["#f8f8f6","#171717","#6b6b66"], glass:["#edf3ff","#101828","#667085"],
+    editorial:["#f4efe8","#241f1a","#766b60"], neo:["#f1efff","#171329","#69627d"],
+    dark:["#0d1117","#f3f4f6","#9ca3af"], pastel:["#fff5fa","#35172b","#8d647e"],
+    luxury:["#15130f","#f4ead4","#a89c83"], brutalist:["#f7f7f0","#101010","#505050"],
+    gradient:["#f4f0ff","#1e1633","#6e6382"], bento:["#eef2f5","#17202a","#68737e"]
+  };
+  const [bg,ink,muted]=themes[style]??themes.minimal;
+  const dark=style==="dark"||style==="luxury";
+  const radius=style==="brutalist"?"4px":style==="neo"?"20px":"16px";
+  const featureHtml=features.map((x,i)=>`<article class="card"><span class="num">0${i+1}$</span><h2>${x}$</h2><p>Ready-to-customize ${category.toLowerCase()}$ building block.</p></article>`).join("");
+  const itemHtml=["North","Studio","Field","Atlas","Common","Orbit"].map((x,i)=>`<article class="card item"><div class="thumb" style="background:${accent}$;opacity:${.55+i*.06}$"></div><b>${x}$</b><p>${category}$ · starter</p><button class="open">Open</button></article>`).join("");
+  const body=`
+  <nav class="shell"><strong>${title}$</strong><div class="navlinks"><a href="#main">Home</a><a href="#features">Explore</a><a href="#contact">Contact</a><button id="start">Start</button></div></nav>
+  <main id="main"><section class="shell hero"><span class="eyebrow">${category}$ · ${style}$</span><h1>${title}$</h1><p>Production-shaped starter with responsive layout, interactive preview and clear extension points.</p><div class="actions"><button id="primary">Try it</button><button class="ghost" onclick="document.getElementById('features').scrollIntoView()">Explore</button></div></section>
+  <section id="features" class="shell featuregrid">${featureHtml}$</section>
+  <section class="shell card work"><div class="toolbar"><b>Interactive preview</b><input id="search" placeholder="Search..."><span id="count"></span></div><div id="items" class="itemgrid">${itemHtml}$</div></section>
+  <section id="contact" class="shell card contact"><h2>Make it yours</h2><p>Ask Boss to change layout, data, behavior, branding or connect a real backend.</p><button id="contactBtn">Continue</button></section></main>`;
+  const script=`<script>
+  const root=document.currentScript.parentElement,search=root.querySelector("#search"),count=root.querySelector("#count");
+  function draw(q=""){const all=[...root.querySelectorAll(".item")];const visible=all.filter(x=>x.innerText.toLowerCase().includes(q.toLowerCase()));all.forEach(x=>x.style.display=visible.includes(x)?"block":"none");count.textContent=visible.length+" results";visible.forEach(x=>x.querySelector(".open").onclick=()=>alert("Opened "+x.querySelector("b").textContent))}
+  search.oninput=()=>draw(search.value);draw();
+  root.querySelector("#primary").onclick=()=>alert("Demo started");root.querySelector("#start").onclick=()=>alert("Starter action ready");root.querySelector("#contactBtn").onclick=()=>alert("Request captured");
+  <\/script>`;
+  const html=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}$</title><style>
+  *{box-sizing:border-box}body{margin:0;background:${bg}$;color:${ink}$;font-family:ui-sans-serif,system-ui,sans-serif}a{color:inherit;text-decoration:none}.shell{max-width:1120px;margin:auto;padding:0 20px}
+  nav{height:70px;display:flex;align-items:center;justify-content:space-between}.navlinks{display:flex;gap:16px;align-items:center;color:${muted}$;font-size:14px}.navlinks button,#primary{border:0;background:${dark?accent:ink}$;color:${dark?"#111":"#fff"}$;border-radius:999px;padding:10px 16px;font-weight:700}
+  .hero{padding:88px 20px 70px}.eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:${muted}$}h1{font-size:clamp(48px,8vw,82px);line-height:.94;letter-spacing:-.055em;max-width:850px;margin:14px 0}.hero p{max-width:620px;font-size:18px;line-height:1.6;color:${muted}$}.actions{display:flex;gap:10px;margin-top:24px}.ghost{border:1px solid #bbb;background:transparent;color:${ink}$;border-radius:999px;padding:10px 16px}
+  .featuregrid,.itemgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.featuregrid{padding-bottom:28px}.card{background:${dark?"rgba(255,255,255,.04)":"rgba(255,255,255,.78)"}$;border:1px solid ${dark?"#30363d":"#ddd"}$;border-radius:${radius}$;padding:20px}.card p{color:${muted}$;line-height:1.55}.num{color:${accent}$}.work{margin:28px auto;padding:16px}.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px}.toolbar input{margin-left:auto;max-width:220px;width:100%;padding:10px;border-radius:12px;border:1px solid #bbb;background:transparent;color:inherit}.thumb{height:120px;border-radius:${radius}$;margin-bottom:12px}.item button{margin-top:10px;border:1px solid #bbb;background:transparent;color:inherit;padding:8px 12px;border-radius:10px}.contact{margin-top:28px;margin-bottom:70px}.contact button{background:${accent}$;color:${dark?"#111":ink}$;border:0;border-radius:999px;padding:11px 17px;font-weight:700}
+  @media(max-width:640px){.shell{padding:0 14px}.hero{padding:60px 14px 45px}.navlinks a{display:none}.toolbar{flex-wrap:wrap}.toolbar input{margin-left:0;max-width:none}h1{font-size:46px}}
+  </style></head><body>${body}${script}$</body></html>`;
+  return {id:"catalog-"+category.toLowerCase().replace(/\s+/g,"-")+"-"+style,name:title,description:category+" · "+style+" style · functional starter",category,accent,ink,prompt:"Build a production-ready "+category.toLowerCase()+" from this starter. Keep the visual style and make all requested interactions real.",html};
+}
+
+const CATALOG_TEMPLATES: ExampleApp[] = [
+  makeCatalogTemplate("SaaS Launchpad","SaaS","gradient","#8b7cff",["Hero + pricing","Analytics","Teams","Billing"]),
+  makeCatalogTemplate("Finance OS","Finance","minimal","#111827",["Accounts","Budgets","Transactions","Reports"]),
+  makeCatalogTemplate("Market Store","Ecommerce","bento","#7c8cff",["Products","Cart","Checkout","Orders"]),
+  makeCatalogTemplate("Luma Dining","Food","editorial","#c99b64",["Menu","Gallery","Reservation","Contact"]),
+  makeCatalogTemplate("Signal Ops","Internal Tools","dark","#7dd3fc",["KPIs","Charts","Tables","Alerts"]),
+  makeCatalogTemplate("Pipeline CRM","Business","neo","#8b5cf6",["Leads","Deals","Contacts","Activity"]),
+  makeCatalogTemplate("Flow Projects","Productivity","brutalist","#b6d900",["Projects","Tasks","Members","Timeline"]),
+  makeCatalogTemplate("Local Loop","Websites","pastel","#e879a9",["Search","Categories","Profiles","Reviews"]),
+  makeCatalogTemplate("Gather Events","Community","gradient","#f97316",["Events","Filters","RSVP","Attendees"]),
+  makeCatalogTemplate("Bookly","Services","minimal","#111827",["Calendar","Availability","Booking","Confirmation"]),
+  makeCatalogTemplate("LearnLab","Education","glass","#4f46e5",["Courses","Lessons","Quizzes","Progress"]),
+  makeCatalogTemplate("Strong","Fitness","dark","#86efac",["Workouts","Plans","Goals","Progress"]),
+  makeCatalogTemplate("Haven Realty","Real Estate","luxury","#d6b36a",["Listings","Search","Agents","Inquiries"]),
+  makeCatalogTemplate("Commons","Community","pastel","#f472b6",["Feed","Profiles","Groups","Notifications"]),
+  makeCatalogTemplate("Field Journal","Content","editorial","#c28d5c",["Posts","Categories","Search","Authors"]),
+  makeCatalogTemplate("Studio Agency","Agency","brutalist","#111111",["Services","Work","Testimonials","Leads"]),
+  makeCatalogTemplate("Nova AI","AI Apps","dark","#67e8f9",["Chat","Models","History","Tools"]),
+  makeCatalogTemplate("Atlas Docs","Developer Tools","minimal","#111827",["Sidebar","Search","API","Guides"]),
+  makeCatalogTemplate("Maker Portfolio","Portfolio","neo","#8b5cf6",["Projects","Case studies","Resume","Contact"]),
+  makeCatalogTemplate("Roam Travel","Travel","luxury","#d6b36a",["Destinations","Search","Itinerary","Saved trips"]),
+];
+
 export const EXAMPLES: ExampleApp[] = [
   {
     id: "northstar",
@@ -277,4 +336,5 @@ export const EXAMPLES: ExampleApp[] = [
     prompt: "Remix this SaaS landing page: add pricing tiers and an FAQ.",
     html: harbor,
   },
+  ...CATALOG_TEMPLATES,
 ];
