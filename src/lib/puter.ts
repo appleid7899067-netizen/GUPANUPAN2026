@@ -199,7 +199,6 @@ export async function puterFreeChat(
   const requested = opts?.model && !opts.model.startsWith("openrouter:") ? opts.model : DEFAULT_FREE_MODEL;
   const models = [requested, ...FREE_MODELS.filter((m) => m !== requested), "gpt-5.6-luna", "gpt-5-nano"];
   const unique = [...new Set(models)];
-  const unique = [...new Set(models)];
   let lastError = "";
   for (const model of unique) {
     try {
