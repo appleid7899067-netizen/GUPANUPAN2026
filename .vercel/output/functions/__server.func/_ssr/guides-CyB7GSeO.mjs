@@ -1,0 +1,61 @@
+import { x as require_jsx_runtime } from "../_libs/@radix-ui/react-alert-dialog+[...].mjs";
+import { _ as Link } from "../_libs/@tanstack/react-router+[...].mjs";
+import { n as Marketing, t as FeatureGrid } from "./marketing-BG3QaJ_u.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/guides-CyB7GSeO.js
+var import_jsx_runtime = require_jsx_runtime();
+function GuidesPage() {
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Marketing, {
+		eyebrow: "Guides",
+		title: "How to get a better first build",
+		lead: "Forge does the designing. Your job is to say what the thing is for, who it is for, and what should happen on the first visit.",
+		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(FeatureGrid, {
+			heading: "Writing a prompt",
+			items: [
+				{
+					title: "Name the product",
+					body: "“A recipe book for weeknight cooking” beats “a website.” Kind, audience, and job-to-be-done give Forge something to design around."
+				},
+				{
+					title: "Mention the must-haves",
+					body: "If it needs search, dark mode, or saving between visits, say so. Anything you skip will be filled with conventional defaults."
+				},
+				{
+					title: "Describe the feeling, not the hex codes",
+					body: "“Quiet, paper, editorial” is more useful than a list of fonts. You can always restyle after the first preview."
+				},
+				{
+					title: "Iterate in small turns",
+					body: "Get a first version, then ask for one change at a time: a new section, a different layout, a bug you noticed in the preview."
+				}
+			]
+		}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", {
+			className: "rounded-xl bg-surface p-5 shadow-border",
+			children: [
+				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
+					className: "text-lg font-semibold",
+					children: "A walkthrough"
+				}),
+				/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ol", {
+					className: "mt-4 list-decimal space-y-3 pl-5 text-sm leading-relaxed text-muted",
+					children: [
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "Open Forge and type a sentence, or pick an example app from the gallery." }),
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "Wait for the live preview. Click around — this is the real app, not a mock." }),
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "Use Select to point at an element, or type a follow-up in the chat." }),
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "Restore a version if you liked an earlier pass better." }),
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "Download the HTML when you want to keep it, or open it in a new tab to share a look." })
+					]
+				}),
+				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+					className: "mt-5 text-sm",
+					children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Link, {
+						to: "/",
+						className: "font-medium text-accent hover:underline",
+						children: "Start a project"
+					})
+				})
+			]
+		})]
+	});
+}
+//#endregion
+export { GuidesPage as component };

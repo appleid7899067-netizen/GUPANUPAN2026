@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Forge",
+      "hasCanvas": false,
+      "bodyTextLen": 548,
+      "bodyTextHash": "c9fa3c9ed250f0161f3068370b36cdde35773f2e22db2bc9402cf74e69a3f4e3",
+      "bodyTextPrefix": "Forge Projects New No projects yet. Build apps and websites with",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Forge",
+      "hasCanvas": false,
+      "bodyTextLen": 549,
+      "bodyTextHash": "d2a873f6b9de8904917bcd2b051d26e660ab0514beaebf32367e8b920363e0f5",
+      "bodyTextPrefix": "Projects New No projects yet. Build apps and websites with AI De",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [
+        "Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <SafeFragment fallback={null}>\n      <CatchBoundary getResetKey={function getResetKey} errorComponent={function AppErrorComponent} ...>\n        <SafeFragment fallback={function fallback}>\n          <MatchInnerImpl match={{id:\"//\",ssr:true, ...}}>\n            <Lazy>\n              <Home>\n                <AppShell>\n                  <div className=\"flex h-dvh...\">\n                    <Toolbar>\n                    <ProjectSidebar>\n                    <div className=\"flex min-h...\">\n                      <Landing>\n                        <div className=\"flex min-h...\">\n                          <div className=\"flex min-h...\">\n                            <div className=\"mx-auto fl...\">\n                              <div>\n                              <PromptBox>\n                              <p>\n                              <div className=\"chip-fade ...\">\n                                <button\n                                  type=\"button\"\n                                  onClick={function onClick}\n                                  className=\"shrink-0 rounded-full bg-surface px-3 py-1.5 text-sm text-fg shadow-borde...\"\n                                >\n+                                 Markdown notes\n-                                 Quiz game\n                                ...\n                            ...\n                          ...\n"
+      ],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
