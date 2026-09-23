@@ -1,4 +1,5 @@
 import { uid } from "@/lib/utils";
+import { validateHtmlArtifact } from "@/lib/boss-engine";
 import { streamGenerate } from "./generate-client";
 import { extractDisplayText, extractHtml, extractSuggestions, extractTitle } from "./parse";
 import { useBuilder } from "./store";
@@ -45,9 +46,14 @@ export async function sendPrompt(text: string) {
       undefined,
       (status) => useBuilder.getState().setGeneratingStatus(status),
     );
-    const nextHtml = extractHtml(full);
+    const validation = validateHtmlArtifact(full);
+    const nextHtml = validation.ok ? extractHtml(full) : null;
     const display = extractDisplayText(full);
     const suggestions = extractSuggestions(full);
+
+    if (!validation.ok && /สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
+      useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
+    }
 
     store.pushMessage(id, {
       id: uid(),
