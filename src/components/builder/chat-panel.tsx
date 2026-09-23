@@ -17,7 +17,8 @@ const STEPS = [
 export function ChatPanel() {
   const project = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
   const generating = useBuilder((s) => s.generating);
-  const streamText = useBuilder((s) => s.streamText);\n  const generatingStatus = useBuilder((s) => s.generatingStatus);
+  const streamText = useBuilder((s) => s.streamText);
+  const generatingStatus = useBuilder((s) => s.generatingStatus);
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,7 +43,8 @@ export function ChatPanel() {
           ))}
           {generating ? (
             <li className="space-y-3">
-              <p className="text-sm font-medium text-fg">{generatingStatus || "กำลังทำงาน…"}</p>\n              <ul className="space-y-1.5 text-sm">
+              <p className="text-sm font-medium text-fg">{generatingStatus || "กำลังทำงาน…"}</p>
+              <ul className="space-y-1.5 text-sm">
                 {STEPS.map((label, i) => (
                   <li
                     key={label}
