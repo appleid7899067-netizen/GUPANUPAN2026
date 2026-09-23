@@ -1,4 +1,4 @@
-/** Real product identity for GUPANUPAN2026 — not a template placeholder. */
+/** Real product identity for GUPANUPAN2026. */
 
 export const BRAND = {
   name: "GuPanu",
@@ -6,16 +6,20 @@ export const BRAND = {
   tagline: "สร้างเว็บและแอปด้วย AI — ล็อกอิน Puter · โมเดลฟรี",
   taglineEn: "Build apps and sites with AI — Puter sign-in · free models",
   description:
-    "GuPanu is a real AI app builder. Sign in with Puter, use free models, preview and download working HTML apps.",
+    "GuPanu สร้างเว็บและแอปด้วย AI ล็อกอิน Puter ใช้โมเดลฟรี พรีวิวและดาวน์โหลดได้จริง",
   year: 2026,
   repo: "https://github.com/appleid7899067-netizen/GUPANUPAN2026",
   puterDocs: "https://developer.puter.com/",
 } as const;
 
-export const FREE_MODELS = [
-  "nex-agi/nex-n2.5-pro:free",
-  "nex-agi/nex-n2.5-mini:free",
-  "openrouter:meta-llama/llama-3.1-8b-instruct:free",
-] as const;
+export {
+  MODEL_OPTIONS,
+  DEFAULT_MODEL_ID,
+  FREE_MODEL_IDS,
+  DOWNLOAD_MOCK_MESSAGES,
+  UI_TH,
+} from "@/lib/models";
 
-export const DEFAULT_FREE_MODEL = FREE_MODELS[0];
+import { FREE_MODEL_IDS, DEFAULT_MODEL_ID } from "@/lib/models";
+export const FREE_MODELS = FREE_MODEL_IDS;
+export const DEFAULT_FREE_MODEL = DEFAULT_MODEL_ID;
