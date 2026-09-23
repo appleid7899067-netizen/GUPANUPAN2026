@@ -1,0 +1,19 @@
+# Render Blueprint — GuPanu (GUPANUPAN2026)
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: gupanu
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Optional: DATABASE_URL for Neon; without it app uses PGLite
+      # - key: DATABASE_URL
+      #   sync: false
