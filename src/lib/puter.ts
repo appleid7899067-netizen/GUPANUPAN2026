@@ -24,7 +24,7 @@ export type PuterAPI = {
   ai: {
     chat: (
       messages: Array<{ role: string; content: string }> | string,
-      options?: { model?: string; stream?: boolean; tools?: unknown[] },
+      options?: { model?: string; stream?: boolean; tools?: unknown[]; compaction?: boolean },
     ) => Promise<unknown> | AsyncIterable<unknown>;
   };
   fs?: unknown;
@@ -119,6 +119,13 @@ export async function puterGetUser(): Promise<PuterUser | null> {
 export function extractPuterText(response: unknown): string {
   if (response == null) return "";
   if (typeof response === "string") return response;
+
+  // Puter/browser integrations can hand us DOM nodes. Never stringify a
+  // HTMLDivElement into the chat as "[object HTMLDivElement]".
+  if (typeof Element !== "undefined" && response instanceof Element) {
+    return (response.textContent ?? response.getAttribute("data-text") ?? "").trim();
+  }
+
   if (typeof response === "object") {
     const r = response as Record<string, unknown>;
     if (typeof r.message === "string") return r.message;
@@ -127,17 +134,25 @@ export function extractPuterText(response: unknown): string {
       if (typeof m.content === "string") return m.content;
       if (Array.isArray(m.content)) {
         return m.content
-          .map((c) => (typeof c === "string" ? c : (c as { text?: string })?.text ?? ""))
+          .map((item) => {
+            if (typeof item === "string") return item;
+            if (typeof Element !== "undefined" && item instanceof Element) return item.textContent ?? "";
+            const part = item as { text?: unknown; content?: unknown };
+            return typeof part.text === "string" ? part.text :
+              typeof part.content === "string" ? part.content : "";
+          })
           .join("");
       }
     }
     if (typeof r.text === "string") return r.text;
     if (typeof r.content === "string") return r.content;
   }
+
   try {
-    return JSON.stringify(response);
+    const json = JSON.stringify(response);
+    return json === "{}" ? "" : json;
   } catch {
-    return String(response);
+    return "";
   }
 }
 
