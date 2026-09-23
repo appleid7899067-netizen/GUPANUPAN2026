@@ -33,7 +33,7 @@ export function ChatPanel() {
   const stepIndex = streamText.includes("```") ? 3 : streamText.length > 80 ? 2 : streamText.length > 0 ? 1 : 0;
 
   return (
-    <section className="flex h-[100svh] max-h-[100svh] min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden overscroll-none touch-pan-y [contain:layout_paint] md:h-full md:max-h-none md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
+    <section className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden overscroll-none touch-pan-y [contain:layout_paint] md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
       <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
         <span className="shrink-0 text-xs font-medium text-muted">แชท</span>
         <div className="min-w-0 max-w-[72vw] overflow-hidden"><ModelSelect /></div>
