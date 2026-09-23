@@ -96,6 +96,42 @@ export function ChatPanel() {
   );
 }
 
+function cleanChatOnlyText(raw: string): string {
+  let text = raw
+    .replace(/\{\s*"type"\s*:\s*"usage"[\s\S]*$/i, "")
+    .replace(/\{\s*"usage"\s*:\s*\{[\s\S]*$/i, "")
+    .replace(/\s*AI is not available in this environment\.?\s*/gi, "")
+    .trim();
+
+  if (!text) return "✦ ยังเชื่อมต่อ AI ไม่สำเร็จ";
+
+  // Keep this formatting local to this chat room. Generated source belongs
+  // in Preview, never as a wall of JSON/HTML inside the conversation.
+  text = extractDisplayText(text);
+  return text;
+}
+
+function ChatText({ text }: { text: string }) {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length <= 1) {
+    return <span>{text}</span>;
+  }
+
+  return (
+    <span className="block space-y-1.5">
+      {lines.slice(0, 12).map((line, i) => (
+        <span key={i} className="flex gap-2">
+          <span className="shrink-0 text-accent">✦</span>
+          <span className="min-w-0">{line}</span>
+        </span>
+      ))}
+      {lines.length > 12 ? (
+        <span className="block pt-1 text-xs text-muted">✦ แสดงเฉพาะข้อความสรุปในห้องแชท</span>
+      ) : null}
+    </span>
+  );
+}
+
 function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "user") {
     return (
@@ -108,7 +144,9 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   }
   return (
     <li>
-      <p className="max-w-full break-words text-sm leading-relaxed text-fg">{extractDisplayText(message.content)}</p>
+      <p className="max-w-full break-words text-sm leading-relaxed text-fg">
+        <ChatText text={cleanChatOnlyText(message.content)} />
+      </p>
     </li>
   );
 }
