@@ -53,7 +53,8 @@ type BuilderState = {
   setSelectMode: (on: boolean) => void;
   setDraft: (draft: string) => void;
   setGenerating: (on: boolean) => void;
-  setStreamText: (text: string) => void;\n  setGeneratingStatus: (status: string) => void;
+  setStreamText: (text: string) => void;
+  setGeneratingStatus: (status: string) => void;
   newProject: () => void;
   createAndActivate: (seed?: Partial<Project>) => string;
   setActive: (id: string | null) => void;
@@ -90,7 +91,8 @@ export const useBuilder = create<BuilderState>()(
       setSelectMode: (selectMode) => set({ selectMode }),
       setDraft: (draft) => set({ draft }),
       setGenerating: (generating) => set({ generating }),
-      setStreamText: (streamText) => set({ streamText }),\n      setGeneratingStatus: (generatingStatus) => set({ generatingStatus }),
+      setStreamText: (streamText) => set({ streamText }),
+      setGeneratingStatus: (generatingStatus) => set({ generatingStatus }),
       newProject: () =>
         set({
           activeId: null,
