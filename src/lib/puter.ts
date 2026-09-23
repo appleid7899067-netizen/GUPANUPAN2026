@@ -26,6 +26,7 @@ export type PuterAPI = {
       messages: Array<{ role: string; content: string }> | string,
       options?: { model?: string; stream?: boolean; tools?: unknown[]; compaction?: boolean; normalize?: boolean },
     ) => Promise<unknown> | AsyncIterable<unknown>;
+    listModels?: () => Promise<PuterModel[]>;
   };
   fs?: unknown;
   hosting?: unknown;
