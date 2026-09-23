@@ -1,5 +1,6 @@
 import { uid } from "@/lib/utils";
 import { validateHtmlArtifact } from "@/lib/boss-engine";
+import { classifyExtractionFailure, rememberExtractionFailure } from "@/lib/extraction-resilience";
 import { streamGenerate } from "./generate-client";
 import { extractDisplayText, extractHtml, extractSuggestions, extractTitle } from "./parse";
 import { useBuilder } from "./store";
@@ -51,8 +52,11 @@ export async function sendPrompt(text: string) {
     const display = extractDisplayText(full);
     const suggestions = extractSuggestions(full);
 
-    if (!validation.ok && /สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
+    if (!validation.ok && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
+      if (/ดึงข้อมูล|scrap|scrape|extract|api/i.test(trimmed)) {
+        rememberExtractionFailure({ target: trimmed, kind: "VALIDATION", cause: validation.reason ?? "output validation failed", strategy: "recheck schema/required fields and change extraction path", evidence: validation.evidence.join(",") });
+      }
     }
 
     store.pushMessage(id, {
@@ -72,6 +76,11 @@ export async function sendPrompt(text: string) {
     }
     store.setSuggestions(id, suggestions);
   } catch (err) {
+    if (/ดึงข้อมูล|scrap|scrape|extract|api/i.test(trimmed)) {
+      const message = err instanceof Error ? err.message : String(err);
+      const kind = classifyExtractionFailure(message);
+      rememberExtractionFailure({ target: trimmed, kind, cause: message, strategy: `Use recovery plan for ${kind}; do not repeat the identical failed path`, evidence: message });
+    }
     let message = err instanceof Error ? err.message : "Something went wrong.";
     if (/PUTER_SIGN_IN|Sign in with Puter/i.test(message)) {
       message = "กรุณาล็อกอิน Puter (มุมขวาบน) เพื่อใช้โมเดลฟรี";
