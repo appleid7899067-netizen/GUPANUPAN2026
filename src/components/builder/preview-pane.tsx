@@ -2,6 +2,7 @@ import {
   Code2,
   Download,
   ExternalLink,
+  Globe2,
   History,
   Monitor,
   MousePointer2,
@@ -15,6 +16,7 @@ import { useBuilder } from "@/lib/builder/store";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { PreviewDevice } from "@/lib/builder/types";
 import { DOWNLOAD_MOCK_MESSAGES } from "@/lib/models";
+import { publishToPuterSite } from "@/lib/puter-hosting";
 
 const PICKER = `
 <script>
@@ -63,6 +65,7 @@ export function PreviewPane() {
   const setDraft = useBuilder((s) => s.setDraft);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
+  const [publishBusy, setPublishBusy] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
 
   const srcdoc = useMemo(() => {
@@ -104,6 +107,22 @@ export function PreviewPane() {
     a.click();
     URL.revokeObjectURL(url);
     setTimeout(() => setDownloadStatus(null), 2000);
+  }
+
+  async function publishSite() {
+    if (!current.html.trim() || publishBusy) return;
+    setPublishBusy(true);
+    setDownloadStatus("กำลังเผยแพร่ไป Puter .site...");
+    try {
+      const result = await publishToPuterSite(current.html, current.title);
+      setDownloadStatus(`เผยแพร่แล้ว: ${result.url}`);
+      window.open(result.url, "_blank", "noopener");
+    } catch (error) {
+      setDownloadStatus(error instanceof Error ? error.message : "เผยแพร่ .site ไม่สำเร็จ");
+    } finally {
+      setPublishBusy(false);
+      setTimeout(() => setDownloadStatus(null), 6000);
+    }
   }
 
   function openNew() {
@@ -210,6 +229,18 @@ export function PreviewPane() {
           <Tooltip label="ดาวน์โหลด HTML">
             <Button variant="ghost" size="icon-sm" aria-label="ดาวน์โหลด" onClick={() => void download()} disabled={!project.html}>
               <Download />
+            </Button>
+          </Tooltip>
+          <Tooltip label="เผยแพร่ Puter .site">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="เผยแพร่ Puter .site"
+              onClick={() => void publishSite()}
+              disabled={!project.html || publishBusy}
+              className={publishBusy ? "text-accent" : "text-muted"}
+            >
+              <Globe2 />
             </Button>
           </Tooltip>
           <Tooltip label="เปิดแท็บใหม่">
