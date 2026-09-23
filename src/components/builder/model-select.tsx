@@ -32,6 +32,7 @@ export function ModelSelect({ className }: { className?: string }) {
   const options = liveModels.length
     ? liveModels
     : MODEL_OPTIONS.map((m) => ({ id: m.id, name: m.label, provider: "puter" }));
+  const selected = options.some((m) => m.id === modelId) ? modelId : "gpt-5.6-luna";
 
   return (
     <label className={cn("inline-flex items-center gap-1.5 text-xs text-muted", className)}>
