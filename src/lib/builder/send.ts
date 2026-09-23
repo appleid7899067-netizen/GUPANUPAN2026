@@ -1,4 +1,5 @@
 import { uid } from "@/lib/utils";
+import { validateHtmlArtifact } from "@/lib/boss-engine";
 import { streamGenerate } from "./generate-client";
 import { extractDisplayText, extractHtml, extractSuggestions, extractTitle } from "./parse";
 import { useBuilder } from "./store";
@@ -32,6 +33,7 @@ export async function sendPrompt(text: string) {
   store.setDraft("");
   store.setGenerating(true);
   store.setStreamText("");
+  store.setGeneratingStatus("กำลังอ่านคำขอ");
   store.setSuggestions(id, []);
   store.setMobilePane("chat");
   store.setSelectMode(false);
@@ -41,10 +43,17 @@ export async function sendPrompt(text: string) {
     const full = await streamGenerate(
       { prompt: trimmed, html, history, model: modelId },
       (t) => useBuilder.getState().setStreamText(t),
+      undefined,
+      (status) => useBuilder.getState().setGeneratingStatus(status),
     );
-    const nextHtml = extractHtml(full);
+    const validation = validateHtmlArtifact(full);
+    const nextHtml = validation.ok ? extractHtml(full) : null;
     const display = extractDisplayText(full);
     const suggestions = extractSuggestions(full);
+
+    if (!validation.ok && /สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
+      useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
+    }
 
     store.pushMessage(id, {
       id: uid(),
@@ -76,6 +85,7 @@ export async function sendPrompt(text: string) {
   } finally {
     store.setGenerating(false);
     store.setStreamText("");
+    store.setGeneratingStatus("เรียบร้อย");
   }
 }
 

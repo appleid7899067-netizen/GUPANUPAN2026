@@ -1,5 +1,5 @@
 import { SYSTEM_PROMPT } from "@/lib/builder/system-prompt";
-import { buildBossContext } from "@/lib/boss-engine";
+import { buildBossContext, buildExecutionContract, liveStatusFor } from "@/lib/boss-engine";
 import { puterFreeChat, puterIsSignedIn } from "@/lib/puter";
 
 export type GeneratePayload = {
@@ -11,47 +11,56 @@ export type GeneratePayload = {
 
 function buildMessages(payload: GeneratePayload): Array<{ role: string; content: string }> {
   const messages: Array<{ role: string; content: string }> = [
-    { role: "system", content: [SYSTEM_PROMPT, buildBossContext(payload.prompt, payload.history.length, Boolean(payload.html.trim()))].join("\n\n") },
+    {
+      role: "system",
+      content: [SYSTEM_PROMPT, buildBossContext(payload.prompt, payload.history.length, Boolean(payload.html.trim()))].join("\n\n"),
+    },
   ];
   for (const m of payload.history.slice(-12)) {
-    messages.push({
-      role: m.role,
-      content: m.content.slice(0, 8000),
-    });
+    messages.push({ role: m.role, content: m.content.slice(0, 8000) });
   }
   let user = payload.prompt;
   if (payload.html.trim()) {
-    const html =
-      payload.html.length > 90000
-        ? `${payload.html.slice(0, 90000)}\n<!-- truncated -->`
-        : payload.html;
+    const html = payload.html.length > 90000 ? `${payload.html.slice(0, 90000)}\n<!-- truncated -->` : payload.html;
     user = `The current app HTML is:\n\n\`\`\`html\n${html}\n\`\`\`\n\nApply this change and return the FULL updated HTML document:\n\n${payload.prompt}`;
   }
   messages.push({ role: "user", content: user });
   return messages;
 }
 
-/** Primary path: Puter free models when signed in. Fallback: /api/generate stream. */
 export async function streamGenerate(
   payload: GeneratePayload,
   onDelta: (text: string) => void,
   signal?: AbortSignal,
+  onStatus?: (status: string) => void,
 ): Promise<string> {
+  const contract = buildExecutionContract(payload.prompt);
+  onStatus?.(liveStatusFor(payload.prompt, "start"));
+  onStatus?.(liveStatusFor(payload.prompt, "plan"));
+
   try {
     if (await puterIsSignedIn()) {
+      onStatus?.(liveStatusFor(payload.prompt, "act"));
       const result = await puterFreeChat(buildMessages(payload), {
         onDelta,
-        model: payload.model,
+        model: contract.searchUsesLiveWebTool ? "openai/gpt-5.6-luna" : payload.model,
+        webSearch: contract.searchUsesLiveWebTool,
       });
-      if (result.ok && result.text.trim()) return result.text;
+      if (result.ok && result.text.trim()) {
+        onStatus?.(liveStatusFor(payload.prompt, "verify"));
+        onStatus?.(liveStatusFor(payload.prompt, "done"));
+        return result.text;
+      }
       if (result.error && result.error !== "PUTER_SIGN_IN_REQUIRED") {
-        console.warn("[GuPanu] Puter free model:", result.error);
+        console.warn("[GuPanu] Puter model:", result.error);
       }
     }
   } catch (e) {
+    onStatus?.(liveStatusFor(payload.prompt, "recover"));
     console.warn("[GuPanu] Puter path failed, trying API fallback", e);
   }
 
+  onStatus?.(liveStatusFor(payload.prompt, "act"));
   const res = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -67,12 +76,8 @@ export async function streamGenerate(
     } catch {
       /* ignore */
     }
-    if (res.status === 401 || res.status === 403) {
-      message += " — Sign in with Puter to use free models.";
-    }
     throw new Error(message);
   }
-
   if (!res.body) throw new Error("Empty response from the model");
 
   const reader = res.body.getReader();
@@ -109,5 +114,7 @@ export async function streamGenerate(
       }
     }
   }
+  onStatus?.(liveStatusFor(payload.prompt, "verify"));
+  onStatus?.(liveStatusFor(payload.prompt, "done"));
   return full;
 }

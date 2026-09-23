@@ -42,6 +42,7 @@ type BuilderState = {
   selectMode: boolean;
   generating: boolean;
   streamText: string;
+  generatingStatus: string;
   draft: string;
   modelId: string;
   setModelId: (id: string) => void;
@@ -54,6 +55,7 @@ type BuilderState = {
   setDraft: (draft: string) => void;
   setGenerating: (on: boolean) => void;
   setStreamText: (text: string) => void;
+  setGeneratingStatus: (status: string) => void;
   newProject: () => void;
   createAndActivate: (seed?: Partial<Project>) => string;
   setActive: (id: string | null) => void;
@@ -79,6 +81,7 @@ export const useBuilder = create<BuilderState>()(
       selectMode: false,
       generating: false,
       streamText: "",
+      generatingStatus: "",
       draft: "",
       modelId: DEFAULT_MODEL_ID,
       setModelId: (modelId) => set({ modelId }),
@@ -91,11 +94,13 @@ export const useBuilder = create<BuilderState>()(
       setDraft: (draft) => set({ draft }),
       setGenerating: (generating) => set({ generating }),
       setStreamText: (streamText) => set({ streamText }),
+      setGeneratingStatus: (generatingStatus) => set({ generatingStatus }),
       newProject: () =>
         set({
           activeId: null,
           draft: "",
           streamText: "",
+          generatingStatus: "",
           generating: false,
           editorTab: "preview",
           mobilePane: "chat",
