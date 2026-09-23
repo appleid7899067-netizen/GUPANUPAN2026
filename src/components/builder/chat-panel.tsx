@@ -21,9 +21,11 @@ export function ChatPanel() {
   const generatingStatus = useBuilder((s) => s.generatingStatus);
   const bottom = useRef<HTMLDivElement>(null);
 
+  // Scroll only when a message/task starts. Do not scroll on every streamed
+  // token, otherwise the viewport jumps while the model is generating.
   useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: "smooth" });
-  }, [project?.messages.length, streamText, generating]);
+    bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [project?.messages.length, generating]);
 
   if (!project) return null;
 
@@ -31,12 +33,12 @@ export function ChatPanel() {
   const stepIndex = streamText.includes("```") ? 3 : streamText.length > 80 ? 2 : streamText.length > 0 ? 1 : 0;
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
+    <section className="flex h-full min-h-0 w-full flex-col overflow-hidden overscroll-none md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <span className="text-xs font-medium text-muted">แชท</span>
         <ModelSelect />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 scrollbar-none">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 scrollbar-none">
         <ol className="space-y-4">
           {project.messages.map((m) => (
             <MessageBubble key={m.id} message={m} />
@@ -87,7 +89,7 @@ export function ChatPanel() {
           ))}
         </div>
       ) : null}
-      <div className="px-4 pb-4 pt-1">
+      <div className="sticky bottom-0 z-10 shrink-0 bg-bg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
         <PromptBox placeholder="บอกสิ่งที่อยากเปลี่ยน…" />
       </div>
     </section>
