@@ -37,8 +37,9 @@ export async function sendPrompt(text: string) {
   store.setSelectMode(false);
 
   try {
+    const modelId = useBuilder.getState().modelId;
     const full = await streamGenerate(
-      { prompt: trimmed, html, history },
+      { prompt: trimmed, html, history, model: modelId },
       (t) => useBuilder.getState().setStreamText(t),
     );
     const nextHtml = extractHtml(full);
@@ -48,7 +49,7 @@ export async function sendPrompt(text: string) {
     store.pushMessage(id, {
       id: uid(),
       role: "assistant",
-      content: display || (nextHtml ? "Ready. Take a look at the preview." : "I need a bit more detail before building."),
+      content: display || (nextHtml ? "พร้อมแล้ว ดูที่พรีวิวได้เลย" : "ขอรายละเอียดเพิ่มนิดนึงก่อนสร้าง"),
       createdAt: Date.now(),
     });
 
@@ -87,27 +88,27 @@ export function openExample(example: ExampleApp) {
       {
         id: uid(),
         role: "user",
-        content: `Start from the ${example.name} example.`,
+        content: `เริ่มจากตัวอย่าง ${example.name}`,
         createdAt: Date.now(),
       },
       {
         id: uid(),
         role: "assistant",
-        content: `${example.name} is ready in the preview. Tell me what to change, or pick a suggestion below.`,
+        content: `${example.name} พร้อมในพรีวิวแล้ว บอกได้เลยว่าจะแก้ตรงไหน`,
         createdAt: Date.now(),
       },
     ],
     suggestions: [
-      { label: "Restyle it", prompt: `Give ${example.name} a bolder visual identity while keeping the same features.` },
-      { label: "Add dark mode", prompt: "Add a dark mode toggle and remember the preference." },
-      { label: "Add a page", prompt: "Add another section or screen that this product would naturally have." },
-      { label: example.prompt.split(":")[0] ?? "Remix", prompt: example.prompt },
+      { label: "ปรับสไตล์", prompt: `Give ${example.name} a bolder visual identity while keeping the same features.` },
+      { label: "โหมดมืด", prompt: "Add a dark mode toggle and remember the preference." },
+      { label: "เพิ่มหน้า", prompt: "Add another section or screen that this product would naturally have." },
+      { label: example.prompt.split(":")[0] ?? "รีมิกซ์", prompt: example.prompt },
     ],
     versions: [
       {
         id: uid(),
         html: example.html,
-        label: "Example",
+        label: "ตัวอย่าง",
         createdAt: Date.now(),
       },
     ],
