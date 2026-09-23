@@ -21,7 +21,7 @@ export type BossLiveStatus = "กำลังอ่านคำขอ" | "กำ
 export function classifyBossIntent(prompt: string): BossIntent {
   const t = prompt.toLowerCase();
   if (/ค้นหา|search|research|หาข้อมูล|เว็บ|ข่าว/.test(t)) return "search";
-  if (/github|repo|commit|branch|pull request|pr\\b/.test(t)) return "github";
+  if (/github|repo|commit|branch|pull request|pr\b/.test(t)) return "github";
   if (/deploy|ดีพลอย|render|vercel|publish|hosting/.test(t)) return "deploy";
   if (/debug|bug|error|ผิดพลาด|แก้บั๊ก/.test(t)) return "debug";
   if (/แก้|edit|ปรับ|เปลี่ยน|modify/.test(t)) return "edit";
@@ -40,9 +40,9 @@ export function liveStatusFor(prompt: string, phase: "start"|"plan"|"act"|"verif
 }
 
 export function validateHtmlArtifact(raw: string) {
-  const html = /<!doctype html|<html[\\s>]/i.test(raw);
-  const complete = /<head[\\s>][\\s\\S]*<body[\\s>][\\s\\S]*<\\/body>[\\s>][\\s\\S]*<\\/html>/i.test(raw);
-  const suggestions = /```suggestions[\\s\\S]*\\[[\\s\\S]*\\][\\s\\S]*```/i.test(raw);
+  const html = /<!doctype html|<html[\s>]/i.test(raw);
+  const complete = /<head[\s>][\s\S]*<body[\s>][\s\S]*<\\/body>[\s>][\s\S]*<\\/html>/i.test(raw);
+  const suggestions = /```suggestions[\s\S]*\\[[\s\S]*\\][\s\S]*```/i.test(raw);
   const evidence = [html ? "html_detected" : "", complete ? "complete_document_detected" : "", suggestions ? "suggestions_detected" : ""].filter(Boolean);
   return { ok: html && complete, html, complete, suggestions, evidence };
 }
