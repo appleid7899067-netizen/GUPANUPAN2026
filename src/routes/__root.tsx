@@ -1,22 +1,19 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
+import { PuterAuthProvider } from "@/lib/puter-auth";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/builder/theme-provider";
+import { BRAND } from "@/lib/brand";
 import appCss from "../styles.css?url";
-
-const APP_NAME = "Forge";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: APP_NAME },
-      {
-        name: "description",
-        content: "Describe what you want. Forge builds a working website or app you can preview, edit, and download.",
-      },
+      { title: BRAND.fullName },
+      { name: "description", content: BRAND.description },
       { name: "theme-color", content: "#efece6" },
     ],
     links: [
@@ -27,19 +24,21 @@ export const Route = createRootRoute({
     ],
   }),
   component: () => (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="th" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
         <PreviewHostBridge />
-        <AuthProvider>
-          <ThemeProvider>
-            <TooltipProvider>
-              <Outlet />
-            </TooltipProvider>
-          </ThemeProvider>
-        </AuthProvider>
+        <PuterAuthProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <TooltipProvider>
+                <Outlet />
+              </TooltipProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </PuterAuthProvider>
         <Scripts />
       </body>
     </html>

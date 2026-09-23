@@ -1,14 +1,52 @@
+import { SYSTEM_PROMPT } from "@/lib/builder/system-prompt";
+import { puterFreeChat, puterIsSignedIn } from "@/lib/puter";
+
 export type GeneratePayload = {
   prompt: string;
   html: string;
   history: { role: "user" | "assistant"; content: string }[];
 };
 
+function buildMessages(payload: GeneratePayload): Array<{ role: string; content: string }> {
+  const messages: Array<{ role: string; content: string }> = [
+    { role: "system", content: SYSTEM_PROMPT },
+  ];
+  for (const m of payload.history.slice(-12)) {
+    messages.push({
+      role: m.role,
+      content: m.content.slice(0, 8000),
+    });
+  }
+  let user = payload.prompt;
+  if (payload.html.trim()) {
+    const html =
+      payload.html.length > 90000
+        ? `${payload.html.slice(0, 90000)}\n<!-- truncated -->`
+        : payload.html;
+    user = `The current app HTML is:\n\n\`\`\`html\n${html}\n\`\`\`\n\nApply this change and return the FULL updated HTML document:\n\n${payload.prompt}`;
+  }
+  messages.push({ role: "user", content: user });
+  return messages;
+}
+
+/** Primary path: Puter free models when signed in. Fallback: /api/generate stream. */
 export async function streamGenerate(
   payload: GeneratePayload,
   onDelta: (text: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
+  try {
+    if (await puterIsSignedIn()) {
+      const result = await puterFreeChat(buildMessages(payload), { onDelta });
+      if (result.ok && result.text.trim()) return result.text;
+      if (result.error && result.error !== "PUTER_SIGN_IN_REQUIRED") {
+        console.warn("[GuPanu] Puter free model:", result.error);
+      }
+    }
+  } catch (e) {
+    console.warn("[GuPanu] Puter path failed, trying API fallback", e);
+  }
+
   const res = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -23,6 +61,9 @@ export async function streamGenerate(
       if (body.error) message = body.error;
     } catch {
       /* ignore */
+    }
+    if (res.status === 401 || res.status === 403) {
+      message += " — Sign in with Puter to use free models.";
     }
     throw new Error(message);
   }
