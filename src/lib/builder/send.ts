@@ -32,6 +32,7 @@ export async function sendPrompt(text: string) {
   store.setDraft("");
   store.setGenerating(true);
   store.setStreamText("");
+  store.setGeneratingStatus("กำลังอ่านคำขอ");
   store.setSuggestions(id, []);
   store.setMobilePane("chat");
   store.setSelectMode(false);
@@ -41,6 +42,8 @@ export async function sendPrompt(text: string) {
     const full = await streamGenerate(
       { prompt: trimmed, html, history, model: modelId },
       (t) => useBuilder.getState().setStreamText(t),
+      undefined,
+      (status) => useBuilder.getState().setGeneratingStatus(status),
     );
     const nextHtml = extractHtml(full);
     const display = extractDisplayText(full);
@@ -76,6 +79,7 @@ export async function sendPrompt(text: string) {
   } finally {
     store.setGenerating(false);
     store.setStreamText("");
+    store.setGeneratingStatus("เรียบร้อย");
   }
 }
 
