@@ -55,9 +55,17 @@ export function extractSuggestions(raw: string): Suggestion[] {
 export function extractDisplayText(raw: string): string {
   let text = raw
     .replace(SUGGEST_FENCE, "")
-    .replace(/```(?:html|htm|xml)?\s*\n[\s\S]*?```/gi, "")
+    .replace(/\`\`\`(?:html|htm|xml)?\s*\n[\s\S]*?\`\`\`/gi, "")
     .trim();
-  text = text.replace(/```[\s\S]*?```/g, "").trim();
+
+  // Some models omit the HTML fence. Never dump a generated document into chat.
+  if (/<(?:!doctype|html|head|body|script|style|div|section|main)\b/i.test(text)) {
+    const firstTag = text.search(/<(?:!doctype|html|head|body|script|style|div|section|main)\b/i);
+    const before = firstTag > 0 ? text.slice(0, firstTag).trim() : "";
+    return before || "สร้างหน้าเว็บให้แล้ว ดูผลลัพธ์ได้ที่พรีวิว";
+  }
+
+  text = text.replace(/\`\`\`[\s\S]*?\`\`\`/g, "").trim();
   return text;
 }
 
