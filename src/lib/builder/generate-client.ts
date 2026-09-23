@@ -1,5 +1,5 @@
 import { SYSTEM_PROMPT } from "@/lib/builder/system-prompt";
-import { buildBossContext } from "@/lib/boss-engine";
+import { buildBossContext, buildExecutionContract, liveStatusFor } from "@/lib/boss-engine";
 import { puterFreeChat, puterIsSignedIn } from "@/lib/puter";
 
 export type GeneratePayload = {
@@ -43,7 +43,7 @@ export async function streamGenerate(
         onDelta,
         model: payload.model,
       });
-      if (result.ok && result.text.trim()) return result.text;
+      if (result.ok && result.text.trim()) {\n        onStatus?.(liveStatusFor(payload.prompt, "verify"));\n        return result.text;\n      }
       if (result.error && result.error !== "PUTER_SIGN_IN_REQUIRED") {
         console.warn("[GuPanu] Puter free model:", result.error);
       }
@@ -52,7 +52,7 @@ export async function streamGenerate(
     console.warn("[GuPanu] Puter path failed, trying API fallback", e);
   }
 
-  const res = await fetch("/api/generate", {
+  onStatus?.(liveStatusFor(payload.prompt, "act"));\n  const res = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -109,5 +109,5 @@ export async function streamGenerate(
       }
     }
   }
-  return full;
+  onStatus?.(liveStatusFor(payload.prompt, "verify"));\n  return full;
 }
