@@ -1,4 +1,5 @@
 import { SYSTEM_PROMPT } from "@/lib/builder/system-prompt";
+import { buildBossContext } from "@/lib/boss-engine";
 import { puterFreeChat, puterIsSignedIn } from "@/lib/puter";
 
 export type GeneratePayload = {
@@ -10,7 +11,7 @@ export type GeneratePayload = {
 
 function buildMessages(payload: GeneratePayload): Array<{ role: string; content: string }> {
   const messages: Array<{ role: string; content: string }> = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: [SYSTEM_PROMPT, buildBossContext(payload.prompt, payload.history.length, Boolean(payload.html.trim()))].join("\n\n") },
   ];
   for (const m of payload.history.slice(-12)) {
     messages.push({
