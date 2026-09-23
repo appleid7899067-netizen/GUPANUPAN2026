@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
 
-export function ForgeMark({ className }: { className?: string }) {
+export function GuPanuMark({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 32 32"
@@ -8,18 +9,25 @@ export function ForgeMark({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <rect width="32" height="32" rx="8" className="fill-accent" />
-      <rect x="8" y="9" width="16" height="3.2" rx="1.4" className="fill-accent-fg" />
-      <rect x="8" y="14.4" width="12" height="3.2" rx="1.4" className="fill-accent-fg" />
-      <rect x="8" y="19.8" width="8" height="3.2" rx="1.4" className="fill-accent-fg" />
+      <path
+        d="M8 22 V10 h6.5 c3.2 0 5.2 1.7 5.2 4.2 0 2.4-2 4.1-5.2 4.1H11.5 V22 H8zm3.5-6.2h2.8c1.4 0 2.2-.7 2.2-1.8s-.8-1.8-2.2-1.8h-2.8v3.6z"
+        className="fill-accent-fg"
+      />
     </svg>
   );
 }
 
-export function ForgeWordmark({ className }: { className?: string }) {
+/** @deprecated use GuPanuMark */
+export const ForgeMark = GuPanuMark;
+
+export function GuPanuWordmark({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      <ForgeMark className="size-7" />
-      <span className="font-display text-lg font-semibold tracking-tight">Forge</span>
+      <GuPanuMark className="size-7" />
+      <span className="font-display text-lg font-semibold tracking-tight">{BRAND.name}</span>
     </span>
   );
 }
+
+/** @deprecated use GuPanuWordmark */
+export const ForgeWordmark = GuPanuWordmark;

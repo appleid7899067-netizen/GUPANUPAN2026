@@ -1,9 +1,37 @@
+import { usePuterAuth } from "@/lib/puter-auth";
 import { Link } from "@tanstack/react-router";
 import { Menu, Monitor, Moon, Plus, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useBuilder } from "@/lib/builder/store";
 import { cn } from "@/lib/utils";
+
+function PuterSessionButton() {
+  const { ready, signedIn, user, loading, signIn, signOut } = usePuterAuth();
+  if (!ready) return null;
+  if (signedIn) {
+    return (
+      <button
+        type="button"
+        onClick={() => void signOut()}
+        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:text-fg"
+        title={user?.username ?? "Puter"}
+      >
+        {user?.username ? `@${user.username}` : "Puter"} · ออก
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void signIn()}
+      disabled={loading}
+      className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-fg disabled:opacity-50"
+    >
+      {loading ? "…" : "ล็อกอิน Puter"}
+    </button>
+  );
+}
 
 export function Toolbar({ inEditor }: { inEditor: boolean }) {
   const theme = useBuilder((s) => s.theme);
@@ -71,8 +99,9 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
         className="mr-1 hidden text-xs font-medium text-muted hover:text-fg sm:inline"
         onClick={newProject}
       >
-        Forge
+        GuPanu
       </Link>
+      <PuterSessionButton />
     </header>
   );
 }
