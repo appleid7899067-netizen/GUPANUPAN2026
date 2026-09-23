@@ -42,6 +42,7 @@ type BuilderState = {
   selectMode: boolean;
   generating: boolean;
   streamText: string;
+  generatingStatus: string;
   draft: string;
   modelId: string;
   setModelId: (id: string) => void;
@@ -80,6 +81,7 @@ export const useBuilder = create<BuilderState>()(
       selectMode: false,
       generating: false,
       streamText: "",
+      generatingStatus: "",
       draft: "",
       modelId: DEFAULT_MODEL_ID,
       setModelId: (modelId) => set({ modelId }),
@@ -98,6 +100,7 @@ export const useBuilder = create<BuilderState>()(
           activeId: null,
           draft: "",
           streamText: "",
+          generatingStatus: "",
           generating: false,
           editorTab: "preview",
           mobilePane: "chat",
