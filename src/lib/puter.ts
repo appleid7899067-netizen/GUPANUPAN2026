@@ -147,30 +147,29 @@ export async function puterFreeChat(
   opts?: { model?: string; onDelta?: (text: string) => void },
 ): Promise<{ ok: boolean; text: string; model?: string; error?: string }> {
   const puter = await ensurePuter();
-  const signed = await puterIsSignedIn();
-  if (!signed) {
-    return { ok: false, text: "", error: "PUTER_SIGN_IN_REQUIRED" };
-  }
-
+  if (!(await puterIsSignedIn())) return { ok:false, text:"", error:"PUTER_SIGN_IN_REQUIRED" };
   const models = opts?.model ? [opts.model, ...FREE_MODELS] : [...FREE_MODELS];
   const unique = [...new Set(models)];
   let lastError = "";
-
   for (const model of unique) {
     try {
-      const response = await puter.ai.chat(messages, { model, stream: false });
-      const text = extractPuterText(response);
-      if (text.trim()) {
-        opts?.onDelta?.(text);
-        return { ok: true, text, model };
+      const response = await puter.ai.chat(messages, { model, stream:true, compaction:true });
+      if (response && typeof (response as AsyncIterable<unknown>)[Symbol.asyncIterator] === "function") {
+        let full = "";
+        for await (const part of response as AsyncIterable<Record<string, unknown>>) {
+          if (part?.type === "error") throw new Error(String(part.message ?? "Puter stream error"));
+          const delta = typeof part?.text === "string" ? part.text : extractPuterText(part);
+          if (delta) { full += delta; opts?.onDelta?.(full); }
+        }
+        if (full.trim()) return {ok:true,text:full,model};
+        lastError = "Empty streaming response from " + model;
+      } else {
+        const text = extractPuterText(response);
+        if (text.trim()) { opts?.onDelta?.(text); return {ok:true,text,model}; }
+        lastError = "Empty response from " + model;
       }
-      lastError = `Empty response from ${model}`;
-    } catch (e) {
-      lastError = e instanceof Error ? e.message : String(e);
-    }
+    } catch (e) { lastError = e instanceof Error ? e.message : String(e); }
   }
-
-  return { ok: false, text: "", error: lastError || `All free models failed (tried ${unique.join(", ")})` };
+  return {ok:false,text:"",error:lastError || "All free models failed"};
 }
-
 export { DEFAULT_FREE_MODEL, FREE_MODELS };
