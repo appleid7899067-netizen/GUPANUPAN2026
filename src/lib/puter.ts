@@ -192,7 +192,7 @@ export function extractPuterText(response: unknown): string {
 /** Chat with free models via Puter. Tries each free model until one works. */
 export async function puterFreeChat(
   messages: Array<{ role: string; content: string }>,
-  opts?: { model?: string; onDelta?: (text: string) => void },
+  opts?: { model?: string; onDelta?: (text: string) => void; webSearch?: boolean },
 ): Promise<{ ok: boolean; text: string; model?: string; error?: string }> {
   const puter = await ensurePuter();
   if (!(await puterIsSignedIn())) return { ok:false, text:"", error:"PUTER_SIGN_IN_REQUIRED" };
