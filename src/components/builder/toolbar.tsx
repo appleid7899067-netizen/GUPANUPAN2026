@@ -1,7 +1,7 @@
 import { ModelSelect } from "./model-select";
 import { usePuterAuth } from "@/lib/puter-auth";
 import { Link } from "@tanstack/react-router";
-import { Menu, Monitor, Moon, Plus, Sun } from "lucide-react";
+import { ArrowLeft, Menu, Monitor, Moon, Plus, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useBuilder } from "@/lib/builder/store";
@@ -47,6 +47,22 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
 
   return (
     <header className="flex h-11 shrink-0 items-center gap-1 px-2">
+      <Tooltip label={inEditor ? "ย้อนกลับ" : "กลับ"}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={inEditor ? "ย้อนกลับ" : "กลับ"}
+          onClick={() => {
+            if (inEditor) {
+              newProject();
+              return;
+            }
+            window.history.back();
+          }}
+        >
+          <ArrowLeft />
+        </Button>
+      </Tooltip>
       <Tooltip label="โปรเจกต์">
         <Button
           variant="ghost"
