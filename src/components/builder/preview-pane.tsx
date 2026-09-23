@@ -14,6 +14,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useBuilder } from "@/lib/builder/store";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { PreviewDevice } from "@/lib/builder/types";
+import { DOWNLOAD_MOCK_MESSAGES } from "@/lib/models";
 
 const PICKER = `
 <script>
@@ -28,7 +29,7 @@ const PICKER = `
     t.style.outlineOffset = '2px';
     last = t;
     var text = (t.innerText || '').trim().slice(0, 80);
-    parent.postMessage({ type: 'forge-select', tag: t.tagName.toLowerCase(), text: text }, '*');
+    parent.postMessage({ type: 'gupanu-select', tag: t.tagName.toLowerCase(), text: text }, '*');
   }, true);
 })();
 <\/script>`;
@@ -44,6 +45,12 @@ const DEVICE_WIDTH: Record<PreviewDevice, string> = {
   phone: "390px",
 };
 
+const DEVICE_LABEL: Record<PreviewDevice, string> = {
+  desktop: "เดสก์ท็อป",
+  tablet: "แท็บเล็ต",
+  phone: "มือถือ",
+};
+
 export function PreviewPane() {
   const project = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
   const device = useBuilder((s) => s.device);
@@ -55,6 +62,7 @@ export function PreviewPane() {
   const restoreVersion = useBuilder((s) => s.restoreVersion);
   const setDraft = useBuilder((s) => s.setDraft);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
 
   const srcdoc = useMemo(() => {
@@ -65,9 +73,9 @@ export function PreviewPane() {
   useEffect(() => {
     function onMsg(e: MessageEvent) {
       const data = e.data as { type?: string; tag?: string; text?: string };
-      if (data?.type !== "forge-select") return;
+      if (data?.type !== "gupanu-select") return;
       const hint = data.text ? ` (“${data.text}”)` : "";
-      setDraft(`Update the selected ${data.tag}${hint}: `);
+      setDraft(`แก้ ${data.tag}${hint}: `);
       setSelectMode(false);
     }
     window.addEventListener("message", onMsg);
@@ -78,24 +86,39 @@ export function PreviewPane() {
 
   const current = project;
 
-  function download() {
-    const blob = new Blob([current.html], { type: "text/html" });
+  async function download() {
+    if (!current.html.trim()) {
+      setDownloadStatus("ยังไม่มีไฟล์ให้ดาวน์โหลด — สร้างแอปก่อน");
+      setTimeout(() => setDownloadStatus(null), 2500);
+      return;
+    }
+    for (const msg of DOWNLOAD_MOCK_MESSAGES) {
+      setDownloadStatus(msg);
+      await new Promise((r) => setTimeout(r, 280));
+    }
+    const blob = new Blob([current.html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${current.title.replace(/[^\w]+/g, "-").toLowerCase() || "app"}.html`;
+    a.download = `${current.title.replace(/[^\w\u0E00-\u0E7F]+/g, "-").toLowerCase() || "gupanu-app"}.html`;
     a.click();
     URL.revokeObjectURL(url);
+    setTimeout(() => setDownloadStatus(null), 2000);
   }
 
   function openNew() {
-    const blob = new Blob([current.html], { type: "text/html" });
+    const blob = new Blob([current.html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank", "noopener");
   }
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-bg p-2 md:p-3">
+      {downloadStatus ? (
+        <div className="mb-2 rounded-lg border border-border bg-muted-fill px-3 py-1.5 text-xs text-fg">
+          {downloadStatus}
+        </div>
+      ) : null}
       <div className="mb-2 flex items-center gap-1">
         <div className="flex rounded-full bg-muted-fill p-0.5">
           <button
@@ -106,7 +129,7 @@ export function PreviewPane() {
               tab === "preview" ? "bg-surface text-fg shadow-border" : "text-muted",
             )}
           >
-            Preview
+            พรีวิว
           </button>
           <button
             type="button"
@@ -116,61 +139,54 @@ export function PreviewPane() {
               tab === "code" ? "bg-surface text-fg shadow-border" : "text-muted",
             )}
           >
-            <Code2 className="size-3" /> Code
+            <Code2 className="size-3" /> โค้ด
           </button>
         </div>
         <div className="ml-auto flex items-center gap-0.5">
           {(["desktop", "tablet", "phone"] as const).map((d) => {
             const Icon = d === "desktop" ? Monitor : d === "tablet" ? Tablet : Smartphone;
             return (
-              <Tooltip key={d} label={d}>
+              <Tooltip key={d} label={DEVICE_LABEL[d]}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={d}
+                  aria-label={DEVICE_LABEL[d]}
                   onClick={() => setDevice(d)}
-                  className={device === d ? "text-fg" : "text-subtle"}
+                  className={device === d ? "text-fg" : "text-muted"}
                 >
                   <Icon />
                 </Button>
               </Tooltip>
             );
           })}
-          <Tooltip label="Select an element to edit">
+          <Tooltip label="เลือกองค์ประกอบ">
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Select element"
-              aria-pressed={selectMode}
-              onClick={() => {
-                setSelectMode(!selectMode);
-                setTab("preview");
-              }}
-              className={selectMode ? "text-accent" : "text-subtle"}
+              aria-label="เลือกองค์ประกอบ"
+              onClick={() => setSelectMode(!selectMode)}
+              className={selectMode ? "text-accent" : "text-muted"}
             >
               <MousePointer2 />
             </Button>
           </Tooltip>
           <div className="relative">
-            <Tooltip label="Version history">
+            <Tooltip label="ประวัติ">
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Version history"
+                aria-label="ประวัติ"
                 onClick={() => setHistoryOpen((v) => !v)}
               >
                 <History />
               </Button>
             </Tooltip>
             {historyOpen ? (
-              <div className="absolute right-0 top-9 z-20 w-64 rounded-lg bg-surface p-2 shadow-border">
-                <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wider text-subtle">
-                  Versions
-                </p>
+              <div className="absolute right-0 top-9 z-20 w-56 rounded-xl border border-border bg-surface p-2 shadow-border">
                 {project.versions.length === 0 ? (
-                  <p className="px-2 py-3 text-sm text-muted">No versions yet.</p>
+                  <p className="px-2 py-3 text-xs text-muted">ยังไม่มีเวอร์ชัน</p>
                 ) : (
-                  <ul className="max-h-64 overflow-auto">
+                  <ul className="max-h-48 space-y-1 overflow-auto">
                     {[...project.versions].reverse().map((v) => (
                       <li key={v.id}>
                         <button
@@ -191,13 +207,13 @@ export function PreviewPane() {
               </div>
             ) : null}
           </div>
-          <Tooltip label="Download HTML">
-            <Button variant="ghost" size="icon-sm" aria-label="Download" onClick={download} disabled={!project.html}>
+          <Tooltip label="ดาวน์โหลด HTML">
+            <Button variant="ghost" size="icon-sm" aria-label="ดาวน์โหลด" onClick={() => void download()} disabled={!project.html}>
               <Download />
             </Button>
           </Tooltip>
-          <Tooltip label="Open in new tab">
-            <Button variant="ghost" size="icon-sm" aria-label="Open in new tab" onClick={openNew} disabled={!project.html}>
+          <Tooltip label="เปิดแท็บใหม่">
+            <Button variant="ghost" size="icon-sm" aria-label="เปิดแท็บใหม่" onClick={openNew} disabled={!project.html}>
               <ExternalLink />
             </Button>
           </Tooltip>
@@ -207,7 +223,7 @@ export function PreviewPane() {
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-surface shadow-border">
         {!project.html ? (
           <div className="flex h-full flex-col items-center justify-center px-8 text-center">
-            <p className="text-sm text-muted">Your app will appear here as Forge builds it.</p>
+            <p className="text-sm text-muted">แอปจะแสดงที่นี่เมื่อ GuPanu สร้างเสร็จ</p>
           </div>
         ) : tab === "code" ? (
           <pre className="h-full overflow-auto p-4 font-mono text-xs leading-relaxed text-fg">
@@ -217,7 +233,7 @@ export function PreviewPane() {
           <div className="flex h-full justify-center overflow-auto bg-muted-fill/50">
             <iframe
               ref={frame}
-              title="Live preview"
+              title="พรีวิวสด"
               srcDoc={srcdoc}
               sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
               className="h-full bg-surface"
@@ -227,7 +243,7 @@ export function PreviewPane() {
         )}
         {selectMode && tab === "preview" ? (
           <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[11px] font-medium text-accent-fg">
-            Click an element to edit it
+            คลิกองค์ประกอบเพื่อแก้ไข
           </div>
         ) : null}
       </div>
