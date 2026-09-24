@@ -12,6 +12,12 @@ export type AppSpec = {
     colors: string[];
     responsive: boolean;
     template: "landing" | "dashboard" | "commerce" | "content" | "portfolio" | "app";
+    composition: {
+      primaryLayout: "two-column" | "bento" | "grid" | "editorial" | "dashboard";
+      blocks: string[];
+      visualAnchor: "mockup" | "image" | "product" | "dashboard" | "typography";
+      density: "airy" | "balanced" | "dense";
+    };
     visualAssets: {
       hero: boolean;
       sectionImages: number;
@@ -91,6 +97,30 @@ function inferTemplate(prompt: string): AppSpec["ui"]["template"] {
   return "landing";
 }
 
+function inferComposition(prompt: string, template: AppSpec["ui"]["template"], style: string): AppSpec["ui"]["composition"] {
+  const t = prompt.toLowerCase();
+  const primaryLayout =
+    template === "dashboard" || template === "app" ? "dashboard" :
+    /bento/.test(t) ? "bento" :
+    template === "content" ? "editorial" :
+    template === "portfolio" ? "grid" :
+    "two-column";
+  const visualAnchor =
+    template === "dashboard" || template === "app" ? "dashboard" :
+    template === "commerce" ? "product" :
+    /typography|text[- ]led|ตัวอักษร/.test(t) ? "typography" :
+    "mockup";
+  const blocksByTemplate: Record<AppSpec["ui"]["template"], string[]> = {
+    landing: ["header", "hero-two-column", "feature-grid", "split-showcase", "proof-or-bento", "cta", "footer"],
+    dashboard: ["app-shell", "overview", "metric-grid", "dashboard-preview", "activity", "footer"],
+    commerce: ["header", "hero-two-column", "category-row", "product-grid", "split-showcase", "cta", "footer"],
+    content: ["header", "editorial-hero", "article-grid", "split-story", "newsletter", "footer"],
+    portfolio: ["header", "hero-two-column", "selected-work-grid", "split-case-study", "gallery", "cta", "footer"],
+    app: ["header", "hero-two-column", "product-mockup", "feature-grid", "workflow-split", "cta", "footer"],
+  };
+  const density = /dense|compact|แน่น|ข้อมูลเยอะ/.test(t) ? "dense" : /airy|spacious|โล่ง/.test(t) ? "airy" : "balanced";
+  return { primaryLayout, blocks: blocksByTemplate[template], visualAnchor, density };
+}
 function inferVisualAssets(prompt: string, template: AppSpec["ui"]["template"]): AppSpec["ui"]["visualAssets"] {
   const t = prompt.toLowerCase();
   const noImages = /no image|without image|ไม่เอารูป|ไม่มีรูป/.test(t);
@@ -129,6 +159,7 @@ export function compileAppSpec(
       ),
       responsive: true,
       template: inferTemplate(goal),
+      composition: inferComposition(goal, inferTemplate(goal), inferStyle(goal)),
       visualAssets: inferVisualAssets(goal, inferTemplate(goal)),
     },
     data: { strategy: inferDataStrategy(goal, hasExistingHtml) },
@@ -206,6 +237,8 @@ export function buildAppSpecPrompt(spec: AppSpec, existingHtml: boolean): string
     `Template: ${spec.ui.template}`,
     `Colors: ${spec.ui.colors.join(", ")}`,
     `Visual assets: hero=${spec.ui.visualAssets.hero ? "yes" : "no"}, sectionImages=${spec.ui.visualAssets.sectionImages}, galleryImages=${spec.ui.visualAssets.galleryImages}, ctaImage=${spec.ui.visualAssets.ctaImage ? "yes" : "no"}`,
+    `Composition: layout=${spec.ui.composition.primaryLayout}, visualAnchor=${spec.ui.composition.visualAnchor}, density=${spec.ui.composition.density}`,
+    `Blocks: ${spec.ui.composition.blocks.join(" → ")}`,
     `Responsive: ${spec.ui.responsive ? "yes" : "no"}`,
     `Data strategy: ${spec.data.strategy}`,
     "Core features (maximum 5):",
@@ -215,6 +248,13 @@ export function buildAppSpecPrompt(spec: AppSpec, existingHtml: boolean): string
     `Existing app: ${existingHtml ? "yes, preserve it and make the smallest relevant change" : "no, create the MVP from scratch"}`,
     "Visual template contract:",
     "- Build the complete visual composition in the first render, including image assets required by the template.",
+    "- COMPOSITION-FIRST: treat the page as a sequence of designed blocks, not one uninterrupted vertical column.",
+    "- TWO-BLOCK RULE: when meaningful text and a visual belong together, prefer a balanced two-column composition on desktop, then stack intentionally on mobile.",
+    "- MOCKUP + HTML: the visual mockup is part of the same HTML layout and must use the same colors, typography, spacing, radii, and tokens as the surrounding page. Do not make it a detached image when an HTML/CSS mockup is appropriate.",
+    "- VISUAL ANCHOR: each major page should have one clear visual anchor such as a product mockup, dashboard preview, product image, or editorial image.",
+    "- BLOCK RHYTHM: alternate composition types across sections: two-column, grid/bento, split content, and CTA. Avoid repeating centered text-only sections.",
+    "- SECTION BOUNDARIES: give each major block deliberate vertical breathing room, consistent max-width, and clear hierarchy. Do not collapse unrelated content into one long section.",
+    "- MOCKUP QUALITY: build believable lightweight UI inside the mockup with browser/device chrome, cards, controls, data, or content relevant to the requested product.",
     "- Never leave an empty media placeholder when an asset is required; use a valid image URL or an existing project asset.",
     "- Confirm the requested asset counts and responsive image behavior before declaring the page complete.",
     "Verification contract:",
