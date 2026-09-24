@@ -98,3 +98,22 @@ export function extractTitle(html: string, fallback: string): string {
 export function stripTags(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
+
+
+export function extractJavaScript(html: string): string {
+  return [...html.matchAll(/<script(?:[^>]*)>([\\s\\S]*?)<\\/script>/gi)]
+    .map((m) => (m[1] ?? "").trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function extractMarkdown(raw: string): string {
+  const cleaned = raw.replace(SUGGEST_FENCE, "").replace(/```(?:html|htm|xml|javascript|js|typescript|ts)?\\s*\\n[\\s\\S]*?```/gi, "").trim();
+  const htmlAt = cleaned.search(/<!doctype|<html|<body|<div|<main|<section/i);
+  return (htmlAt > 0 ? cleaned.slice(0, htmlAt) : cleaned).replace(/<[^>]+>/g, "").trim();
+}
+
+export function extractImplementation(raw: string, html: string): string {
+  const js = extractJavaScript(html);
+  return js ? "HTML\n\n" + html + "\n\nJavaScript\n\n" + js : html || raw;
+}
