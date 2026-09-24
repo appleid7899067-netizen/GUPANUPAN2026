@@ -11,6 +11,7 @@ import type {
   Suggestion,
   ThemeChoice,
   Version,
+  AgentActivity,
 } from "./types";
 
 const MAX_PROJECTS = 24;
@@ -44,6 +45,7 @@ type BuilderState = {
   streamText: string;
   generatingStatus: string;
   draft: string;
+  activities: Record<string, AgentActivity[]>;
   modelId: string;
   setModelId: (id: string) => void;
   setTheme: (theme: ThemeChoice) => void;
@@ -56,6 +58,8 @@ type BuilderState = {
   setGenerating: (on: boolean) => void;
   setStreamText: (text: string) => void;
   setGeneratingStatus: (status: string) => void;
+  pushActivity: (id: string, activity: AgentActivity) => void;
+  clearActivities: (id: string) => void;
   newProject: () => void;
   createAndActivate: (seed?: Partial<Project>) => string;
   setActive: (id: string | null) => void;
@@ -83,6 +87,7 @@ export const useBuilder = create<BuilderState>()(
       streamText: "",
       generatingStatus: "",
       draft: "",
+      activities: {},
       modelId: DEFAULT_MODEL_ID,
       setModelId: (modelId) => set({ modelId }),
       setTheme: (theme) => set({ theme }),
@@ -95,6 +100,17 @@ export const useBuilder = create<BuilderState>()(
       setGenerating: (generating) => set({ generating }),
       setStreamText: (streamText) => set({ streamText }),
       setGeneratingStatus: (generatingStatus) => set({ generatingStatus }),
+      pushActivity: (id, activity) =>
+        set((s) => ({
+          activities: {
+            ...s.activities,
+            [id]: [...(s.activities[id] ?? []), activity].slice(-20),
+          },
+        })),
+      clearActivities: (id) =>
+        set((s) => ({
+          activities: { ...s.activities, [id]: [] },
+        })),
       newProject: () =>
         set({
           activeId: null,
@@ -196,6 +212,7 @@ export const useBuilder = create<BuilderState>()(
         activeId: s.activeId,
         theme: s.theme,
         modelId: s.modelId,
+        activities: s.activities,
       }),
     },
   ),
