@@ -65,9 +65,23 @@ export async function publishToPuterSite(html: string, title: string) {
     site = await hosting.update(subdomain, rootDir);
   }
 
+  // Do not report a publish as successful until Puter confirms that the
+  // subdomain actually exists. The create/update response alone is not our
+  // final evidence gate.
+  let verifiedSite: unknown = site;
+  if (hosting.get) {
+    verifiedSite = await hosting.get(subdomain);
+  }
+
+  const url = hostingUrl(verifiedSite, subdomain);
+  if (!/^https:\/\/[a-z0-9-]+\.puter\.site(?:\/.*)?$/i.test(url)) {
+    throw new Error("Puter Hosting returned an invalid public URL");
+  }
+
   return {
     subdomain,
-    url: hostingUrl(site, subdomain),
+    url,
     rootDir,
+    verified: true,
   };
 }
