@@ -66,6 +66,7 @@ type BuilderState = {
   deleteProject: (id: string) => void;
   renameProject: (id: string, title: string) => void;
   pushMessage: (id: string, message: ChatMessage) => void;
+  setPages: (id: string, pages: import("./types").AppPage[]) => void;
   setHtml: (id: string, html: string, versionLabel?: string) => void;
   setSuggestions: (id: string, suggestions: Suggestion[]) => void;
   restoreVersion: (id: string, versionId: string) => void;
