@@ -7,6 +7,8 @@ import { extractDisplayText } from "@/lib/builder/parse";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/builder/types";
 
+const EMPTY_ACTIVITIES: import("@/lib/builder/types").AgentActivity[] = [];
+
 const STEPS = [
   "อ่านคำขอ",
   "ออกแบบเลย์เอาต์",
@@ -19,7 +21,7 @@ export function ChatPanel() {
   const generating = useBuilder((s) => s.generating);
   const streamText = useBuilder((s) => s.streamText);
   const generatingStatus = useBuilder((s) => s.generatingStatus);
-  const activities = useBuilder((s) => (project ? s.activities[project.id] ?? [] : []));
+  const activities = useBuilder((s) => project ? (s.activities[project.id] ?? EMPTY_ACTIVITIES) : EMPTY_ACTIVITIES);
   const bottom = useRef<HTMLDivElement>(null);
 
   // Scroll only when a message/task starts. Do not scroll on every streamed
