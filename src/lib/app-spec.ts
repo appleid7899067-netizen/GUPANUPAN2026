@@ -168,6 +168,32 @@ export function compileAppSpec(
   };
 }
 
+export function buildVisualAssetPrompt(spec: AppSpec): string {
+  const v = spec.ui.visualAssets;
+  if (!v.hero && v.sectionImages === 0 && v.galleryImages === 0 && !v.ctaImage) return "Visual assets: none requested. Keep the composition intentional and text-led.";
+  const urls = [
+    "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=85",
+    "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=85",
+    "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=85",
+    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=85",
+    "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=85",
+    "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1000&q=85",
+    "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1000&q=85",
+    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1000&q=85",
+  ];
+  return [
+    "VISUAL ASSET PLAN (mandatory):",
+    "- Template: " + spec.ui.template,
+    "- Hero image: " + (v.hero ? "required" : "not required"),
+    "- Section images: " + v.sectionImages,
+    "- Gallery images: " + v.galleryImages,
+    "- CTA image: " + (v.ctaImage ? "required" : "not required"),
+    "- Use existing project assets first. If none are available, these stable remote image URLs are approved fallbacks:",
+    ...urls.map((url, i) => (i + 1) + ". " + url),
+    "- Reuse/crop these coherently rather than inventing broken local paths.",
+    "- Every image needs meaningful alt text and responsive object-cover behavior.",
+  ].join("\n");
+}
 export function buildAppSpecPrompt(spec: AppSpec, existingHtml: boolean): string {
   const featureLines = spec.features
     .map((f) => `${f.priority}. ${f.name}: ${f.description}`)
