@@ -67,16 +67,50 @@ export function PreviewPane() {
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
   const [publishBusy, setPublishBusy] = useState(false);
   const [codeKind, setCodeKind] = useState<"html" | "markdown" | "javascript" | "implementation">("html");
+  const [pageIndex, setPageIndex] = useState(0);
+  const pages = project?.pages?.length ? project.pages : project ? [{
+    id: "home",
+    title: project.title || "หน้าแรก",
+    path: "/",
+    html: project.html,
+    markdown: project.markdown,
+    javascript: project.javascript,
+    implementation: project.implementation,
+  }] : [];
+  const activePage = pages[Math.min(pageIndex, Math.max(0, pages.length - 1))];
   const frame = useRef<HTMLIFrameElement>(null);
 
+  useEffect(() => {
+    setPageIndex(0);
+  }, [project?.id]);
+
   const srcdoc = useMemo(() => {
-    if (!project?.html) return "";
-    return selectMode ? withPicker(project.html) : project.html;
-  }, [project?.html, selectMode]);
+    if (!activePage?.html) return "";
+    const html = activePage.html;
+    if (!project?.pages?.length) return selectMode ? withPicker(html) : html;
+    const router = `<script>
+      document.addEventListener("click", function(e) {
+        const a = e.target.closest && e.target.closest("a[href]");
+        if (!a) return;
+        const href = a.getAttribute("href") || "";
+        if (href.startsWith("/") && !href.startsWith("//")) {
+          e.preventDefault();
+          parent.postMessage({ type: "gupanu-page", path: href.split("#")[0] || "/" }, "*");
+        }
+      }, true);
+    <\/script>`;
+    const routed = html.includes("</body>") ? html.replace("</body>", router + "</body>") : html + router;
+    return selectMode ? withPicker(routed) : routed;
+  }, [activePage?.html, project?.pages?.length, selectMode]);
 
   useEffect(() => {
     function onMsg(e: MessageEvent) {
-      const data = e.data as { type?: string; tag?: string; text?: string };
+      const data = e.data as { type?: string; tag?: string; text?: string; path?: string };
+      if (data?.type === "gupanu-page" && data.path) {
+        const next = pages.findIndex((p) => p.path === data.path);
+        if (next >= 0) setPageIndex(next);
+        return;
+      }
       if (data?.type !== "gupanu-select") return;
       const hint = data.text ? ` (“${data.text}”)` : "";
       setDraft(`แก้ ${data.tag}${hint}: `);
@@ -84,7 +118,7 @@ export function PreviewPane() {
     }
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [setDraft, setSelectMode]);
+  }, [pages, setDraft, setSelectMode]);
 
   if (!project) return null;
 
@@ -228,7 +262,7 @@ export function PreviewPane() {
             ) : null}
           </div>
           <Tooltip label="ดาวน์โหลด HTML">
-            <Button variant="ghost" size="icon-sm" aria-label="ดาวน์โหลด" onClick={() => void download()} disabled={!project.html}>
+            <Button variant="ghost" size="icon-sm" aria-label="ดาวน์โหลด" onClick={() => void download()} disabled={!activePage?.html}>
               <Download />
             </Button>
           </Tooltip>
@@ -251,6 +285,24 @@ export function PreviewPane() {
           </Tooltip>
         </div>
       </div>
+
+      {tab === "preview" && pages.length > 1 ? (
+        <div className="mb-2 flex items-center gap-1 overflow-x-auto rounded-lg bg-muted-fill p-1">
+          {pages.map((page, index) => (
+            <button
+              key={page.id}
+              type="button"
+              onClick={() => setPageIndex(index)}
+              className={cn(
+                "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                index === pageIndex ? "bg-surface text-fg shadow-border" : "text-muted hover:text-fg",
+              )}
+            >
+              {page.title}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-surface shadow-border">
         {!project.html ? (
@@ -281,12 +333,12 @@ export function PreviewPane() {
             </div>
             <pre className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed text-fg">
               {codeKind === "html"
-                ? project.html
+                ? (activePage?.html || project.html)
                 : codeKind === "markdown"
-                  ? (project.markdown || "ยังไม่มี Markdown จากการสร้างครั้งนี้")
+                  ? (activePage?.markdown || project.markdown || "ยังไม่มี Markdown จากการสร้างครั้งนี้")
                   : codeKind === "javascript"
-                    ? (project.javascript || "ยังไม่มี JavaScript จากการสร้างครั้งนี้")
-                    : (project.implementation || project.html)}
+                    ? (activePage?.javascript || project.javascript || "ยังไม่มี JavaScript จากการสร้างครั้งนี้")
+                    : (activePage?.implementation || project.implementation || activePage?.html || project.html)}
             </pre>
           </div>
         ) : (
