@@ -16,6 +16,86 @@ export function diagnose(error:string):string{const t=error.toLowerCase();if(/40
 export function recoveryInstruction(error:string,failures:string[]):string{const d=diagnose(error),n=failures.filter(x=>x===d).length;if(n>=2)return"RECOVERY ESCALATION: "+d+". Change approach and verify.";return["RECOVERY LOOP","1. Diagnose: "+d,"2. Use observed error evidence only.","3. Change the smallest relevant part.","4. Run again.","5. Verify the real result before claiming success."].join("\n");}
 export function verifyGeneration(raw:string){const evidence:string[]=[];if(raw.trim())evidence.push("model_response_non_empty");if(/<!doctype html|<html[\s>]/i.test(raw))evidence.push("full_html_detected");if(raw.toLowerCase().includes("suggestions"))evidence.push("suggestions_detected");return{ok:evidence.includes("full_html_detected"),evidence,reason:evidence.includes("full_html_detected")?"generated HTML passed output gate":"HTML output gate not satisfied"};}
 export function buildBossContext(prompt:string,historyLength:number,hasExistingHtml:boolean):string{const r=createBossRuntime(prompt),steps=r.plan.steps.map((s,i)=>(i+1)+". ["+s.status+"] "+s.title+" ["+s.needs.join(", ")+"]").join("\n");const extraction=/ดึงข้อมูล|scrap|scrape|web scraping|api extraction|extract|ราคาสินค้า|รายการข้อมูล/i.test(prompt);const lessons=extraction?getExtractionLessons(prompt).map(x=>`- ${x.kind}: ${x.cause} -> ${x.strategy}`).join("\n"):"";return["=== BOSS ENGINE ===","Truth contract: never claim build, edit, deploy, test, search, or verification without real evidence.","Model tier: "+r.tier,"Conversation turns: "+historyLength,"Existing app HTML: "+(hasExistingHtml?"yes":"no"),"Execution plan:",steps,"Work loop: analyze -> act -> observe -> recover if needed -> verify.",extraction?extractionDefensivePrompt(prompt):"","Previous extraction lessons:",lessons||"(no matching lessons yet)","For build/edit requests return the complete updated HTML required by the product contract.","Keep user-facing explanation short.","=== END BOSS ENGINE ==="].join("\n");}
+export type BossSubagentRole = "researcher" | "explorer" | "builder" | "tester" | "reviewer";
+
+export type BossSubagent = {
+  id: string;
+  role: BossSubagentRole;
+  title: string;
+  goal: string;
+  needs: string[];
+  status: "pending" | "running" | "done" | "failed";
+  dependsOn: string[];
+};
+
+export type BossTask = {
+  id: string;
+  title: string;
+  status: "pending" | "running" | "done" | "failed";
+  owner: BossSubagentRole | "boss";
+  evidence: string[];
+  error?: string;
+};
+
+const roleForNeed = (need: string): BossSubagentRole => {
+  if (need === "web" || need === "search") return "researcher";
+  if (need === "runtime") return "tester";
+  if (need === "verify") return "reviewer";
+  if (need === "github") return "explorer";
+  return "builder";
+};
+
+export function createSubagentPlan(plan: BossPlan): BossSubagent[] {
+  return plan.steps.map((step, index) => ({
+    id: "agent_" + step.id,
+    role: roleForNeed(step.needs[0] ?? "code"),
+    title: step.title,
+    goal: step.title,
+    needs: step.needs,
+    status: "pending",
+    dependsOn: index === 0 ? [] : step.dependsOn.map((id) => "agent_" + id),
+  }));
+}
+
+export function nextSubagent(subagents: BossSubagent[]): BossSubagent | null {
+  return subagents.find(
+    (agent) =>
+      agent.status === "pending" &&
+      agent.dependsOn.every((id) => subagents.find((x) => x.id === id)?.status === "done"),
+  ) ?? null;
+}
+
+export function markSubagent(
+  subagents: BossSubagent[],
+  id: string,
+  status: BossSubagent["status"],
+): BossSubagent[] {
+  return subagents.map((agent) => (agent.id === id ? { ...agent, status } : agent));
+}
+
+export function createTaskBoard(plan: BossPlan): BossTask[] {
+  return createSubagentPlan(plan).map((agent) => ({
+    id: agent.id,
+    title: agent.title,
+    status: agent.status,
+    owner: agent.role,
+    evidence: [],
+  }));
+}
+
+export function recordTaskEvidence(tasks: BossTask[], id: string, evidence: string): BossTask[] {
+  return tasks.map((task) =>
+    task.id === id
+      ? { ...task, evidence: [...task.evidence, evidence].slice(-8) }
+      : task,
+  );
+}
+
+export function taskStatusFromEvidence(task: BossTask): BossTask["status"] {
+  if (task.evidence.some((item) => /error|failed|exception|timeout/i.test(item))) return "failed";
+  return task.evidence.length > 0 ? "done" : "pending";
+}
+
 export type BossIntent = "chat" | "search" | "build" | "edit" | "debug" | "github" | "deploy" | "research";
 export type BossLiveStatus = "กำลังอ่านคำขอ" | "กำลังวางแผน" | "กำลังค้นหา" | "กำลังสร้าง/แก้ไข" | "กำลังตรวจสอบผล" | "กำลังแก้ไขปัญหา" | "เรียบร้อย";
 
