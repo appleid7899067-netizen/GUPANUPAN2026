@@ -2,6 +2,8 @@ import { SYSTEM_PROMPT } from "@/lib/builder/system-prompt";
 import { buildBossContext, buildExecutionContract, liveStatusFor } from "@/lib/boss-engine";
 import { puterFreeChat, puterIsSignedIn } from "@/lib/puter";
 import { buildAppSpecPrompt, buildVisualAssetPrompt, compileAppSpec } from "@/lib/app-spec";
+import { routeModelTier } from "@/lib/boss-engine";
+import { recommendedModelForTier } from "@/lib/models";
 
 export type GeneratePayload = {
   prompt: string;
@@ -49,7 +51,7 @@ export async function streamGenerate(
       onStatus?.(liveStatusFor(payload.prompt, "act"));
       const result = await puterFreeChat(buildMessages(payload), {
         onDelta,
-        model: contract.searchUsesLiveWebTool ? "openai/gpt-5.6-luna" : payload.model,
+        model: contract.searchUsesLiveWebTool ? recommendedModelForTier("standard") : (payload.model ?? recommendedModelForTier(routeModelTier(payload.prompt))),
         webSearch: contract.searchUsesLiveWebTool,
       });
       if (result.ok && result.text.trim()) {
