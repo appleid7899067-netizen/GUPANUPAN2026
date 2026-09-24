@@ -61,11 +61,26 @@ export function extractDisplayText(raw: string): string {
   // Some models omit code fences. Never dump generated HTML, JSON data, or
   // JavaScript into the conversation bubble. Those artifacts belong in preview.
   const sourceStart = text.search(
-    /(?:<!doctype|<html|<head|<body|<script|<style|<div|<section|<main|(?:^|\n)\s*[\[{].*(?:question|answers|correct|explanation)\s*[:"]|(?:^|\n)\s*(?:const|let|var|function)\s+[A-Za-z_$]|document\.getElementById|querySelector\(|addEventListener\()/i,
+    /(?:<!doctype|<html|<head|<body|<script|<style|<div|<section|<main|(?:^|\\n)\\s*[\\[{].*(?:question|answers|correct|explanation)\\s*[:"]|(?:^|\\n)\\s*(?:const|let|var|function)\\s+[A-Za-z_$]|document\\.getElementById|querySelector\\(|addEventListener\\()/i,
   );
   if (sourceStart >= 0) {
     const before = text.slice(0, sourceStart).trim();
     return before || "สร้างให้แล้ว ดูผลลัพธ์ได้ที่พรีวิว";
+  }
+
+  // Some models append raw implementation without a code fence.
+  // Chat should show the useful result, while source stays in Preview.
+  const inlineCodeStart = text.search(
+    /(?:\\bif\\s*\\(|\\belse\\s*\\{|\\bfor\\s*\\(|\\bconst\\s+[A-Za-z_$][\\w$]*\\s*=|\\blet\\s+[A-Za-z_$][\\w$]*\\s*=|\\bfunction\\s+[A-Za-z_$]|\\.join\\(\\s*["']\\\\n|\\$\\{[^}]+\\})/i,
+  );
+  if (inlineCodeStart > 24) {
+    const before = text.slice(0, inlineCodeStart).trim();
+    if (before.length >= 8) return before;
+  }
+
+  const codeSignals = (text.match(/(?:=>|\\bconst\\b|\\blet\\b|\\bfunction\\b|\\breturn\\b|\\bif\\s*\\(|\\bhtml\\s*\\+=|<\\/?[A-Za-z][^>]*>)/g) ?? []).length;
+  if (codeSignals >= 4) {
+    return "สร้างให้แล้ว ดูผลลัพธ์ได้ที่พรีวิว";
   }
 
   text = text.replace(/\\`\\`\\`[\\s\\S]*?\\`\\`\\`/g, "").trim();
