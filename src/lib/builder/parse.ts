@@ -103,10 +103,23 @@ export function stripTags(html: string): string {
 
 
 export function extractJavaScript(html: string): string {
-  return [...html.matchAll(/<script(?:[^>]*)>([\\s\\S]*?)<\\/script>/gi)]
-    .map((m) => (m[1] ?? "").trim())
-    .filter(Boolean)
-    .join("\n\n");
+  const results: string[] = [];
+  let cursor = 0;
+  const lower = html.toLowerCase();
+
+  while (cursor < html.length) {
+    const open = lower.indexOf("<script", cursor);
+    if (open < 0) break;
+    const openEnd = html.indexOf(">", open);
+    if (openEnd < 0) break;
+    const close = lower.indexOf("</script>", openEnd + 1);
+    if (close < 0) break;
+    const body = html.slice(openEnd + 1, close).trim();
+    if (body) results.push(body);
+    cursor = close + 9;
+  }
+
+  return results.join("\n\n");
 }
 
 export function extractMarkdown(raw: string): string {
