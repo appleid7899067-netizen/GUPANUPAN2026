@@ -66,6 +66,7 @@ export function PreviewPane() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
   const [publishBusy, setPublishBusy] = useState(false);
+  const [codeKind, setCodeKind] = useState<"html" | "markdown" | "javascript" | "implementation">("html");
   const frame = useRef<HTMLIFrameElement>(null);
 
   const srcdoc = useMemo(() => {
@@ -257,9 +258,37 @@ export function PreviewPane() {
             <p className="text-sm text-muted">แอปจะแสดงที่นี่เมื่อ GuPanu สร้างเสร็จ</p>
           </div>
         ) : tab === "code" ? (
-          <pre className="h-full overflow-auto p-4 font-mono text-xs leading-relaxed text-fg">
-            {project.html}
-          </pre>
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-muted-fill/50 p-1.5">
+              {([
+                ["html", "HTML"],
+                ["markdown", "Markdown"],
+                ["javascript", "JS"],
+                ["implementation", "Implementation"],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setCodeKind(key)}
+                  className={cn(
+                    "shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium",
+                    codeKind === key ? "bg-surface text-fg shadow-border" : "text-muted hover:text-fg",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <pre className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed text-fg">
+              {codeKind === "html"
+                ? project.html
+                : codeKind === "markdown"
+                  ? (project.markdown || "ยังไม่มี Markdown จากการสร้างครั้งนี้")
+                  : codeKind === "javascript"
+                    ? (project.javascript || "ยังไม่มี JavaScript จากการสร้างครั้งนี้")
+                    : (project.implementation || project.html)}
+            </pre>
+          </div>
         ) : (
           <div className="flex h-full justify-center overflow-auto bg-muted-fill/50">
             <iframe
