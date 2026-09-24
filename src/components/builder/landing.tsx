@@ -28,18 +28,18 @@ export function Landing() {
 
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-5 pb-8 pt-8 md:min-h-[calc(100dvh-16rem)]">
         <div className="mb-7 flex flex-col items-center text-center">
-          <div className="boss-typography-hero mb-6 w-full max-w-4xl rounded-2xl px-6 py-10 sm:px-10 sm:py-14" aria-label="ภาณุพันธ์ และ สลี่ออลา • BOSSNU UNIFIED">
+          <div className="boss-typography-hero mb-6 w-full max-w-4xl rounded-2xl px-6 py-10 sm:px-10 sm:py-14" aria-label="Panupan × Sliola • BOSSNU UNIFIED">
             <div className="boss-typography-kicker">BOSSNU UNIFIED</div>
-            <div className="boss-typography-title">ภาณุพันธ์</div>
-            <div className="boss-typography-subtitle">และ สลี่ออลา</div>
+            <div className="boss-typography-title">Panupan</div>
+            <div className="boss-typography-subtitle">× Sliola</div>
           </div>
 
           <GuPanuMark className="mb-4 size-10" />
           <div className="mb-3 inline-flex items-center rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-zinc-400 backdrop-blur-md">
-            Bossnu.silelo · Puter
+            BOSSNU.SILELO · PUTER
           </div>
           <h1 className="max-w-4xl font-display text-3xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
-            บอสนุสร้างให้ จากความคิดของคุณ
+            Panupan สร้างให้ จากความคิดของคุณ
           </h1>
           <p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
             ONE SYSTEM • ENDLESS POSSIBILITIES
@@ -87,6 +87,18 @@ export function Landing() {
             </div>
           ))}
         </div>
+
+        <section className="boss-ecosystem mx-auto mt-8 w-full max-w-3xl" aria-label="Technology ecosystem">
+          <div className="boss-ecosystem-label">TECHNOLOGY ECOSYSTEM</div>
+          <div className="boss-ecosystem-track">
+            {["PUTER", "GITHUB", "VERCEL", "NETLIFY", "BOLT.NEW"].map((brand) => (
+              <span key={brand} className="boss-brand-pill">
+                <span className="boss-brand-dot" aria-hidden="true" />
+                {brand}
+              </span>
+            ))}
+          </div>
+        </section>
 
         <p className="mt-6 text-center text-xs font-medium text-subtle">
           หรือเลือกไอเดียเริ่มต้น
