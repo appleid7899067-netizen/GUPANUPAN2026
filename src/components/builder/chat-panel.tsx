@@ -48,32 +48,42 @@ export function ChatPanel() {
             <MessageBubble key={m.id} message={m} />
           ))}
           {generating ? (
-            <li className="space-y-3">
-              <p className="text-sm font-medium text-fg">{generatingStatus || "กำลังทำงาน…"}</p>
-              <ul className="space-y-1.5 text-sm">
-                {STEPS.map((label, i) => (
-                  <li
-                    key={label}
-                    className={cn(
-                      "flex items-center gap-2",
-                      i < stepIndex ? "text-success" : i === stepIndex ? "text-fg" : "text-subtle",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "size-1.5 rounded-full",
-                        i < stepIndex ? "bg-success" : i === stepIndex ? "bg-accent" : "bg-border-strong",
-                      )}
-                    />
-                    <span className={i === stepIndex ? "shimmer" : undefined}>{label}</span>
-                  </li>
+            <li className="generation-starfield relative overflow-hidden rounded-2xl px-1 py-2">
+              <div className="generation-stars" aria-hidden="true">
+                {["✦", "·", "✧", "•", "✦", "·", "✧", "•", "✦", "·", "✧", "•"].map((star, i) => (
+                  <span key={i} className={`generation-star generation-star-${i + 1}`}>{star}</span>
                 ))}
-              </ul>
-              {live ? (
-                <p className="text-sm leading-relaxed text-muted">{live}</p>
-              ) : (
-                <p className="shimmer text-sm">กำลังทำงาน…</p>
-              )}
+              </div>
+              <div className="relative space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="generation-core" aria-hidden="true">✦</span>
+                  <p className="text-sm font-medium text-fg">{generatingStatus || "กำลังทำงาน…"}</p>
+                </div>
+                <ul className="space-y-1.5 text-sm">
+                  {STEPS.map((label, i) => (
+                    <li
+                      key={label}
+                      className={cn(
+                        "flex items-center gap-2",
+                        i < stepIndex ? "text-success" : i === stepIndex ? "text-fg" : "text-subtle",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "size-1.5 rounded-full",
+                          i < stepIndex ? "bg-success" : i === stepIndex ? "bg-accent" : "bg-border-strong",
+                        )}
+                      />
+                      <span className={i === stepIndex ? "shimmer" : undefined}>{label}</span>
+                    </li>
+                  ))}
+                </ul>
+                {live ? (
+                  <p className="max-w-[92%] text-sm leading-relaxed text-muted">{live}</p>
+                ) : (
+                  <p className="shimmer text-sm">กำลังทำงาน…</p>
+                )}
+              </div>
             </li>
           ) : null}
         </ol>
