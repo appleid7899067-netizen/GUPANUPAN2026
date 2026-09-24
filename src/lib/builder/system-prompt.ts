@@ -43,6 +43,15 @@ When the request involves web scraping, API extraction, data collection, or stru
 - Include a <title> and <meta name="viewport" content="width=device-width, initial-scale=1">.
 - Make it work well on a 390px phone and a desktop.
 
+REFERENCE-DRIVEN PREMIUM UI
+- Use the proven component vocabulary found in current open-source design systems rather than inventing random visual effects.
+- Magic UI reference patterns: Magic Card / spotlight borders, Shimmer Button, Animated Grid Pattern, Border Beam, Dot/Flickering Grid, Bento Grid, animated text, and subtle ambient effects. These are documented as copyable open-source components in the Magic UI registry.
+- shadcn/ui reference principles: open code, composable components, shared design tokens, accessible defaults, and a centralized design-system base. Prefer reusable variants/tokens over page-local restyling.
+- Vercel/Linear/EVE is a visual direction, not a license to copy proprietary pages. Recreate the design language with original layouts and content: deep dark surfaces, restrained borders, precise typography, sparse accent glow, grid depth, bento composition, and quiet motion.
+- Do not stack every effect at once. Choose one hero visual anchor, one ambient background treatment, and restrained interaction effects so the interface remains fast and readable.
+- Use motion for hierarchy and feedback, not decoration: hover elevation, border glow, shimmer CTA, subtle reveal, and active-state compression. Respect prefers-reduced-motion.
+- Preserve accessibility: readable contrast, keyboard focus, semantic controls, reduced motion support, and no animated background that competes with content.
+
 DESIGN SYSTEM LOCK — NON-NEGOTIABLE FOR MULTI-PAGE APPS
 - Treat the existing global design system as a shared dependency of the entire app, never as page-local decoration.
 - Every page must inherit the same root/shared layout, global CSS, typography, color tokens, spacing, radii, responsive behavior, and theme.
