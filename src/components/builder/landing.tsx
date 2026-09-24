@@ -4,6 +4,7 @@ import { PromptBox } from "./prompt-box";
 import { FeaturedFeed } from "./featured-feed";
 import { pickStarters, STARTERS } from "@/lib/builder/starters";
 import { useBuilder } from "@/lib/builder/store";
+import panupanBossnu from "@/assets/panupan-bossnu.webp";
 
 const NEXT_ACTIONS = [
   ["สร้างแอปต่อ", "สร้างแอปจากไอเดียใหม่", "สร้างแอปใหม่ให้ฉัน"],
@@ -30,7 +31,7 @@ export function Landing() {
         <div className="mb-7 flex flex-col items-center text-center">
           <div className="mb-6 w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl shadow-black/30">
             <img
-              src="/panupan-bossnu.webp"
+              src={panupanBossnu}
               alt="ภาณุพันธ์ และ สลี่ออลา • BOSSNU UNIFIED"
               width={1280}
               height={853}
