@@ -46,12 +46,12 @@ html[data-theme="dark"] {
   --color-fg: #f0eee8;
   --color-muted: #9a968c;
   --color-subtle: #6f6c66;
-  --color-accent: #8bb4e8;
-  --color-accent-fg: #16181d;
+  --color-accent: #8b5cf6;
+  --color-accent-fg: #ffffff;
   --color-border: color-mix(in oklab, var(--color-fg) 12%, transparent);
   --color-border-strong: color-mix(in oklab, var(--color-fg) 22%, transparent);
   --color-muted-fill: color-mix(in oklab, var(--color-fg) 8%, transparent);
-  --color-ring: #8bb4e8;
+  --color-ring: #8b5cf6;
   --color-danger: #e07070;
   --color-danger-fg: #16181d;
   --color-success: #7dba96;
@@ -132,3 +132,52 @@ html[data-theme="dark"] {
 .boss-app-bg { background: radial-gradient(circle at 50% -10%, rgba(139,92,246,.14), transparent 38%), radial-gradient(circle at 85% 80%, rgba(236,72,153,.07), transparent 30%), #09090b; }
 .boss-glass { background: rgba(17,17,22,.72); border: 1px solid rgba(255,255,255,.07); backdrop-filter: blur(18px); }
 .boss-glow { box-shadow: 0 0 0 1px rgba(139,92,246,.08), 0 18px 70px rgba(0,0,0,.28); }
+
+
+/* Reference-driven UI primitives: Magic UI-inspired, original GuPanu implementation. */
+.boss-grid {
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, black 35%, transparent 100%);
+}
+.boss-orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: .22;
+}
+.boss-hero-glow {
+  box-shadow: 0 0 0 1px rgba(139,92,246,.14), 0 20px 80px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.boss-shimmer-border {
+  position: relative;
+  isolation: isolate;
+}
+.boss-shimmer-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 20%, rgba(139,92,246,.75) 45%, rgba(236,72,153,.55) 55%, transparent 80%);
+  background-size: 220% 100%;
+  animation: boss-border-shimmer 4.5s linear infinite;
+  opacity: .5;
+}
+@keyframes boss-border-shimmer {
+  to { background-position: -220% 0; }
+}
+.boss-bento {
+  transition: transform var(--motion-fast) var(--ease-out), border-color var(--motion-fast) ease, background-color var(--motion-fast) ease;
+}
+.boss-bento:hover {
+  transform: translateY(-3px);
+  border-color: rgba(139,92,246,.24);
+  background-color: rgba(255,255,255,.045);
+}
+@media (prefers-reduced-motion: reduce) {
+  .boss-shimmer-border::before { animation: none; }
+  .boss-bento { transition: none; }
+  .boss-bento:hover { transform: none; }
+}
