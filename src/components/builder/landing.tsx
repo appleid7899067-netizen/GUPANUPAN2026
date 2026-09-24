@@ -42,13 +42,13 @@ export function Landing() {
 
           <GuPanuMark className="mb-4 size-10" />
           <div className="mb-3 inline-flex items-center rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-zinc-400 backdrop-blur-md">
-            GuPanu AI Builder · Puter
+            Bossnu.silelo · Puter
           </div>
           <h1 className="max-w-4xl font-display text-3xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
-            สร้างแอปและเว็บไซต์ด้วย AI
+            บอสนุสร้างให้ จากความคิดของคุณ
           </h1>
           <p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
-            อธิบายไอเดีย แล้วบอสจะช่วยลงมือทำให้
+            ONE SYSTEM • ENDLESS POSSIBILITIES
           </p>
         </div>
 
