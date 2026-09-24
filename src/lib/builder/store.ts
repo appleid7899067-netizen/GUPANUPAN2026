@@ -169,7 +169,8 @@ export const useBuilder = create<BuilderState>()(
               : p,
           ),
         })),
-      setHtml: (id, html, versionLabel) =>
+      setPages: (id: string, pages: import("./types").AppPage[]) => void;
+  setHtml: (id, html, versionLabel) =>
         set((s) => ({
           projects: s.projects.map((p) => {
             if (p.id !== id) return p;
