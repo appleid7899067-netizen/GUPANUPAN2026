@@ -40,6 +40,15 @@ export function liveStatusFor(prompt: string, phase: "start"|"plan"|"act"|"verif
   return classifyBossIntent(prompt) === "search" ? "กำลังค้นหา" : "กำลังสร้าง/แก้ไข";
 }
 
+export function validateVisualAssets(raw: string, expected: { hero: boolean; sectionImages: number; galleryImages: number; ctaImage: boolean }) {
+  const imageCount = (raw.match(/<img\b/gi) ?? []).length;
+  const altCount = (raw.match(/<img\b[^>]*\balt=["'][^"']+["']/gi) ?? []).length;
+  const hasSource = /<img\b[^>]*\bsrc=["'][^"']+(https?:|\/)/i.test(raw);
+  const minimum = (expected.hero ? 1 : 0) + expected.sectionImages + expected.galleryImages + (expected.ctaImage ? 1 : 0);
+  const ok = minimum === 0 || (imageCount >= Math.min(minimum, 2) && altCount >= Math.min(imageCount, 2) && hasSource);
+  return { ok, imageCount, altCount, minimum, hasSource };
+}
+
 export function validateHtmlArtifact(raw: string) {
   const html = /<!doctype html|<html[\s>]/i.test(raw);
   const complete = /<head[\s>][\s\S]*<body[\s>][\s\S]*<\/body>[\s>][\s\S]*<\/html>/i.test(raw);
