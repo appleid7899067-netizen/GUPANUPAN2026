@@ -15,6 +15,9 @@ export type ChatMessage = {
 export type Version = {
   id: string;
   html: string;
+  markdown?: string;
+  javascript?: string;
+  implementation?: string;
   label: string;
   createdAt: number;
 };
