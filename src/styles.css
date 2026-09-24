@@ -345,3 +345,57 @@ html[data-theme="dark"] {
   .boss-typography-hero, .boss-hero-glow { box-shadow: none; }
   .boss-typography-hero, .boss-typography-title, .boss-brand-dot { animation: none; }
 }
+
+
+/* Generation star field: lightweight decoration shown only while creating. */
+.generation-starfield {
+  background:
+    radial-gradient(circle at 18% 28%, rgba(168,85,247,.10), transparent 28%),
+    radial-gradient(circle at 82% 72%, rgba(99,102,241,.08), transparent 30%);
+}
+.generation-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .72;
+}
+.generation-star {
+  position: absolute;
+  color: rgba(216,180,254,.8);
+  font-size: 10px;
+  line-height: 1;
+  animation: generation-twinkle 2.8s ease-in-out infinite;
+}
+.generation-star-1 { left: 7%; top: 15%; animation-delay: -.3s; }
+.generation-star-2 { left: 18%; top: 72%; animation-delay: -1.2s; }
+.generation-star-3 { left: 31%; top: 34%; animation-delay: -2s; }
+.generation-star-4 { left: 43%; top: 82%; animation-delay: -.8s; }
+.generation-star-5 { left: 55%; top: 18%; animation-delay: -1.7s; }
+.generation-star-6 { left: 66%; top: 61%; animation-delay: -.5s; }
+.generation-star-7 { left: 76%; top: 30%; animation-delay: -2.3s; }
+.generation-star-8 { left: 87%; top: 78%; animation-delay: -1s; }
+.generation-star-9 { left: 94%; top: 42%; animation-delay: -1.9s; }
+.generation-star-10 { left: 12%; top: 48%; animation-delay: -.9s; }
+.generation-star-11 { left: 48%; top: 45%; animation-delay: -2.5s; }
+.generation-star-12 { left: 70%; top: 12%; animation-delay: -1.4s; }
+.generation-core {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  color: rgb(192,132,252);
+  text-shadow: 0 0 14px rgba(168,85,247,.7);
+  animation: generation-core-pulse 1.8s ease-in-out infinite;
+}
+@keyframes generation-twinkle {
+  0%, 100% { opacity: .22; transform: scale(.8); }
+  50% { opacity: .95; transform: scale(1.15); }
+}
+@keyframes generation-core-pulse {
+  0%, 100% { opacity: .65; transform: scale(.94); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .generation-star, .generation-core { animation: none; }
+}
