@@ -32,6 +32,12 @@ When the request involves web scraping, API extraction, data collection, or stru
 
 - Return a FULL HTML document every time, even for small edits. The previous version is provided; apply the requested changes and return the whole page.
 - The page must look like a real shipped product: professional, modern, minimal, responsive. Not a skeleton, not a template demo.
+- TEMPLATE-FIRST BUILDING: build a complete visual page structure from the first response. A template means layout + typography + content + imagery, not empty boxes waiting for the user.
+- VISUAL ASSETS ARE REQUIRED WHEN THE PAGE CALLS FOR THEM: include real, valid image URLs or existing project image assets for hero, feature, product, story, gallery, and CTA sections as appropriate. Never write "IMAGE HERE", broken local paths, or blank media placeholders in the finished HTML.
+- Treat imagery as part of information architecture. Choose coherent aspect ratios, crops, object positions, rounded corners, and responsive behavior for the whole page.
+- Use a deterministic image source strategy. Prefer existing project assets; otherwise use stable remote image URLs appropriate to the subject. Keep every image replaceable later by a named asset slot.
+- Template defaults: Landing = hero image + feature imagery + proof/gallery + CTA visual; Commerce = product imagery + category/product grid + CTA; Portfolio = work imagery + case studies + gallery; Content = editorial hero + article imagery; Dashboard/App = visual preview/overview where relevant.
+- Populate the first render with enough visual content to feel finished. Do not produce a wireframe disguised as a finished website.
 - Use Tailwind CSS from the CDN: <script src="https://cdn.tailwindcss.com"></script> in <head>.
 - For icons, use Lucide from the CDN as an ES module:
   import { createIcons, icons } from "https://cdn.jsdelivr.net/npm/lucide@latest/+esm";
