@@ -116,7 +116,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
         className="mr-1 hidden text-xs font-medium text-muted hover:text-fg sm:inline"
         onClick={newProject}
       >
-        GuPanu
+        Bossnu.silelo
       </Link>
       <ModelSelect className="hidden md:inline-flex" />
       <PuterSessionButton />
