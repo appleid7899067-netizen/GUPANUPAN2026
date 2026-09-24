@@ -44,6 +44,13 @@ export const MODEL_OPTIONS = BOSS_MODEL_POOL;
 export const DEFAULT_MODEL_ID = "openai/gpt-oss-120b";
 export const FREE_MODEL_IDS = BOSS_MODEL_POOL.map((m) => m.id);
 
+export function recommendedModelForTier(tier: "cheap" | "standard" | "strong" | "coding"): string {
+  if (tier === "cheap") return "openai/gpt-oss-120b";
+  if (tier === "coding") return "inclusionai/ling-2.6-flash";
+  if (tier === "strong") return "nvidia/nemotron-3-ultra-550b-a55b";
+  return "deepseek/deepseek-v4-flash";
+}
+
 export function modelsForRole(role: ModelRole): ModelOption[] {
   return BOSS_MODEL_POOL.filter((m) => m.role === role);
 }
