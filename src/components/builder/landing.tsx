@@ -14,14 +14,14 @@ export function Landing() {
   }, []);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-none">
+    <div className="boss-app-bg flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-none">
       <div className="mx-auto flex w-full max-w-xl flex-col justify-center px-5 pb-8 pt-12 md:min-h-[calc(100dvh-16rem)]">
-        <div className="mb-6 flex flex-col items-center text-center">
+        <div className="mb-8 flex flex-col items-center text-center">
           <GuPanuMark className="mb-5 size-12" />
-          <h1 className="font-display text-3xl font-medium tracking-tight text-fg sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-white sm:text-5xl">
             สร้างแอปและเว็บไซต์ด้วย AI
           </h1>
-          <p className="mt-3 max-w-md text-sm text-muted sm:text-base">
+          <p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
             อธิบายไอเดีย แล้ว GuPanu จะสร้างให้ — ล็อกอิน Puter ใช้โมเดลฟรี
           </p>
         </div>
