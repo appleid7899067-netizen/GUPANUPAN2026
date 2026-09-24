@@ -130,8 +130,8 @@ html[data-theme="dark"] {
 
 /* Panupan-style visual layer: deep space, violet energy, restrained glass. */
 .boss-app-bg { background: radial-gradient(circle at 50% -10%, rgba(139,92,246,.14), transparent 38%), radial-gradient(circle at 85% 80%, rgba(236,72,153,.07), transparent 30%), #09090b; }
-.boss-glass { background: rgba(17,17,22,.72); border: 1px solid rgba(255,255,255,.07); backdrop-filter: blur(18px); }
-.boss-glow { box-shadow: 0 0 0 1px rgba(139,92,246,.08), 0 18px 70px rgba(0,0,0,.28); }
+.boss-glass { background: rgba(17,17,22,.72); border: 1px solid rgba(255,255,255,.07);  }
+.boss-glow { box-shadow: 0 0 0 1px rgba(139,92,246,.08), 0 8px 28px rgba(0,0,0,.18); }
 
 
 /* Reference-driven UI primitives: Magic UI-inspired, original GuPanu implementation. */
@@ -144,7 +144,7 @@ html[data-theme="dark"] {
   pointer-events: none;
   position: absolute;
   border-radius: 9999px;
-  filter: blur(70px);
+  filter: blur(40px);
   opacity: .22;
 }
 .boss-hero-glow {
@@ -293,7 +293,7 @@ html[data-theme="dark"] {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .12em;
-  backdrop-filter: blur(12px);
+  
   transition: transform 220ms var(--ease-out), border-color 220ms ease, background 220ms ease;
 }
 .boss-brand-pill:hover {
@@ -334,4 +334,14 @@ html[data-theme="dark"] {
   .boss-typography-title::after,
   .boss-ecosystem::before,
   .boss-brand-dot { animation: none; }
+}
+
+
+/* Performance pass: reduce GPU-heavy effects on mobile and low-end devices. */
+@media (max-width: 768px) {
+  .boss-app-bg { background: #09090b; }
+  .boss-glass { background: rgba(17,17,22,.98); }
+  .boss-orb, .boss-grid, .boss-ecosystem::before { display: none; }
+  .boss-typography-hero, .boss-hero-glow { box-shadow: none; }
+  .boss-typography-hero, .boss-typography-title, .boss-brand-dot { animation: none; }
 }
