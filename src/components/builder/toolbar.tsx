@@ -27,7 +27,7 @@ function PuterSessionButton() {
       type="button"
       onClick={() => void signIn()}
       disabled={loading}
-      className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-fg disabled:opacity-50"
+      className="rounded-full bg-violet-500 px-3 py-1 text-xs font-medium text-white shadow-[0_0_24px_rgba(139,92,246,.22)] disabled:opacity-50"
     >
       {loading ? "…" : "ล็อกอิน Puter"}
     </button>
@@ -46,7 +46,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
 
   return (
-    <header className="flex h-11 shrink-0 items-center gap-1 px-2">
+    <header className="flex h-12 shrink-0 items-center gap-1 px-2">
       <Tooltip label={inEditor ? "ย้อนกลับ" : "กลับ"}>
         <Button
           variant="ghost"
