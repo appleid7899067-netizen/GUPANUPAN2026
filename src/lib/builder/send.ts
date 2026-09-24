@@ -5,8 +5,15 @@ import { streamGenerate } from "./generate-client";
 import { extractDisplayText, extractHtml, extractSuggestions, extractTitle } from "./parse";
 import { useBuilder } from "./store";
 import type { ExampleApp } from "./templates";
+import type { AgentActivityStatus } from "./types";
 
-function activity(label: string, status: AgentActivityStatus, detail?: string) {\n  const s = useBuilder.getState();\n  if (!s.activeId) return;\n  s.pushActivity(s.activeId, { id: uid(), label, detail, status, createdAt: Date.now() });\n}\n\nexport async function sendPrompt(text: string) {
+function activity(label: string, status: AgentActivityStatus, detail?: string) {
+  const s = useBuilder.getState();
+  if (!s.activeId) return;
+  s.pushActivity(s.activeId, { id: uid(), label, detail, status, createdAt: Date.now() });
+}
+
+export async function sendPrompt(text: string) {
   const trimmed = text.trim();
   if (!trimmed) return;
 
@@ -45,15 +52,21 @@ function activity(label: string, status: AgentActivityStatus, detail?: string) {
       { prompt: trimmed, html, history, model: modelId },
       (t) => useBuilder.getState().setStreamText(t),
       undefined,
-      (status) => {\n        useBuilder.getState().setGeneratingStatus(status);\n        if (/ค้นหา/.test(status)) activity(status, "working");\n        else if (/สร้าง|แก้ไข/.test(status)) activity(status, "working");\n      },
+      (status) => {
+        useBuilder.getState().setGeneratingStatus(status);
+        if (/ค้นหา/.test(status)) activity(status, "working");
+        else if (/สร้าง|แก้ไข/.test(status)) activity(status, "working");
+      },
     );
-    activity("กำลังตรวจสอบผลลัพธ์", "verifying", "ตรวจ output จริงก่อนบันทึกลงโปรเจกต์");\n    const validation = validateHtmlArtifact(full);
+    activity("กำลังตรวจสอบผลลัพธ์", "verifying", "ตรวจ output จริงก่อนบันทึกลงโปรเจกต์");
+    const validation = validateHtmlArtifact(full);
     const nextHtml = validation.ok ? extractHtml(full) : null;
     const display = extractDisplayText(full);
     const suggestions = extractSuggestions(full);
 
     if (!validation.ok && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
-      useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");\n      activity("กำลังแก้ไขปัญหา", "fixing", validation.reason ?? "output validation failed");
+      useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
+      activity("กำลังแก้ไขปัญหา", "fixing", validation.reason ?? "output validation failed");
       if (/ดึงข้อมูล|scrap|scrape|extract|api/i.test(trimmed)) {
         rememberExtractionFailure({ target: trimmed, kind: "VALIDATION", cause: validation.reason ?? "output validation failed", strategy: "recheck schema/required fields and change extraction path", evidence: validation.evidence.join(",") });
       }
@@ -81,7 +94,8 @@ function activity(label: string, status: AgentActivityStatus, detail?: string) {
       const kind = classifyExtractionFailure(message);
       rememberExtractionFailure({ target: trimmed, kind, cause: message, strategy: `Use recovery plan for ${kind}; do not repeat the identical failed path`, evidence: message });
     }
-    let message = err instanceof Error ? err.message : "Something went wrong.";\n    activity("เกิดข้อผิดพลาด", "error", message);
+    let message = err instanceof Error ? err.message : "Something went wrong.";
+    activity("เกิดข้อผิดพลาด", "error", message);
     if (/PUTER_SIGN_IN|Sign in with Puter/i.test(message)) {
       message = "กรุณาล็อกอิน Puter (มุมขวาบน) เพื่อใช้โมเดลฟรี";
     }
