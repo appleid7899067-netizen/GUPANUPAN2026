@@ -14,7 +14,11 @@ function buildMessages(payload: GeneratePayload): Array<{ role: string; content:
   const messages: Array<{ role: string; content: string }> = [
     {
       role: "system",
-      content: [\n        SYSTEM_PROMPT,\n        buildBossContext(payload.prompt, payload.history.length, Boolean(payload.html.trim())),\n        buildAppSpecPrompt(compileAppSpec(payload.prompt, { hasExistingHtml: Boolean(payload.html.trim()) }), Boolean(payload.html.trim())),\n      ].join("\n\n"),
+      content: [
+        SYSTEM_PROMPT,
+        buildBossContext(payload.prompt, payload.history.length, Boolean(payload.html.trim())),
+        buildAppSpecPrompt(compileAppSpec(payload.prompt, { hasExistingHtml: Boolean(payload.html.trim()) }), Boolean(payload.html.trim())),
+      ].join("\n\n"),
     },
   ];
   for (const m of payload.history.slice(-12)) {
