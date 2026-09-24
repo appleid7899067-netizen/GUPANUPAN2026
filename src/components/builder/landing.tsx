@@ -4,7 +4,6 @@ import { PromptBox } from "./prompt-box";
 import { FeaturedFeed } from "./featured-feed";
 import { pickStarters, STARTERS } from "@/lib/builder/starters";
 import { useBuilder } from "@/lib/builder/store";
-import panupanBossnu from "@/assets/panupan-bossnu.webp";
 
 const NEXT_ACTIONS = [
   ["สร้างแอปต่อ", "สร้างแอปจากไอเดียใหม่", "สร้างแอปใหม่ให้ฉัน"],
@@ -29,16 +28,10 @@ export function Landing() {
 
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-5 pb-8 pt-8 md:min-h-[calc(100dvh-16rem)]">
         <div className="mb-7 flex flex-col items-center text-center">
-          <div className="mb-6 w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl shadow-black/30">
-            <img
-              src={panupanBossnu}
-              alt="ภาณุพันธ์ และ สลี่ออลา • BOSSNU UNIFIED"
-              width={1280}
-              height={853}
-              loading="eager"
-              fetchPriority="high"
-              className="block h-auto w-full object-cover"
-            />
+          <div className="boss-typography-hero mb-6 w-full max-w-4xl rounded-2xl px-6 py-10 sm:px-10 sm:py-14" aria-label="ภาณุพันธ์ และ สลี่ออลา • BOSSNU UNIFIED">
+            <div className="boss-typography-kicker">BOSSNU UNIFIED</div>
+            <div className="boss-typography-title">ภาณุพันธ์</div>
+            <div className="boss-typography-subtitle">และ สลี่ออลา</div>
           </div>
 
           <GuPanuMark className="mb-4 size-10" />
