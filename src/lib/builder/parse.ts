@@ -30,6 +30,27 @@ export function extractHtml(raw: string): string | null {
   return null;
 }
 
+export function extractPages(raw: string): Array<{ title: string; path: string; html: string }> {
+  const pages: Array<{ title: string; path: string; html: string }> = [];
+  const re = new RegExp(HTML_FENCE.source, "gi");
+  let match: RegExpExecArray | null;
+
+  while ((match = re.exec(raw))) {
+    const html = (match[1] ?? "").trim();
+    if (!html || (!looksLikeHtml(html) && !html.includes("<body") && !html.includes("<main") && !html.includes("<div"))) continue;
+    const title = extractTitle(html, `หน้า ${pages.length + 1}`);
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `page-${pages.length + 1}`;
+    pages.push({ title, path: pages.length === 0 ? "/" : `/${slug}`, html });
+  }
+
+  if (pages.length === 0) {
+    const html = extractHtml(raw);
+    if (html) pages.push({ title: extractTitle(html, "หน้าแรก"), path: "/", html });
+  }
+
+  return pages;
+}
+
 export function extractSuggestions(raw: string): Suggestion[] {
   const m = raw.match(SUGGEST_FENCE);
   if (!m?.[1]) return [];
