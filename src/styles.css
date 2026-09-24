@@ -181,3 +181,51 @@ html[data-theme="dark"] {
   .boss-bento { transition: none; }
   .boss-bento:hover { transform: none; }
 }
+
+
+.boss-typography-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(139,92,246,.18), transparent 42%),
+    linear-gradient(135deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 24px 90px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.boss-typography-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 0%, rgba(236,72,153,.12), transparent 52%);
+  pointer-events: none;
+}
+.boss-typography-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .28em;
+  color: rgba(196,181,253,.72);
+}
+.boss-typography-title {
+  margin-top: 10px;
+  font-family: var(--font-display);
+  font-size: clamp(3.25rem, 10vw, 7.5rem);
+  line-height: .92;
+  font-weight: 600;
+  letter-spacing: -.045em;
+  background: linear-gradient(110deg, #fff 15%, #c4b5fd 48%, #f5d0fe 82%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 12px 55px rgba(139,92,246,.16);
+}
+.boss-typography-subtitle {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 3vw, 2rem);
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: rgba(244,244,245,.76);
+}
