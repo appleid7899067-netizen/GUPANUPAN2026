@@ -5,6 +5,13 @@ import { FeaturedFeed } from "./featured-feed";
 import { pickStarters, STARTERS } from "@/lib/builder/starters";
 import { useBuilder } from "@/lib/builder/store";
 
+const NEXT_ACTIONS = [
+  ["สร้างแอปต่อ", "สร้างแอปจากไอเดียใหม่", "สร้างแอปใหม่ให้ฉัน"],
+  ["แก้ไขแอป", "ปรับของที่มีอยู่", "แก้ไขแอปที่กำลังทำอยู่"],
+  ["เพิ่มฟีเจอร์", "ต่อยอดความสามารถ", "เพิ่มฟีเจอร์ใหม่ให้แอปนี้"],
+  ["เผยแพร่แอป", "นำขึ้นเว็บทันที", "เตรียมแอปนี้เพื่อเผยแพร่"],
+] as const;
+
 export function Landing() {
   const setDraft = useBuilder((s) => s.setDraft);
   const [starters, setStarters] = useState(() => STARTERS.slice(0, 6));
@@ -18,22 +25,61 @@ export function Landing() {
       <div className="boss-grid pointer-events-none absolute inset-0" aria-hidden="true" />
       <div className="boss-orb left-[8%] top-8 size-48 bg-violet-500" aria-hidden="true" />
       <div className="boss-orb right-[10%] top-24 size-56 bg-fuchsia-500" aria-hidden="true" />
-      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-5 pb-8 pt-12 md:min-h-[calc(100dvh-16rem)]">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <GuPanuMark className="mb-5 size-12" />
-          <div className="mb-4 inline-flex items-center rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400 backdrop-blur-md">GuPanu AI Builder · Puter</div>
+
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-5 pb-8 pt-8 md:min-h-[calc(100dvh-16rem)]">
+        <div className="mb-7 flex flex-col items-center text-center">
+          <div className="mb-6 w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl shadow-black/30">
+            <img
+              src="/panupan-bossnu.webp"
+              alt="ภาณุพันธ์ และ สลี่ออลา • BOSSNU UNIFIED"
+              width={1280}
+              height={853}
+              loading="eager"
+              fetchPriority="high"
+              className="block h-auto w-full object-cover"
+            />
+          </div>
+
+          <GuPanuMark className="mb-4 size-10" />
+          <div className="mb-3 inline-flex items-center rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-zinc-400 backdrop-blur-md">
+            GuPanu AI Builder · Puter
+          </div>
           <h1 className="max-w-4xl font-display text-3xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
             สร้างแอปและเว็บไซต์ด้วย AI
           </h1>
           <p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
-            อธิบายไอเดีย แล้ว GuPanu จะสร้างให้ — ล็อกอิน Puter ใช้โมเดลฟรี
+            อธิบายไอเดีย แล้วบอสจะช่วยลงมือทำให้
           </p>
         </div>
+
         <div className="boss-shimmer-border boss-hero-glow mx-auto w-full max-w-3xl rounded-2xl bg-zinc-950/80 p-px backdrop-blur-xl">
           <div className="rounded-2xl bg-zinc-950/90">
             <PromptBox large />
           </div>
         </div>
+
+        <section className="mx-auto mt-7 w-full max-w-3xl" aria-labelledby="next-action-title">
+          <div className="mb-3 text-center">
+            <h2 id="next-action-title" className="text-sm font-medium text-zinc-200">
+              แล้วอยากให้บอสทำอะไรต่อ?
+            </h2>
+            <p className="mt-1 text-xs text-zinc-500">เลือกได้เลย หรือพิมพ์สิ่งที่ต้องการในช่องด้านบน</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {NEXT_ACTIONS.map(([title, detail, prompt]) => (
+              <button
+                key={title}
+                type="button"
+                onClick={() => setDraft(prompt)}
+                className="boss-bento group rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-3 text-left backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-400/30 hover:bg-white/[0.045] active:scale-[0.98]"
+              >
+                <div className="text-sm font-medium text-zinc-100">{title}</div>
+                <div className="mt-1 text-[11px] leading-4 text-zinc-500 transition-colors group-hover:text-zinc-400">{detail}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <div className="mx-auto mt-6 grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-3">
           {[
             ["01", "Describe", "บอกเป้าหมายของแอป"],
@@ -47,8 +93,9 @@ export function Landing() {
             </div>
           ))}
         </div>
-        <p className="mt-6 text-center text-xs font-medium uppercase tracking-[0.16em] text-subtle">
-          Looking for an idea?
+
+        <p className="mt-6 text-center text-xs font-medium text-subtle">
+          หรือเลือกไอเดียเริ่มต้น
         </p>
         <div className="chip-fade mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {starters.map((s) => (
