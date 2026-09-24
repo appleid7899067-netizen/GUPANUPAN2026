@@ -170,7 +170,12 @@ export const useBuilder = create<BuilderState>()(
               : p,
           ),
         })),
-      setPages: (id: string, pages: import("./types").AppPage[]) => void;
+      setPages: (id: string, pages: import("./types").AppPage[]) =>
+        set((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id ? { ...p, pages, updatedAt: Date.now() } : p,
+          ),
+        })),
   setHtml: (id, html, versionLabel) =>
         set((s) => ({
           projects: s.projects.map((p) => {
