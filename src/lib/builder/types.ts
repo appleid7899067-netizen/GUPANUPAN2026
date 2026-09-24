@@ -12,6 +12,16 @@ export type ChatMessage = {
   createdAt: number;
 };
 
+export type AppPage = {
+  id: string;
+  title: string;
+  path: string;
+  html: string;
+  markdown?: string;
+  javascript?: string;
+  implementation?: string;
+};
+
 export type Version = {
   id: string;
   html: string;
@@ -27,6 +37,7 @@ export type Project = {
   title: string;
   messages: ChatMessage[];
   html: string;
+  pages?: AppPage[];
   versions: Version[];
   suggestions: Suggestion[];
   createdAt: number;
