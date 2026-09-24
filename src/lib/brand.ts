@@ -20,6 +20,7 @@ export {
   UI_TH,
 } from "@/lib/models";
 
-import { FREE_MODEL_IDS, DEFAULT_MODEL_ID } from "@/lib/models";
+import { FREE_MODEL_IDS, DEFAULT_MODEL_ID, BOSS_MODEL_POOL } from "@/lib/models";
 export const FREE_MODELS = FREE_MODEL_IDS;
 export const DEFAULT_FREE_MODEL = DEFAULT_MODEL_ID;
+export { BOSS_MODEL_POOL };
