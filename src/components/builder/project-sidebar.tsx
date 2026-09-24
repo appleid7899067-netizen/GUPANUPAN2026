@@ -83,8 +83,8 @@ export function ProjectSidebar() {
                   </button>
                   <button
                     type="button"
-                    aria-label={`Delete ${p.title}`}
-                    className="absolute right-2 top-1/2 hidden size-8 -translate-y-1/2 items-center justify-center rounded-sm text-muted hover:text-danger group-hover:flex"
+                    aria-label={`ลบ ${p.title}`} title="ลบโปรเจกต์"
+                    className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-sm text-muted/70 transition-colors hover:bg-danger/10 hover:text-danger focus-visible:text-danger"
                     onClick={(e) => {
                       e.stopPropagation();
                       setPendingDelete(p.id);
