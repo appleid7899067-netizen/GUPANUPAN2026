@@ -55,24 +55,35 @@ export function extractSuggestions(raw: string): Suggestion[] {
 export function extractDisplayText(raw: string): string {
   let text = raw
     .replace(SUGGEST_FENCE, "")
-    .replace(/\`\`\`(?:html|htm|xml)?\s*\n[\s\S]*?\`\`\`/gi, "")
+    .replace(/\`\`\`(?:html|htm|xml)?\\s*\\n[\\s\\S]*?\`\`\`/gi, "")
     .trim();
 
-  // Some models omit code fences. Never dump generated HTML, JSON data, or
-  // JavaScript into the conversation bubble. Those artifacts belong in preview.
-  const sourceStart = text.search(
-    /(?:<!doctype|<html|<head|<body|<script|<style|<div|<section|<main|(?:^|\\n)\\s*[\\[{].*(?:question|answers|correct|explanation)\\s*[:"]|(?:^|\\n)\\s*(?:const|let|var|function)\\s+[A-Za-z_$]|document\\.getElementById|querySelector\\(|addEventListener\\()/i,
-  );
+  // Keep generated source out of the chat bubble. Source belongs in Preview.
+  const sourceTokens = [
+    "<!doctype", "<html", "<head", "<body", "<script", "<style",
+    "<div", "<section", "<main", "document.getElementById",
+    "querySelector(", "addEventListener(", "const ", "let ", "var ", "function "
+  ];
+
+  let sourceStart = -1;
+  const lower = text.toLowerCase();
+  for (const token of sourceTokens) {
+    const index = lower.indexOf(token.toLowerCase());
+    if (index >= 0 && (sourceStart < 0 || index < sourceStart)) sourceStart = index;
+  }
+
   if (sourceStart >= 0) {
     const before = text.slice(0, sourceStart).trim();
     return before || "สร้างให้แล้ว ดูผลลัพธ์ได้ที่พรีวิว";
   }
 
-  // Some models append raw implementation without a code fence.
-  // Chat should show the useful result, while source stays in Preview.
-  const inlineCodeStart = text.search(
-    /(?:\\bif\\s*\\(|\\belse\\s*\\{|\\bfor\\s*\\(|\\bconst\\s+[A-Za-z_$][\\w$]*\\s*=|\\blet\\s+[A-Za-z_$][\\w$]*\\s*=|\\bfunction\\s+[A-Za-z_$]|\\.join\\(\\s*["']\\\\n|\\$\\{[^}]+\\})/i,
-  );
+  const inlineTokens = ["if (", "else {", "for (", "const ", "let ", "function ", "${"];
+  let inlineCodeStart = -1;
+  for (const token of inlineTokens) {
+    const index = text.indexOf(token);
+    if (index > 24 && (inlineCodeStart < 0 || index < inlineCodeStart)) inlineCodeStart = index;
+  }
+
   if (inlineCodeStart > 24) {
     const before = text.slice(0, inlineCodeStart).trim();
     if (before.length >= 8) return before;
@@ -81,11 +92,12 @@ export function extractDisplayText(raw: string): string {
   const codeSignals =
     ["=>", "const ", "let ", "function ", "return ", "html +=", "if ("].filter((token) => text.includes(token)).length +
     (text.match(/<[A-Za-z]/g) ?? []).length;
+
   if (codeSignals >= 4) {
     return "สร้างให้แล้ว ดูผลลัพธ์ได้ที่พรีวิว";
   }
 
-  text = text.replace(/```[\s\S]*?```/g, "").trim();
+  text = text.replace(/\`\`\`[\\s\\S]*?\`\`\`/g, "").trim();
   return text;
 }
 
