@@ -1,7 +1,7 @@
 import { SYSTEM_PROMPT } from "@/lib/builder/system-prompt";
 import { buildBossContext, buildExecutionContract, liveStatusFor } from "@/lib/boss-engine";
 import { puterFreeChat, puterIsSignedIn } from "@/lib/puter";
-import { buildAppSpecPrompt, compileAppSpec } from "@/lib/app-spec";
+import { buildAppSpecPrompt, buildVisualAssetPrompt, compileAppSpec } from "@/lib/app-spec";
 
 export type GeneratePayload = {
   prompt: string;
@@ -18,6 +18,7 @@ function buildMessages(payload: GeneratePayload): Array<{ role: string; content:
         SYSTEM_PROMPT,
         buildBossContext(payload.prompt, payload.history.length, Boolean(payload.html.trim())),
         buildAppSpecPrompt(compileAppSpec(payload.prompt, { hasExistingHtml: Boolean(payload.html.trim()) }), Boolean(payload.html.trim())),
+        buildVisualAssetPrompt(compileAppSpec(payload.prompt, { hasExistingHtml: Boolean(payload.html.trim()) })),
       ].join("\n\n"),
     },
   ];
