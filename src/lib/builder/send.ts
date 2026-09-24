@@ -2,7 +2,7 @@ import { uid } from "@/lib/utils";
 import { validateHtmlArtifact } from "@/lib/boss-engine";
 import { classifyExtractionFailure, rememberExtractionFailure } from "@/lib/extraction-resilience";
 import { streamGenerate } from "./generate-client";
-import { extractDisplayText, extractHtml, extractSuggestions, extractTitle, extractJavaScript, extractMarkdown, extractImplementation } from "./parse";
+import { extractDisplayText, extractHtml, extractSuggestions, extractTitle, extractJavaScript, extractMarkdown, extractImplementation, extractPages } from "./parse";
 import { useBuilder } from "./store";
 import type { ExampleApp } from "./templates";
 import type { AgentActivityStatus } from "./types";
@@ -66,6 +66,7 @@ export async function sendPrompt(text: string) {
     const markdown = extractMarkdown(full);
     const javascript = extractJavaScript(nextHtml ?? "");
     const implementation = extractImplementation(full, nextHtml ?? "");
+    const generatedPages = extractPages(full);
 
     if (!validation.ok && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
@@ -84,6 +85,17 @@ export async function sendPrompt(text: string) {
 
     if (nextHtml) {
       store.setHtml(id, nextHtml, trimmed.slice(0, 42));
+      if (generatedPages.length > 1) {
+        store.setPages(id, generatedPages.map((page, index) => ({
+          id: uid(),
+          title: page.title || `หน้า ${index + 1}`,
+          path: page.path,
+          html: page.html,
+          markdown: extractMarkdown(page.html),
+          javascript: extractJavaScript(page.html),
+          implementation: extractImplementation(page.html, page.html),
+        })));
+      }
       useBuilder.setState((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, markdown, javascript, implementation } : p) }));
       const project = useBuilder.getState().projects.find((p) => p.id === id);
       if (project && (project.title === "Untitled" || project.messages.filter((m) => m.role === "user").length <= 1)) {
