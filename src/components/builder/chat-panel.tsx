@@ -33,8 +33,8 @@ export function ChatPanel() {
   const stepIndex = streamText.includes("```") ? 3 : streamText.length > 80 ? 2 : streamText.length > 0 ? 1 : 0;
 
   return (
-    <section className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden overscroll-none touch-pan-y [contain:layout_paint] md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
-      <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+    <section className="boss-glass flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden overscroll-none touch-pan-y [contain:layout_paint] md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
+      <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2">
         <span className="shrink-0 text-xs font-medium text-muted">แชท</span>
         <div className="min-w-0 max-w-[72vw] overflow-hidden"><ModelSelect /></div>
       </div>
@@ -89,7 +89,7 @@ export function ChatPanel() {
           ))}
         </div>
       ) : null}
-      <div className="sticky bottom-0 z-10 shrink-0 border-t border-border/60 bg-bg px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+      <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/[0.06] bg-zinc-950/80 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
         <PromptBox placeholder="บอกสิ่งที่อยากเปลี่ยน…" />
       </div>
     </section>
