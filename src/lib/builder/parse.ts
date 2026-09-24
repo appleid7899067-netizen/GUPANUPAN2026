@@ -78,12 +78,14 @@ export function extractDisplayText(raw: string): string {
     if (before.length >= 8) return before;
   }
 
-  const codeSignals = (text.match(/(?:=>|\\bconst\\b|\\blet\\b|\\bfunction\\b|\\breturn\\b|\\bif\\s*\\(|\\bhtml\\s*\\+=|<\\/?[A-Za-z][^>]*>)/g) ?? []).length;
+  const codeSignals =
+    ["=>", "const ", "let ", "function ", "return ", "html +=", "if ("].filter((token) => text.includes(token)).length +
+    (text.match(/<[A-Za-z]/g) ?? []).length;
   if (codeSignals >= 4) {
     return "สร้างให้แล้ว ดูผลลัพธ์ได้ที่พรีวิว";
   }
 
-  text = text.replace(/\\`\\`\\`[\\s\\S]*?\\`\\`\\`/g, "").trim();
+  text = text.replace(/```[\s\S]*?```/g, "").trim();
   return text;
 }
 
