@@ -9,20 +9,20 @@
   --font-display: "Fraunces", ui-serif, Georgia, serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  --color-bg: #efece6;
-  --color-surface: #fbfaf7;
-  --color-fg: #1a1916;
-  --color-muted: #6f6b63;
-  --color-subtle: #9a958c;
-  --color-accent: #1f4e8c;
-  --color-accent-fg: #fbfaf7;
+  --color-bg: #09090b;
+  --color-surface: #111116;
+  --color-fg: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-subtle: #71717a;
+  --color-accent: #8b5cf6;
+  --color-accent-fg: #ffffff;
   --color-border: color-mix(in oklab, var(--color-fg) 12%, transparent);
   --color-border-strong: color-mix(in oklab, var(--color-fg) 22%, transparent);
   --color-muted-fill: color-mix(in oklab, var(--color-fg) 6%, transparent);
-  --color-ring: #1f4e8c;
+  --color-ring: #8b5cf6;
   --color-danger: #9b2c2c;
   --color-danger-fg: #fbfaf7;
-  --color-success: #2f6f4f;
+  --color-success: #34d399;
 
   --radius-xs: 4px;
   --radius-sm: 8px;
@@ -126,3 +126,9 @@ html[data-theme="dark"] {
 .chip-fade {
   mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
 }
+
+
+/* Panupan-style visual layer: deep space, violet energy, restrained glass. */
+.boss-app-bg { background: radial-gradient(circle at 50% -10%, rgba(139,92,246,.14), transparent 38%), radial-gradient(circle at 85% 80%, rgba(236,72,153,.07), transparent 30%), #09090b; }
+.boss-glass { background: rgba(17,17,22,.72); border: 1px solid rgba(255,255,255,.07); backdrop-filter: blur(18px); }
+.boss-glow { box-shadow: 0 0 0 1px rgba(139,92,246,.08), 0 18px 70px rgba(0,0,0,.28); }
