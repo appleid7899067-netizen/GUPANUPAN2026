@@ -18,7 +18,7 @@ export function ChatPanel() {
   const project = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
   const generating = useBuilder((s) => s.generating);
   const streamText = useBuilder((s) => s.streamText);
-  const generatingStatus = useBuilder((s) => s.generatingStatus);
+  const generatingStatus = useBuilder((s) => s.generatingStatus);\n  const activities = useBuilder((s) => (project ? s.activities[project.id] ?? [] : []));
   const bottom = useRef<HTMLDivElement>(null);
 
   // Scroll only when a message/task starts. Do not scroll on every streamed
@@ -38,7 +38,7 @@ export function ChatPanel() {
         <span className="shrink-0 text-xs font-medium text-muted">แชท</span>
         <div className="min-w-0 max-w-[72vw] overflow-hidden"><ModelSelect /></div>
       </div>
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 pb-5 scrollbar-none sm:px-4">
+      {activities.length > 0 ? <AgentActivityStrip activities={activities} active={generating} /> : null}\n      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 pb-5 scrollbar-none sm:px-4">
         <ol className="space-y-4">
           {project.messages.map((m) => (
             <MessageBubble key={m.id} message={m} />
@@ -150,3 +150,4 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     </li>
   );
 }
+\n\nfunction AgentActivityStrip({ activities, active }: { activities: import("@/lib/builder/types").AgentActivity[]; active: boolean }) {\n  return (\n    <div className="shrink-0 border-b border-white/[0.06] px-3 py-2 sm:px-4">\n      <div className="flex items-center justify-between gap-2">\n        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">BOSS ACTIVITY</span>\n        <span className={cn("text-[10px]", active ? "text-accent" : "text-success")}>{active ? "LIVE" : "DONE"}</span>\n      </div>\n      <ol className="mt-2 max-h-28 space-y-1 overflow-y-auto scrollbar-none">\n        {activities.slice(-6).map((item) => (\n          <li key={item.id} className="flex min-w-0 items-center gap-2 text-xs">\n            <span className={cn("size-1.5 shrink-0 rounded-full", item.status === "error" ? "bg-red-400" : item.status === "success" ? "bg-success" : item.status === "fixing" ? "bg-amber-400" : "bg-accent")} />\n            <span className="truncate text-muted">{item.label}</span>\n            {item.detail ? <span className="hidden truncate text-subtle sm:inline">{item.detail}</span> : null}\n          </li>\n        ))}\n      </ol>\n    </div>\n  );\n}\n
