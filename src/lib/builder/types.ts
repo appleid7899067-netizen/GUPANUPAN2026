@@ -37,6 +37,9 @@ export type Project = {
   title: string;
   messages: ChatMessage[];
   html: string;
+  markdown?: string;
+  javascript?: string;
+  implementation?: string;
   pages?: AppPage[];
   versions: Version[];
   suggestions: Suggestion[];
