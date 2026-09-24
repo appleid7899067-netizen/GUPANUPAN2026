@@ -155,5 +155,21 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
 
 function AgentActivityStrip({ activities, active }: { activities: import("@/lib/builder/types").AgentActivity[]; active: boolean }) {
-  return (\n    <div className="shrink-0 border-b border-white/[0.06] px-3 py-2 sm:px-4">\n      <div className="flex items-center justify-between gap-2">\n        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">BOSS ACTIVITY</span>\n        <span className={cn("text-[10px]", active ? "text-accent" : "text-success")}>{active ? "LIVE" : "DONE"}</span>\n      </div>\n      <ol className="mt-2 max-h-28 space-y-1 overflow-y-auto scrollbar-none">\n        {activities.slice(-6).map((item) => (\n          <li key={item.id} className="flex min-w-0 items-center gap-2 text-xs">\n            <span className={cn("size-1.5 shrink-0 rounded-full", item.status === "error" ? "bg-red-400" : item.status === "success" ? "bg-success" : item.status === "fixing" ? "bg-amber-400" : "bg-accent")} />\n            <span className="truncate text-muted">{item.label}</span>\n            {item.detail ? <span className="hidden truncate text-subtle sm:inline">{item.detail}</span> : null}\n          </li>\n        ))}\n      </ol>\n    </div>\n  );
+  return (
+    <div className="shrink-0 border-b border-white/[0.06] px-3 py-2 sm:px-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">BOSS ACTIVITY</span>
+        <span className={cn("text-[10px]", active ? "text-accent" : "text-success")}>{active ? "LIVE" : "DONE"}</span>
+      </div>
+      <ol className="mt-2 max-h-28 space-y-1 overflow-y-auto scrollbar-none">
+        {activities.slice(-6).map((item) => (
+          <li key={item.id} className="flex min-w-0 items-center gap-2 text-xs">
+            <span className={cn("size-1.5 shrink-0 rounded-full", item.status === "error" ? "bg-red-400" : item.status === "success" ? "bg-success" : item.status === "fixing" ? "bg-amber-400" : "bg-accent")} />
+            <span className="truncate text-muted">{item.label}</span>
+            {item.detail ? <span className="hidden truncate text-subtle sm:inline">{item.detail}</span> : null}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
 }
