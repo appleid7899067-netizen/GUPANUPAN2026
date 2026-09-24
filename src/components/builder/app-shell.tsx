@@ -13,8 +13,8 @@ export function AppShell() {
   const inEditor = Boolean(activeId && project && (project.messages.length > 0 || project.html));
 
   return (
-    <div className="flex h-dvh flex-col bg-bg text-fg">
-      <Toolbar inEditor={inEditor} />
+    <div className="boss-app-bg flex h-dvh flex-col bg-bg text-fg">
+      <div className="boss-glass relative z-50"><Toolbar inEditor={inEditor} /></div>
       <ProjectSidebar />
       <div className="flex min-h-0 flex-1">
         {inEditor ? (
