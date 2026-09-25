@@ -8,6 +8,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useBuilder } from "@/lib/builder/store";
 import { cn } from "@/lib/utils";
 import React from "react";
+import { useShallow } from "zustand/shallow";
 
 function PuterSessionButton() {
   const { ready, signedIn, user, loading, signIn, signOut } = usePuterAuth();
@@ -43,7 +44,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
   const newProject = useBuilder((s) => s.newProject);
   const mobilePane = useBuilder((s) => s.mobilePane);
   const setMobilePane = useBuilder((s) => s.setMobilePane);
-  const active = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
+  const { active } = useBuilder(useShallow((s) => ({ active: s.projects.find((p) => p.id === s.activeId) ?? null })));
   const [deployOpen, setDeployOpen] = React.useState(false);
 
   const nextTheme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
