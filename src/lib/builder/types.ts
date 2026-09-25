@@ -62,7 +62,7 @@ export type Project = {
 export type ThemeChoice = "light" | "dark" | "system";
 export type PreviewDevice = "desktop" | "tablet" | "phone";
 export type EditorTab = "preview" | "code";
-export type MobilePane = "chat" | "preview";
+export type MobilePane = "chat" | "app";
 
 
 export type AgentActivityStatus = "working" | "success" | "error" | "fixing" | "verifying";
