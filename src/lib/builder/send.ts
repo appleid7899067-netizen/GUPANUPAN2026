@@ -1,5 +1,6 @@
 import { uid } from "@/lib/utils";
 import { validateHtmlArtifact } from "@/lib/boss-engine";
+import { validateBossArtifact } from "@/lib/boss-core";
 import { classifyExtractionFailure, rememberExtractionFailure } from "@/lib/extraction-resilience";
 import { streamGenerate } from "./generate-client";
 import { extractDisplayText, extractHtml, extractSuggestions, extractTitle, extractJavaScript, extractMarkdown, extractImplementation, extractPages } from "./parse";
@@ -63,14 +64,41 @@ export async function sendPrompt(text: string) {
       },
     );
     activity("กำลังตรวจสอบผลลัพธ์", "verifying", "ตรวจ output จริงก่อนบันทึกลงโปรเจกต์");
-    const validation = validateHtmlArtifact(full);
-    const nextHtml = validation.ok ? extractHtml(full) : null;
-    const display = extractDisplayText(full);
-    const suggestions = extractSuggestions(full);
-    const markdown = extractMarkdown(full);
+    let artifact = validateBossArtifact(full, trimmed);
+    let finalFull = full;
+    if (!artifact.ok && /สร้าง|build|เว็บ|app|html|แก้|edit|ปุ่ม|form|search|dashboard|แอป/i.test(trimmed)) {
+      useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
+      activity("กำลังแก้ไข output", "fixing", "ผลตรวจไม่ผ่าน กำลังให้ Boss ซ่อมเฉพาะจุดแล้วตรวจซ้ำ");
+      try {
+        const repaired = await streamGenerate(
+          {
+            prompt: trimmed + "\n\nBOSS RECOVERY: The previous artifact failed the product verification gate. Repair the missing requirements and return the FULL updated HTML. Verification evidence: " + artifact.evidence.join(", ") + ". Do not remove working features.",
+            html,
+            history,
+            model: modelId,
+          },
+          (t) => useBuilder.getState().setStreamText(t),
+          undefined,
+          (status) => useBuilder.getState().setGeneratingStatus(status),
+        );
+        const repairedCheck = validateBossArtifact(repaired, trimmed);
+        if (repairedCheck.ok) {
+          finalFull = repaired;
+          artifact = repairedCheck;
+          activity("ตรวจซ้ำผ่าน", "verifying", repairedCheck.evidence.join(", "));
+        }
+      } catch (recoveryError) {
+        console.warn("[GuPanu] Boss recovery failed", recoveryError);
+      }
+    }
+    const validation = validateHtmlArtifact(finalFull);
+    const nextHtml = validation.ok ? extractHtml(finalFull) : null;
+    const display = extractDisplayText(finalFull);
+    const suggestions = extractSuggestions(finalFull);
+    const markdown = extractMarkdown(finalFull);
     const javascript = extractJavaScript(nextHtml ?? "");
-    const implementation = extractImplementation(full, nextHtml ?? "");
-    const generatedPages = extractPages(full);
+    const implementation = extractImplementation(finalFull, nextHtml ?? "");
+    const generatedPages = extractPages(finalFull);
 
     if (!validation.ok && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
