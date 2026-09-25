@@ -67,12 +67,12 @@ export function ModelSelect({ className }: { className?: string }) {
   }, [options]);
 
   return (
-    <label className={cn("inline-flex min-w-0 items-center gap-1.5 text-xs text-muted", className)}>
-      <span className="hidden shrink-0 sm:inline">โมเดล</span>
+    <label className={cn("inline-flex min-w-0 max-w-full items-center gap-1 text-xs text-muted", className)}>
+      <span className="hidden shrink-0 lg:inline">โมเดล</span>
       <select
         value={selected}
         onChange={(e) => setModelId(e.target.value)}
-        className="min-w-0 max-w-[12rem] truncate rounded-full border border-border bg-surface px-2 py-1 text-xs text-fg outline-none focus:border-accent sm:max-w-[18rem]"
+        className="min-w-0 max-w-[10rem] truncate rounded-full border border-border bg-surface px-2 py-1 text-[11px] text-fg outline-none focus:border-accent sm:max-w-[12rem] sm:text-xs lg:max-w-[16rem]"
         aria-label="เลือกโมเดล"
         title={options.find((m) => m.id === selected)?.name || selected}
       >
