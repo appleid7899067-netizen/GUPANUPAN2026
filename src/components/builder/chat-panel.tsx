@@ -119,22 +119,7 @@ export function ChatPanel() {
           ))}
         </div>
       ) : null}
-      {/*
-        <div className="chip-fade flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-none">
-          {project.suggestions.map((s) => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={() => void sendPrompt(s.prompt)}
-              className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-fg shadow-border hover:shadow-border-hover"
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      */}
-      <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/[0.06] bg-zinc-950/70 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
+      <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/[0.06] bg-zinc-950/70 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-2xl sm:px-4">
         <PromptBox placeholder="บอกสิ่งที่อยากเปลี่ยน…" />
       </div>
     </section>
@@ -200,15 +185,13 @@ function MessageBubble({ message, onRetry, canRetry }: { message: ChatMessage; o
     </li>
   );
 }
-}
-
 
 function AgentActivityStrip({ activities, active }: { activities: import("@/lib/builder/types").AgentActivity[]; active: boolean }) {
   return (
     <div className="shrink-0 border-b border-white/[0.06] bg-white/[0.02] px-3 py-1.5 backdrop-blur-xl sm:px-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-subtle">BOSS ACTIVITY</span>
-        <span className={cn("text-[9px]", active ? "text-accent" : "text-success")}>{active ? "LIVE" : "DONE"}</span>
+        <span className={cn("text-[9px]", active ? "text-accent" : "text-success")}>{active ? "กำลังทำงาน" : "เสร็จแล้ว"}</span>
       </div>
       <ol className="mt-1.5 max-h-24 space-y-1 overflow-y-auto scrollbar-none">
         {activities.slice(-6).map((item) => (
