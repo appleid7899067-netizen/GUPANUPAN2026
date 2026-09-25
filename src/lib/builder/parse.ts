@@ -88,7 +88,7 @@ export function extractSuggestions(raw: string): Suggestion[] {
 export function extractDisplayText(raw: string): string {
   let text = sanitizeModelText(raw)
     .replace(SUGGEST_FENCE, "")
-    .replace(/\`\`\`(?:html|htm|xml)?\s*\n[\\s\\S]*?\`\`\`/gi, "")
+    .replace(/\`\`\`(?:html|htm|xml)?\s*\n[\s\S]*?\`\`\`/gi, "")
     .trim();
 
   // Keep generated source out of the chat bubble. Source belongs in Preview.
@@ -168,7 +168,7 @@ export function extractJavaScript(html: string): string {
 }
 
 export function extractMarkdown(raw: string): string {
-  const cleaned = raw.replace(SUGGEST_FENCE, "").replace(/```(?:html|htm|xml|javascript|js|typescript|ts)?\s*\n[\\s\\S]*?```/gi, "").trim();
+  const cleaned = raw.replace(SUGGEST_FENCE, "").replace(/```(?:html|htm|xml|javascript|js|typescript|ts)?\s*\n[\s\S]*?```/gi, "").trim();
   const htmlAt = cleaned.search(/<!doctype|<html|<body|<div|<main|<section/i);
   return (htmlAt > 0 ? cleaned.slice(0, htmlAt) : cleaned).replace(/<[^>]+>/g, "").trim();
 }
