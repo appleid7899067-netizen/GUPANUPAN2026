@@ -35,6 +35,7 @@ export async function sendPrompt(text: string) {
     history = (project?.messages ?? []).map((m) => ({ role: m.role, content: m.content }));
   }
 
+  store.clearActivities(id);
   store.pushMessage(id, {
     id: uid(),
     role: "user",
