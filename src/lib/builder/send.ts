@@ -1,7 +1,7 @@
 import { uid } from "@/lib/utils";
 import { validateHtmlArtifact } from "@/lib/boss-engine";
 import { validateBossArtifact } from "@/lib/boss-core";
-import { diagnoseTelemetry, buildRemediationPrompt } from "@/lib/boss-self-healing";
+import { canHeal, diagnoseTelemetry, buildRemediationPrompt, MAX_HEALING_ATTEMPTS } from "@/lib/boss-self-healing";
 import { injectBossnuRuntime } from "@/lib/puter-backend";
 import { classifyExtractionFailure, rememberExtractionFailure } from "@/lib/extraction-resilience";
 import { streamGenerate } from "./generate-client";
@@ -68,14 +68,30 @@ export async function sendPrompt(text: string) {
     activity("กำลังตรวจสอบผลลัพธ์", "verifying", "ตรวจ output จริงก่อนบันทึกลงโปรเจกต์");
     let artifact = validateBossArtifact(full, trimmed);
     let finalFull = full;
-    if (!artifact.ok && /สร้าง|build|เว็บ|app|html|แก้|edit|ปุ่ม|form|search|dashboard|แอป/i.test(trimmed)) {
+    let healingAttempt = 0;
+
+    // Bounded self-healing loop. Each retry receives only verification evidence,
+    // not an invented success signal, and the known-good artifact is preserved.
+    while (!artifact.ok && canHeal(healingAttempt, MAX_HEALING_ATTEMPTS) && /สร้าง|build|เว็บ|app|html|แก้|edit|ปุ่ม|form|search|dashboard|แอป/i.test(trimmed)) {
+      healingAttempt += 1;
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
-      activity("กำลังแก้ไข output", "fixing", "ผลตรวจไม่ผ่าน กำลังให้ Boss ซ่อมเฉพาะจุดแล้วตรวจซ้ำ");
+      const diagnosis = diagnoseTelemetry({
+        kind: "static",
+        message: artifact.evidence.join(", ") || "Boss Core verification failed",
+      });
+      activity(
+        `กำลังซ่อมรอบที่ ${healingAttempt}/${MAX_HEALING_ATTEMPTS}`,
+        "fixing",
+        `${diagnosis.summary} · ${buildRemediationPrompt(diagnosis, []).slice(0, 180)}`,
+      );
+
       try {
         const repaired = await streamGenerate(
           {
-            prompt: trimmed + "\n\nBOSS RECOVERY: The previous artifact failed the product verification gate. Repair the missing requirements and return the FULL updated HTML. Verification evidence: " + artifact.evidence.join(", ") + ". Do not remove working features.",
-            html,
+            prompt:
+              trimmed +
+              `\n\nBOSS SELF-HEALING ATTEMPT ${healingAttempt}/${MAX_HEALING_ATTEMPTS}: The previous artifact failed verification. Repair only the missing requirements and return the FULL updated HTML. Evidence: ${artifact.evidence.join(", ")}. Preserve all working features. Do not claim success unless the artifact itself satisfies the requirements.`,
+            html: finalFull,
             history,
             model: modelId,
           },
@@ -88,11 +104,28 @@ export async function sendPrompt(text: string) {
           finalFull = repaired;
           artifact = repairedCheck;
           activity("ตรวจซ้ำผ่าน", "verifying", repairedCheck.evidence.join(", "));
+          break;
         }
+        finalFull = repaired;
+        artifact = repairedCheck;
       } catch (recoveryError) {
-        console.warn("[GuPanu] Boss recovery failed", recoveryError);
+        activity(
+          `ซ่อมรอบที่ ${healingAttempt} ล้มเหลว`,
+          "error",
+          recoveryError instanceof Error ? recoveryError.message : String(recoveryError),
+        );
+        break;
       }
     }
+
+    if (!artifact.ok && healingAttempt >= MAX_HEALING_ATTEMPTS) {
+      activity(
+        "หยุด Self-Healing",
+        "error",
+        `ครบ ${MAX_HEALING_ATTEMPTS} รอบแล้ว: ${artifact.evidence.join(", ")}`,
+      );
+    }
+
     // Every generated artifact gets the zero-config Puter runtime and preview telemetry before gates run.
     finalFull = injectBossnuRuntime(finalFull, { telemetry: true });
 
