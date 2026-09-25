@@ -1,7 +1,7 @@
 import { uid } from "@/lib/utils";
 import { validateHtmlArtifact } from "@/lib/boss-engine";
 import { validateBossArtifact } from "@/lib/boss-core";
-import { canHeal, diagnoseTelemetry, buildRemediationPrompt, MAX_HEALING_ATTEMPTS } from "@/lib/boss-self-healing";
+import { canHeal, diagnoseTelemetry, buildRemediationPrompt, parseRemediationPatches, applySearchReplacePatch, startPreviewTelemetryCollector, extractTargetedSnippet, MAX_HEALING_ATTEMPTS } from "@/lib/boss-self-healing";
 import { injectBossnuRuntime } from "@/lib/puter-backend";
 import { classifyExtractionFailure, rememberExtractionFailure } from "@/lib/extraction-resilience";
 import { streamGenerate } from "./generate-client";
@@ -53,6 +53,13 @@ export async function sendPrompt(text: string) {
   store.setMobilePane("chat");
   store.setSelectMode(false);
 
+  let latestTelemetry: Parameters<typeof diagnoseTelemetry>[0] | null = null;
+  const stopTelemetry = startPreviewTelemetryCollector((event) => {
+    latestTelemetry = event;
+    const diagnosis = diagnoseTelemetry(event);
+    activity("พรีวิวรายงานปัญหา", "error", `${diagnosis.classification}: ${diagnosis.summary}`);
+  });
+
   try {
     const modelId = useBuilder.getState().modelId;
     const full = await streamGenerate(
@@ -75,7 +82,7 @@ export async function sendPrompt(text: string) {
     while (!artifact.ok && canHeal(healingAttempt, MAX_HEALING_ATTEMPTS) && /สร้าง|build|เว็บ|app|html|แก้|edit|ปุ่ม|form|search|dashboard|แอป/i.test(trimmed)) {
       healingAttempt += 1;
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
-      const diagnosis = diagnoseTelemetry({
+      const diagnosis = diagnoseTelemetry(latestTelemetry ?? {
         kind: "static",
         message: artifact.evidence.join(", ") || "Boss Core verification failed",
       });
@@ -86,28 +93,40 @@ export async function sendPrompt(text: string) {
       );
 
       try {
+        const remediationPrompt = [
+          trimmed,
+          buildRemediationPrompt(diagnosis, [
+            extractTargetedSnippet(finalFull, "generated.html", diagnosis.line ?? 1),
+          ]),
+          "The artifact is the single file generated.html. Return JSON only. Do not return HTML. Do not wrap JSON in markdown.",
+        ].join("\n\n");
         const repaired = await streamGenerate(
-          {
-            prompt:
-              trimmed +
-              `\n\nBOSS SELF-HEALING ATTEMPT ${healingAttempt}/${MAX_HEALING_ATTEMPTS}: The previous artifact failed verification. Repair only the missing requirements and return the FULL updated HTML. Evidence: ${artifact.evidence.join(", ")}. Preserve all working features. Do not claim success unless the artifact itself satisfies the requirements.`,
-            html: finalFull,
-            history,
-            model: modelId,
-          },
+          { prompt: remediationPrompt, html: finalFull, history, model: modelId },
           (t) => useBuilder.getState().setStreamText(t),
           undefined,
           (status) => useBuilder.getState().setGeneratingStatus(status),
         );
-        const repairedCheck = validateBossArtifact(repaired, trimmed);
-        if (repairedCheck.ok) {
-          finalFull = repaired;
-          artifact = repairedCheck;
-          activity("ตรวจซ้ำผ่าน", "verifying", repairedCheck.evidence.join(", "));
+        const patches = parseRemediationPatches(repaired);
+        if (!patches.length) {
+          activity("ไม่พบ Patch ที่ปลอดภัย", "error", "Remediation model did not return valid patch JSON");
           break;
         }
-        finalFull = repaired;
+        let patched = finalFull;
+        for (const patch of patches) {
+          const result = applySearchReplacePatch(patched, { ...patch, file: patch.file || "generated.html" });
+          if (!result.ok) {
+            activity("Patch ใช้ไม่ได้", "error", result.reason);
+            throw new Error(result.reason);
+          }
+          patched = result.content;
+        }
+        const repairedCheck = validateBossArtifact(patched, trimmed);
+        finalFull = patched;
         artifact = repairedCheck;
+        if (repairedCheck.ok) {
+          activity("Patch + ตรวจซ้ำผ่าน", "verifying", repairedCheck.evidence.join(", "));
+          break;
+        }
       } catch (recoveryError) {
         activity(
           `ซ่อมรอบที่ ${healingAttempt} ล้มเหลว`,
@@ -214,6 +233,7 @@ export async function sendPrompt(text: string) {
       createdAt: Date.now(),
     });
   } finally {
+    stopTelemetry();
     activity("เรียบร้อย", "success");
     store.setGenerating(false);
     store.setStreamText("");
