@@ -1,4 +1,5 @@
 import { classifyBossIntent, createBossRuntime, type BossIntent, type BossRuntime } from "@/lib/boss-engine";
+import { buildWorldPlan } from "@/lib/boss-unified-core";
 
 export type BossCoreMode = "chat" | "build" | "edit" | "research" | "debug" | "clone";
 
@@ -126,6 +127,8 @@ export function buildBossCoreContext(plan: BossCorePlan): string {
   return [
     "=== BOSS CORE ===",
     "Operating principle: understand -> plan -> act -> observe -> recover -> verify.",
+    "UNIFIED WORLD CONTRACT: BOSSNU builds systems, not isolated screens. World surfaces: " + buildWorldPlan(plan.goal, plan.mode).surfaces.join(", "),
+    "DESCRIBE AGENT CONTRACT: if the goal is ambiguous or lacks audience/outcome, ask up to 3 focused questions covering goal, people, and desired real-world outcome before committing to a build plan.",
     "Mode: " + plan.mode,
     "Intent: " + plan.intent,
     "Goal: " + plan.goal,
