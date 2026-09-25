@@ -5,10 +5,10 @@ import { ProjectSidebar } from "./project-sidebar";
 import { Toolbar } from "./toolbar";
 import { useBuilder } from "@/lib/builder/store";
 import { cn } from "@/lib/utils";
+import { useShallow } from "zustand/shallow";
 
 export function AppShell() {
-  const activeId = useBuilder((s) => s.activeId);
-  const project = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
+  const { activeId, project } = useBuilder(useShallow((s) => ({ activeId: s.activeId, project: s.projects.find((p) => p.id === s.activeId) ?? null })));
   const mobilePane = useBuilder((s) => s.mobilePane);
   const inEditor = Boolean(activeId && project && (project.messages.length > 0 || project.html));
 
