@@ -16,6 +16,21 @@ const STEPS = [
   "เพิ่มการโต้ตอบ",
 ];
 
+const QUICK_PROMPTS = [
+  { label: "สรุป", prompt: "ช่วยสรุปสิ่งที่ทำอยู่ตอนนี้ให้สั้นและเข้าใจง่าย" },
+  { label: "แก้โค้ด", prompt: "ช่วยตรวจและแก้โค้ดที่มีปัญหาให้ทำงานได้จริง" },
+  { label: "อธิบายเพิ่ม", prompt: "ช่วยอธิบายเพิ่มเติมว่าตอนนี้ระบบทำงานอย่างไร" },
+];
+
+const RETRY_PATTERNS = [
+  /ยังเชื่อมต่อ AI ไม่สำเร็จ/i,
+  /เชื่อมต่อ AI ไม่สำเร็จ/i,
+  /ai is not available/i,
+  /connection.*failed/i,
+  /request.*failed/i,
+  /gateway.*failed/i,
+];
+
 export function ChatPanel() {
   const project = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
   const generating = useBuilder((s) => s.generating);
@@ -34,18 +49,23 @@ export function ChatPanel() {
 
   const live = generating ? extractDisplayText(streamText) : "";
   const stepIndex = streamText.includes("```") ? 3 : streamText.length > 80 ? 2 : streamText.length > 0 ? 1 : 0;
+  const lastUserMessage = [...project.messages].reverse().find((message) => message.role === "user");
+  const retryLastPrompt = () => {
+    if (!lastUserMessage || generating) return;
+    void sendPrompt(lastUserMessage.content);
+  };
 
   return (
     <section className="boss-glass flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden overscroll-none touch-pan-y [contain:layout_paint] md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
-      <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2">
+      <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-white/[0.06] bg-white/[0.025] px-3 py-2 backdrop-blur-2xl sm:px-4">
         <span className="shrink-0 text-xs font-medium text-muted">แชท</span>
         <div className="min-w-0 max-w-[72vw] overflow-hidden"><ModelSelect /></div>
       </div>
       {activities.length > 0 ? <AgentActivityStrip activities={activities} active={generating} /> : null}
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 pb-5 scrollbar-none sm:px-4">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 pb-5 scrollbar-none sm:px-4 sm:py-5">
         <ol className="space-y-4">
           {project.messages.map((m) => (
-            <MessageBubble key={m.id} message={m} />
+            <MessageBubble key={m.id} message={m} onRetry={retryLastPrompt} canRetry={Boolean(lastUserMessage) && !generating} />
           ))}
           {generating ? (
             <li className="generation-starfield relative overflow-hidden rounded-2xl px-1 py-2">
@@ -89,7 +109,17 @@ export function ChatPanel() {
         </ol>
         <div ref={bottom} />
       </div>
-      {!generating && project.suggestions.length > 0 ? (
+      {!generating ? (
+        <div className="chip-fade flex gap-2 overflow-x-auto px-3 pb-2 scrollbar-none sm:px-4" aria-label="คำสั่งลัด">
+          {QUICK_PROMPTS.map((item) => (
+            <button key={item.label} type="button" onClick={() => void sendPrompt(item.prompt)} className="shrink-0 rounded-full border border-white/[0.07] bg-white/[0.045] px-3 py-1.5 text-xs font-medium text-muted backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:bg-white/[0.08] hover:text-fg active:scale-[0.98]">{item.label}</button>
+          ))}
+          {project.suggestions.map((s) => (
+            <button key={s.label} type="button" onClick={() => void sendPrompt(s.prompt)} className="shrink-0 rounded-full border border-white/[0.07] bg-surface/70 px-3 py-1.5 text-xs font-medium text-fg shadow-border transition-all duration-300 hover:scale-[1.02] hover:shadow-border-hover active:scale-[0.98]">{s.label}</button>
+          ))}
+        </div>
+      ) : null}
+      {/*
         <div className="chip-fade flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-none">
           {project.suggestions.map((s) => (
             <button
@@ -103,7 +133,8 @@ export function ChatPanel() {
           ))}
         </div>
       ) : null}
-      <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/[0.06] bg-zinc-950/80 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
+      */}
+      <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/[0.06] bg-zinc-950/70 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4">
         <PromptBox placeholder="บอกสิ่งที่อยากเปลี่ยน…" />
       </div>
     </section>
@@ -115,6 +146,8 @@ function cleanChatOnlyText(raw: string): string {
     .replace(/\{\s*"type"\s*:\s*"usage"[\s\S]*$/i, "")
     .replace(/\{\s*"usage"\s*:\s*\{[\s\S]*$/i, "")
     .replace(/\s*AI is not available in this environment\.?\s*/gi, "")
+    .replace(/^\s*(?:user\s*safety|response\s*safety)\s*:\s*(?:safe|pass|ok)\s*$/gim, "")
+    .replace(/^\s*(?:ความปลอดภัยผู้ใช้|ความปลอดภัยคำตอบ)\s*:\s*(?:ปลอดภัย|ผ่าน|ปกติ)\s*$/gim, "")
     .trim();
 
   if (!text) return "✦ ยังเชื่อมต่อ AI ไม่สำเร็จ";
@@ -146,34 +179,38 @@ function ChatText({ text }: { text: string }) {
   );
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message, onRetry, canRetry }: { message: ChatMessage; onRetry: () => void; canRetry: boolean }) {
   if (message.role === "user") {
     return (
       <li className="flex justify-end">
-        <div className="max-w-[90%] rounded-2xl rounded-br-sm bg-accent px-3.5 py-2 text-sm leading-relaxed text-accent-fg">
+        <div className="max-w-[90%] rounded-2xl rounded-br-sm bg-accent px-4 py-2.5 text-sm leading-relaxed text-accent-fg shadow-sm transition-all duration-300 hover:shadow-md">
           {message.content}
         </div>
       </li>
     );
   }
+  const displayText = cleanChatOnlyText(message.content);
+  const retryable = canRetry && RETRY_PATTERNS.some((pattern) => pattern.test(displayText));
   return (
     <li>
-      <p className="max-w-full break-words text-sm leading-relaxed text-fg">
-        <ChatText text={cleanChatOnlyText(message.content)} />
-      </p>
+      <div className="max-w-full break-words text-sm leading-relaxed text-fg">
+        <ChatText text={displayText} />
+        {retryable ? <button type="button" onClick={onRetry} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent transition-all duration-300 hover:scale-[1.02] hover:bg-accent/15 active:scale-[0.98]" aria-label="ลองเชื่อมต่อ AI อีกครั้ง">↻ ลองอีกครั้ง</button> : null}
+      </div>
     </li>
   );
+}
 }
 
 
 function AgentActivityStrip({ activities, active }: { activities: import("@/lib/builder/types").AgentActivity[]; active: boolean }) {
   return (
-    <div className="shrink-0 border-b border-white/[0.06] px-3 py-2 sm:px-4">
+    <div className="shrink-0 border-b border-white/[0.06] bg-white/[0.02] px-3 py-1.5 backdrop-blur-xl sm:px-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">BOSS ACTIVITY</span>
-        <span className={cn("text-[10px]", active ? "text-accent" : "text-success")}>{active ? "LIVE" : "DONE"}</span>
+        <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-subtle">BOSS ACTIVITY</span>
+        <span className={cn("text-[9px]", active ? "text-accent" : "text-success")}>{active ? "LIVE" : "DONE"}</span>
       </div>
-      <ol className="mt-2 max-h-28 space-y-1 overflow-y-auto scrollbar-none">
+      <ol className="mt-1.5 max-h-24 space-y-1 overflow-y-auto scrollbar-none">
         {activities.slice(-6).map((item) => (
           <li key={item.id} className="flex min-w-0 items-center gap-2 text-xs">
             <span className={cn("size-1.5 shrink-0 rounded-full", item.status === "error" ? "bg-red-400" : item.status === "success" ? "bg-success" : item.status === "fixing" ? "bg-amber-400" : "bg-accent")} />
