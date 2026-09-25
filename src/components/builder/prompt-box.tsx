@@ -63,7 +63,7 @@ export function PromptBox({ large, placeholder = "บอกความฝัน
 
   async function handleDocument(file: File) {
     if (!activeId) return;
-    const isText = /^(text\\/|application\\/(json|csv))/.test(file.type) || /\\.(txt|md|markdown|csv|json|log)$/i.test(file.name);
+    const isText = /^(text\/|application\/(json|csv))/.test(file.type) || /\.(txt|md|markdown|csv|json|log)$/i.test(file.name);
     const text = isText ? (await file.text()).slice(0, 120_000) : "";
     addDocument(activeId, {
       id: crypto.randomUUID(),
@@ -75,10 +75,10 @@ export function PromptBox({ large, placeholder = "บอกความฝัน
       createdAt: Date.now(),
     });
     if (text) {
-      const context = `[เอกสาร: ${file.name}]\\n${text}\\n[/เอกสาร]`;
-      setDraft(draft ? `${draft}\\n\\n${context}` : context);
+      const context = `[เอกสาร: ${file.name}]\n${text}\n[/เอกสาร]`;
+      setDraft(draft ? `${draft}\n\n${context}` : context);
     } else {
-      setDraft(draft ? `${draft}\\n[แนบเอกสาร: ${file.name}]` : `[แนบเอกสาร: ${file.name}]`);
+      setDraft(draft ? `${draft}\n[แนบเอกสาร: ${file.name}]` : `[แนบเอกสาร: ${file.name}]`);
     }
     setDocumentOpen(false);
     requestAnimationFrame(() => ref.current?.focus());
