@@ -29,6 +29,15 @@ export type ProjectFile = {
   kind?: "source" | "config" | "style" | "asset" | "test";
 };
 
+export type CanvasComponent = { id: string; type: string; props?: Record<string, unknown>; children?: CanvasComponent[] };
+export type CanvasPage = { id: string; title: string; path: string; components: CanvasComponent[] };
+export type CanvasStackEntry = { id: string };
+export type CanvasPatch =
+  | { op: "addComponent"; pageId: string; component: CanvasComponent }
+  | { op: "updateTheme"; theme: Record<string, string> }
+  | { op: "pushRoute"; pageId: string };
+export type CanvasState = { pages: Record<string, CanvasPage>; stack: CanvasStackEntry[]; theme: Record<string, string> };
+
 export type ProjectSource = {
   files: ProjectFile[];
   entryFile: string;
@@ -63,6 +72,7 @@ export type Project = {
   id: string;
   title: string;
   messages: ChatMessage[];
+  canvas: CanvasState;
   html: string;
   markdown?: string;
   javascript?: string;
