@@ -21,7 +21,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:integration": "node --experimental-strip-types --test src/lib/builder/execution-state.integration.test.ts",
-    "prebuild": "playwright install chromium"
+    "prebuild": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
