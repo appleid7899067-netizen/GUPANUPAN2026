@@ -49,6 +49,14 @@ export async function sendPrompt(text: string) {
   store.setGenerating(true);
   store.setStreamText("");
   store.setGeneratingStatus("กำลังอ่านคำขอ");
+  const move = (next: BuilderLifecycleState, reason: string) => {
+    const current = useBuilder.getState().lifecycleState;
+    if (current === next) return;
+    const result = transition(current, next, reason);
+    useBuilder.getState().setLifecycleState(result.state);
+  };
+  move("PLANNING", "Goal accepted; classify app and plan execution");
+  move("BUILDING", "Generation started");
   store.setSuggestions(id, []);
   store.setMobilePane("chat");
   store.setSelectMode(false);
@@ -73,6 +81,7 @@ export async function sendPrompt(text: string) {
         else if (/สร้าง|แก้ไข/.test(status)) activity(status, "working");
       },
     );
+    move("GENERATED", "Model returned an artifact");
     const corePlan = buildBossCorePlan(trimmed, history, html);
     activity(
       `รู้แล้วว่านี่คือ: ${corePlan.mode === "build" ? "แอปใหม่" : corePlan.mode === "edit" ? "การแก้แอปเดิม" : corePlan.mode === "clone" ? "การสร้างจากเว็บอ้างอิง" : corePlan.mode}`,
@@ -86,12 +95,15 @@ export async function sendPrompt(text: string) {
     let finalFull = injectBossnuRuntime(full, { telemetry: true });
     const initialHtml = extractHtml(finalFull);
     if (initialHtml.trim()) {
+      move("PREVIEWING", "First usable artifact is being placed into Preview");
       store.setHtml(id, initialHtml, trimmed.slice(0, 42));
       store.setEditorTab("preview");
       store.setMobilePane("preview");
+      move("PREVIEWED", "Initial artifact is visible in Preview");
       activity("สร้างแอปเข้า Preview", "working", "แสดง artifact รอบแรกแล้ว จากนั้นจึงตรวจและซ่อมถ้าจำเป็น");
     }
 
+    move("VERIFYING", "Verify the Preview artifact");
     activity("กำลังตรวจสอบ Preview", "verifying", "ตรวจ artifact และผลจากพรีวิวจริง");
     let artifact = validateBossArtifact(finalFull, trimmed);
     let healingAttempt = 0;
@@ -100,6 +112,8 @@ export async function sendPrompt(text: string) {
     // not an invented success signal, and the known-good artifact is preserved.
     while (!artifact.ok && canHeal(healingAttempt, MAX_HEALING_ATTEMPTS) && /สร้าง|build|เว็บ|app|html|แก้|edit|ปุ่ม|form|search|dashboard|แอป/i.test(trimmed)) {
       healingAttempt += 1;
+      move("ANALYZING", "Verification evidence requires diagnosis");
+      move("REPAIRING", "Targeted repair attempt started");
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
       const diagnosis = diagnoseTelemetry(latestTelemetry ?? {
         kind: "static",
@@ -150,6 +164,9 @@ export async function sendPrompt(text: string) {
           store.setHtml(id, repairedHtml, `ซ่อมรอบที่ ${healingAttempt}`);
           store.setEditorTab("preview");
           store.setMobilePane("preview");
+          move("PREVIEWING", "Repaired artifact is being rendered again");
+          move("PREVIEWED", "Repaired artifact is visible in Preview");
+          move("VERIFYING", "Verify repaired Preview");
           activity("อัปเดต Preview หลังซ่อม", "working", `Preview ใช้ artifact จากรอบซ่อม ${healingAttempt}`);
         }
         if (artifact.ok) {
@@ -192,6 +209,12 @@ export async function sendPrompt(text: string) {
       "verifying",
       `HTML=${extractionEvidence.htmlFound ? "พบ" : "ไม่พบ"} · pages=${extractionEvidence.pageCount} · script=${extractionEvidence.scriptBlockCount}`,
     );
+
+    if (finalVerified) {
+      move("VERIFIED", "All artifact verification gates passed");
+    } else if (!artifact.ok) {
+      if (useBuilder.getState().lifecycleState !== "FAILED") move("FAILED", "Verification failed after repair budget");
+    }
 
     if (!finalVerified && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
@@ -245,11 +268,16 @@ export async function sendPrompt(text: string) {
         store.renameProject(id, extractTitle(nextHtml, project.title));
       }
       store.setMobilePane("preview");
+      move("DONE", "Verified artifact is ready for delivery");
       completed = true;
       activity("ตรวจ Preview ผ่าน", "success", "สร้าง → Preview → Verify ครบวงจรแล้ว");
     }
     store.setSuggestions(id, suggestions);
   } catch (err) {
+    try {
+      const current = useBuilder.getState().lifecycleState;
+      if (current !== "DONE" && current !== "FAILED") move("FAILED", "Unhandled generation or verification error");
+    } catch {}
     if (/ดึงข้อมูล|scrap|scrape|extract|api/i.test(trimmed)) {
       const message = err instanceof Error ? err.message : String(err);
       const kind = classifyExtractionFailure(message);
