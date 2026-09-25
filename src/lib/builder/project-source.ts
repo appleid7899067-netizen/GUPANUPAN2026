@@ -43,7 +43,7 @@ export const DEFAULT_PROJECT_FILES: ProjectFile[] = [
   },
 ];
 
-export function createReactViteSource(now = Date.now()): ProjectSource {
+export function createProjectSource(now = Date.now()): ProjectSource {
   return {
     files: DEFAULT_PROJECT_FILES.map((file) => ({ ...file })),
     entryFile: "src/app/page.tsx",
