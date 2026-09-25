@@ -19,7 +19,7 @@ const allowed: Record<BuilderLifecycleState, BuilderLifecycleState[]> = {
   DONE: [],
   FAILED: ["GOAL", "PLANNING"],
   ANALYZING: ["REPAIRING", "FAILED"],
-  REPAIRING: ["PREVIEWING", "FAILED"],
+  REPAIRING: ["ANALYZING", "PREVIEWING", "FAILED"],
 };
 
 export function canTransition(from: BuilderLifecycleState, to: BuilderLifecycleState): boolean {
