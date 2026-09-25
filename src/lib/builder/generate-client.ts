@@ -12,6 +12,7 @@ export type GeneratePayload = {
   html: string;
   history: { role: "user" | "assistant"; content: string }[];
   model?: string;
+  recovery?: boolean;
 };
 
 function buildMessages(payload: GeneratePayload): Array<{ role: string; content: string }> {
@@ -25,6 +26,15 @@ function buildMessages(payload: GeneratePayload): Array<{ role: string; content:
         buildBossCoreContext(corePlan),
         buildAppSpecPrompt(compileAppSpec(payload.prompt, { hasExistingHtml: Boolean(payload.html.trim()) }), Boolean(payload.html.trim())),
         buildVisualAssetPrompt(compileAppSpec(payload.prompt, { hasExistingHtml: Boolean(payload.html.trim()) })),
+        ...(payload.recovery
+          ? [
+              "=== RECOVERY PATCH MODE ===",
+              "You are repairing an already-generated artifact.",
+              "Do NOT generate HTML. Return ONLY valid JSON with this exact shape: { \"patches\": [{ \"file\": \"generated.html\", \"search\": \"exact existing text\", \"replace\": \"replacement text\", \"reason\": \"brief reason\" }] }.",
+              "Use exact text from the supplied artifact. Make the smallest safe change. If no safe patch exists, return {\"patches\":[]}.",
+              "=== END RECOVERY PATCH MODE ===",
+            ]
+          : []),
       ].join("\n\n"),
     },
   ];
@@ -32,7 +42,13 @@ function buildMessages(payload: GeneratePayload): Array<{ role: string; content:
     messages.push({ role: m.role, content: m.content.slice(0, 8000) });
   }
   let user = payload.prompt;
-  if (payload.html.trim()) {
+  if (payload.recovery) {
+    user = [
+      "Repair the existing generated.html artifact using the verification evidence below.",
+      payload.prompt,
+      "Return JSON only. No markdown fences. No explanation outside JSON.",
+    ].join("\n\n");
+  } else if (payload.html.trim()) {
     const html = payload.html.length > 90000 ? `${payload.html.slice(0, 90000)}\n<!-- truncated -->` : payload.html;
     user = `The current app HTML is:\n\n\`\`\`html\n${html}\n\`\`\`\n\nApply this change and return the FULL updated HTML document:\n\n${payload.prompt}`;
   }
