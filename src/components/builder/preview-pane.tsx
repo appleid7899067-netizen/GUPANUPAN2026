@@ -4,6 +4,7 @@ import {
   ExternalLink,
   Globe2,
   History,
+  RefreshCw,
   Monitor,
   MousePointer2,
   Smartphone,
@@ -69,6 +70,8 @@ export function PreviewPane() {
   const [copied, setCopied] = useState(false);
   const [publishBusy, setPublishBusy] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(true);
+  const [runKey, setRunKey] = useState(0);
+  const [runStatus, setRunStatus] = useState<"idle" | "running" | "ready">("idle");
   const [codeKind, setCodeKind] = useState<"html" | "markdown" | "javascript" | "implementation">("html");
   const [pageIndex, setPageIndex] = useState(0);
   const pages = useMemo(() => project?.pages?.length ? project.pages : project ? [{
@@ -89,7 +92,15 @@ export function PreviewPane() {
 
   useEffect(() => {
     setPreviewLoading(Boolean(activePage?.html));
+    setRunStatus(activePage?.html ? "running" : "idle");
   }, [activePage?.html, activePage?.path]);
+
+  function runPreview() {
+    if (!activePage?.html) return;
+    setRunStatus("running");
+    setPreviewLoading(true);
+    setRunKey((value) => value + 1);
+  }
 
   const srcdoc = useMemo(() => {
     if (!activePage?.html) return "";
@@ -293,6 +304,18 @@ export function PreviewPane() {
               <Globe2 />
             </Button>
           </Tooltip>
+          <Tooltip label="รันพรีวิวใหม่">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="รันพรีวิวใหม่"
+              onClick={runPreview}
+              disabled={!activePage?.html || previewLoading}
+              className={previewLoading ? "text-accent" : "text-muted"}
+            >
+              <RefreshCw className={cn(previewLoading ? "animate-spin" : "")} />
+            </Button>
+          </Tooltip>
           <Tooltip label="เปิดแท็บใหม่">
             <Button variant="ghost" size="icon-sm" aria-label="เปิดแท็บใหม่" onClick={openNew} disabled={!project.html}>
               <ExternalLink />
@@ -374,17 +397,22 @@ export function PreviewPane() {
                   <span className="ml-2 truncate text-[9px] text-subtle">{activePage?.path || "/"}</span>
                 </div>
               ) : null}
+              {runStatus !== "idle" ? (
+                <div className="absolute bottom-2 left-2 z-10 rounded-full bg-zinc-950/85 px-2.5 py-1 text-[10px] text-zinc-300 shadow-lg backdrop-blur-md">
+                  {runStatus === "running" ? "▶ กำลังรันพรีวิว…" : "● Preview พร้อม"}
+                </div>
+              ) : null}
               {previewLoading && srcdoc ? (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-surface/60 backdrop-blur-[2px]">
                   <div className="rounded-full bg-muted-fill px-3 py-1.5 text-[11px] text-muted shadow-border">กำลังโหลดพรีวิว…</div>
                 </div>
               ) : null}
               <iframe
-                key={project.id + ":" + (activePage?.path || "/") + ":" + device}
+                key={project.id + ":" + (activePage?.path || "/") + ":" + device + ":" + runKey}
                 ref={frame}
                 title="พรีวิวสด"
                 srcDoc={srcdoc}
-                onLoad={() => setPreviewLoading(false)}
+                onLoad={() => { setPreviewLoading(false); setRunStatus("ready"); }}
                 sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
                 className="min-h-0 flex-1 bg-surface"
                 style={{ width: "100%", minHeight: "100%" }}
