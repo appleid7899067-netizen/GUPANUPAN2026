@@ -71,7 +71,7 @@ export function PreviewPane() {
   const [previewLoading, setPreviewLoading] = useState(true);
   const [codeKind, setCodeKind] = useState<"html" | "markdown" | "javascript" | "implementation">("html");
   const [pageIndex, setPageIndex] = useState(0);
-  const pages = project?.pages?.length ? project.pages : project ? [{
+  const pages = useMemo(() => project?.pages?.length ? project.pages : project ? [{
     id: "home",
     title: project.title || "หน้าแรก",
     path: "/",
@@ -79,7 +79,7 @@ export function PreviewPane() {
     markdown: project.markdown,
     javascript: project.javascript,
     implementation: project.implementation,
-  }] : [];
+  }] : [], [project?.pages, project?.title, project?.html, project?.markdown, project?.javascript, project?.implementation]);
   const activePage = pages[Math.min(pageIndex, Math.max(0, pages.length - 1))];
   const frame = useRef<HTMLIFrameElement>(null);
 
