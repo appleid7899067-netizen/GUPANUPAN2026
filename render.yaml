@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm install && npx playwright install chromium && NITRO_PRESET=node-server npm run build
+    buildCommand: npm install && NITRO_PRESET=node-server npm run build
     startCommand: npm start
     healthCheckPath: /
     envVars:
