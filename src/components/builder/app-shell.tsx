@@ -14,9 +14,9 @@ export function AppShell() {
 
   return (
     <div className="boss-app-bg flex h-dvh flex-col bg-bg text-fg">
-      <div className="boss-glass relative z-50"><Toolbar inEditor={inEditor} /></div>
+      <div className="boss-glass mobile-no-blur relative z-50 min-w-0 overflow-hidden"><Toolbar inEditor={inEditor} /></div>
       <ProjectSidebar />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 min-w-0 max-w-full flex-1 overflow-hidden">
         {inEditor ? (
           <>
             <div
