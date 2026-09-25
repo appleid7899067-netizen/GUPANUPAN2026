@@ -15,6 +15,8 @@ import type {
   Version,
   AgentActivity,
   BuilderLifecycleState,
+  CanvasPatch,
+  CanvasState,
   ProjectFile,
   ProjectSource,
 } from "./types";
@@ -22,12 +24,19 @@ import type {
 const MAX_PROJECTS = 24;
 const MAX_VERSIONS = 12;
 
+const defaultCanvas = (): CanvasState => ({
+  pages: { home: { id: "home", title: "Home", path: "/", components: [] } },
+  stack: [{ id: "home" }],
+  theme: { primary: "#000000", background: "#ffffff", text: "#111111" },
+});
+
 function emptyProject(partial?: Partial<Project>): Project {
   const now = Date.now();
   return {
     id: uid(),
     title: "Untitled",
     messages: [],
+    canvas: defaultCanvas(),
     html: "",
     source: createProjectSource(now),
     versions: [],
@@ -75,6 +84,9 @@ type BuilderState = {
   renameProject: (id: string, title: string) => void;
   pushMessage: (id: string, message: ChatMessage) => void;
   setPages: (id: string, pages: import("./types").AppPage[]) => void;
+  applyCanvasPatch: (id: string, patch: CanvasPatch) => void;
+  pushCanvasRoute: (id: string, pageId: string) => void;
+  popCanvasRoute: (id: string) => void;
   setSource: (id: string, source: ProjectSource) => void;
   upsertFile: (id: string, file: ProjectFile) => void;
   removeFile: (id: string, path: string) => void;
@@ -192,6 +204,31 @@ export const useBuilder = create<BuilderState>()(
           projects: s.projects.map((p) =>
             p.id === id ? { ...p, pages, updatedAt: Date.now() } : p,
           ),
+        })),
+      applyCanvasPatch: (id, patch) =>
+        set((s) => ({
+          projects: s.projects.map((p) => {
+            if (p.id !== id) return p;
+            const canvas = p.canvas ?? defaultCanvas();
+            if (patch.op === "addComponent") {
+              const page = canvas.pages[patch.pageId];
+              if (!page) return p;
+              return { ...p, canvas: { ...canvas, pages: { ...canvas.pages, [patch.pageId]: { ...page, components: [...page.components, patch.component] } } }, updatedAt: Date.now() };
+            }
+            if (patch.op === "updateTheme") return { ...p, canvas: { ...canvas, theme: { ...canvas.theme, ...patch.theme } }, updatedAt: Date.now() };
+            const page = canvas.pages[patch.pageId];
+            if (!page) return p;
+            return { ...p, canvas: { ...canvas, stack: [...canvas.stack, { id: patch.pageId }] }, updatedAt: Date.now() };
+          }),
+        })),
+      pushCanvasRoute: (id, pageId) =>
+        get().applyCanvasPatch(id, { op: "pushRoute", pageId }),
+      popCanvasRoute: (id) =>
+        set((s) => ({
+          projects: s.projects.map((p) => {
+            if (p.id !== id || !p.canvas || p.canvas.stack.length <= 1) return p;
+            return { ...p, canvas: { ...p.canvas, stack: p.canvas.stack.slice(0, -1) }, updatedAt: Date.now() };
+          }),
         })),
       setSource: (id, source) =>
         set((s) => ({
