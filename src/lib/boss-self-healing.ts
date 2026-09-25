@@ -174,18 +174,21 @@ export function applySearchReplacePatch(source: string, patch: BossPatch): { ok:
  * Generates a strict patch-only contract for the remediation model.
  * The model must return JSON and must not rewrite unrelated files.
  */
-export function buildRemediationPrompt(diagnosis: ErrorDiagnosis, snippets: TargetedSnippet[]): string {
-  return [
+export function buildRemediationPrompt(diagnosis: ErrorDiagnosis, snippets: TargetedSnippet[], allowFullRewrite = false): string {
+  const lines = [
     "BOSSNU REMEDIATION CONTRACT",
-    "Return JSON only: {\"patches\":[{\"file\":\"...\",\"search\":\"exact existing text\",\"replace\":\"replacement text\",\"reason\":\"...\"}]}",
-    "Patch only the smallest necessary surface. Do not rewrite full files.",
+    allowFullRewrite
+      ? "PREFERRED: Return JSON only: {\"patches\":[{\"file\":\"generated.html\",\"search\":\"exact existing text\",\"replace\":\"replacement text\",\"reason\":\"...\"}]}. If you cannot produce exact patches, you MAY return a complete fixed HTML document starting with <!DOCTYPE html> instead."
+      : "Return JSON only: {\"patches\":[{\"file\":\"generated.html\",\"search\":\"exact existing text\",\"replace\":\"replacement text\",\"reason\":\"...\"}]}",
+    "Patch only the smallest necessary surface when using patches. Do not rewrite unrelated files.",
     "Preserve existing working features and public interfaces.",
     `Error class: ${diagnosis.classification}`,
     `Error: ${diagnosis.summary}`,
     `Evidence: ${diagnosis.evidence.join(" | ")}`,
     "Targeted snippets:",
     ...snippets.map((s) => `FILE ${s.file} L${s.startLine}-${s.endLine}\n${s.code}`),
-  ].join("\n\n");
+  ];
+  return lines.join("\n\n");
 }
 
 /**
@@ -207,19 +210,58 @@ export function previewTelemetryScript(): string {
 </script>`;
 }
 
-
+/**
+ * Robustly extract patches from model output.
+ * Handles: pure JSON, markdown-fenced JSON, leading prose + JSON object, nested patches array.
+ */
 export function parseRemediationPatches(raw: string): BossPatch[] {
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
-  try {
-    const parsed = JSON.parse(cleaned) as { patches?: unknown };
-    if (!Array.isArray(parsed.patches)) return [];
-    return parsed.patches.filter((p): p is BossPatch => {
-      if (!p || typeof p !== "object") return false;
-      const x = p as Record<string, unknown>;
-      return typeof x.file === "string" && typeof x.search === "string" &&
-        typeof x.replace === "string" && typeof x.reason === "string";
-    });
-  } catch { return []; }
+  if (!raw || typeof raw !== "string") return [];
+
+  const candidates: string[] = [];
+
+  // 1) Strip common markdown fences
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) candidates.push(fenced[1].trim());
+
+  // 2) Whole cleaned string
+  candidates.push(raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, ""));
+
+  // 3) First { ... } block that looks like it contains "patches"
+  const braceMatch = raw.match(/\{[\s\S]*"patches"[\s\S]*\}/);
+  if (braceMatch?.[0]) candidates.push(braceMatch[0]);
+
+  // 4) Array form [ { ... } ]
+  const arrayMatch = raw.match(/\[\s*\{[\s\S]*"search"[\s\S]*\}\s*\]/);
+  if (arrayMatch?.[0]) candidates.push(`{"patches":${arrayMatch[0]}}`);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as { patches?: unknown } | unknown[];
+      const list = Array.isArray(parsed)
+        ? parsed
+        : (parsed && typeof parsed === "object" && Array.isArray((parsed as { patches?: unknown }).patches)
+            ? (parsed as { patches: unknown[] }).patches
+            : null);
+      if (!list) continue;
+      const patches = list.filter((p): p is BossPatch => {
+        if (!p || typeof p !== "object") return false;
+        const x = p as Record<string, unknown>;
+        return typeof x.file === "string" && typeof x.search === "string" &&
+          typeof x.replace === "string" && typeof x.reason === "string" &&
+          x.search.length > 0;
+      });
+      if (patches.length) return patches;
+    } catch {
+      // try next candidate
+    }
+  }
+  return [];
+}
+
+/** True when the model returned a full HTML document instead of patches (last-resort recovery). */
+export function looksLikeFullHtmlRewrite(raw: string): boolean {
+  const t = raw.trim();
+  return /<!doctype html|<html[\s>]/i.test(t) && /<body[\s>]/i.test(t) && /<\/html>/i.test(t);
 }
 
 export function startPreviewTelemetryCollector(onEvent: (event: TelemetryEvent) => void): () => void {
