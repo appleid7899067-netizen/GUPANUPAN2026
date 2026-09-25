@@ -14,6 +14,8 @@ import type {
   Version,
   AgentActivity,
   BuilderLifecycleState,
+  ProjectFile,
+  ProjectSource,
 } from "./types";
 
 const MAX_PROJECTS = 24;
@@ -71,6 +73,9 @@ type BuilderState = {
   renameProject: (id: string, title: string) => void;
   pushMessage: (id: string, message: ChatMessage) => void;
   setPages: (id: string, pages: import("./types").AppPage[]) => void;
+  setSource: (id: string, source: ProjectSource) => void;
+  upsertFile: (id: string, file: ProjectFile) => void;
+  removeFile: (id: string, path: string) => void;
   setHtml: (id: string, html: string, versionLabel?: string) => void;
   setSuggestions: (id: string, suggestions: Suggestion[]) => void;
   addDocument: (id: string, document: DocumentContext) => void;
@@ -185,6 +190,30 @@ export const useBuilder = create<BuilderState>()(
           projects: s.projects.map((p) =>
             p.id === id ? { ...p, pages, updatedAt: Date.now() } : p,
           ),
+        })),
+      setSource: (id, source) =>
+        set((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id ? { ...p, source: { ...source, updatedAt: Date.now() }, updatedAt: Date.now() } : p,
+          ),
+        })),
+      upsertFile: (id, file) =>
+        set((s) => ({
+          projects: s.projects.map((p) => {
+            if (p.id !== id) return p;
+            const current = p.source ?? { files: [], entryFile: "src/App.tsx", framework: "react-vite" as const, packageManager: "npm" as const, updatedAt: Date.now() };
+            const files = current.files.some((f) => f.path === file.path)
+              ? current.files.map((f) => (f.path === file.path ? file : f))
+              : [...current.files, file];
+            return { ...p, source: { ...current, files, updatedAt: Date.now() }, updatedAt: Date.now() };
+          }),
+        })),
+      removeFile: (id, path) =>
+        set((s) => ({
+          projects: s.projects.map((p) => {
+            if (p.id !== id || !p.source) return p;
+            return { ...p, source: { ...p.source, files: p.source.files.filter((f) => f.path !== path), updatedAt: Date.now() }, updatedAt: Date.now() };
+          }),
         })),
   setHtml: (id, html, versionLabel) =>
         set((s) => ({
