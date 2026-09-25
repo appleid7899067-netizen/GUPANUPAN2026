@@ -151,3 +151,37 @@ export function previewTelemetryScript(): string {
 })();
 </script>`;
 }
+
+
+export function parseRemediationPatches(raw: string): BossPatch[] {
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  try {
+    const parsed = JSON.parse(cleaned) as { patches?: unknown };
+    if (!Array.isArray(parsed.patches)) return [];
+    return parsed.patches.filter((p): p is BossPatch => {
+      if (!p || typeof p !== "object") return false;
+      const x = p as Record<string, unknown>;
+      return typeof x.file === "string" && typeof x.search === "string" &&
+        typeof x.replace === "string" && typeof x.reason === "string";
+    });
+  } catch { return []; }
+}
+
+export function startPreviewTelemetryCollector(onEvent: (event: TelemetryEvent) => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (event: MessageEvent) => {
+    const data = event.data as Record<string, unknown> | null;
+    if (!data || data.source !== "bossnu-preview") return;
+    onEvent({
+      kind: data.kind === "build" || data.kind === "static" ? data.kind : "runtime",
+      message: String(data.message ?? "Preview runtime error"),
+      file: typeof data.file === "string" ? data.file : undefined,
+      line: typeof data.line === "number" ? data.line : undefined,
+      column: typeof data.column === "number" ? data.column : undefined,
+      stack: typeof data.stack === "string" ? data.stack : undefined,
+      timestamp: Date.now(),
+    });
+  };
+  window.addEventListener("message", handler);
+  return () => window.removeEventListener("message", handler);
+}
