@@ -8,7 +8,8 @@ import { streamGenerate } from "./generate-client";
 import { extractDisplayText, extractHtml, extractSuggestions, extractTitle, extractJavaScript, extractMarkdown, extractImplementation, extractPages, inspectArtifactExtraction } from "./parse";
 import { useBuilder } from "./store";
 import type { ExampleApp } from "./templates";
-import type { AgentActivityStatus } from "./types";
+import type { AgentActivityStatus, BuilderLifecycleState } from "./types";
+import { transition } from "./state-machine";
 
 function activity(label: string, status: AgentActivityStatus, detail?: string) {
   const s = useBuilder.getState();
