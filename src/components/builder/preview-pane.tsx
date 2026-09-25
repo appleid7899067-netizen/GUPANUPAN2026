@@ -1,14 +1,18 @@
 import {
   Code2,
+  Columns2,
   Download,
   ExternalLink,
   Globe2,
   History,
+  Maximize2,
+  Minimize2,
   RefreshCw,
   Monitor,
   MousePointer2,
   Smartphone,
   Tablet,
+  Activity,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/shallow";
@@ -29,7 +33,7 @@ const PICKER = `
     if (!t || !t.tagName) return;
     e.preventDefault(); e.stopPropagation();
     if (last) last.style.outline = '';
-    t.style.outline = '2px solid #1f4e8c';
+    t.style.outline = '2px solid #8b5cf6';
     t.style.outlineOffset = '2px';
     last = t;
     var text = (t.innerText || '').trim().slice(0, 80);
@@ -38,9 +42,29 @@ const PICKER = `
 })();
 <\/script>`;
 
+const TELEMETRY_BRIDGE = `
+<script>
+(function(){
+  const send = (payload) => parent.postMessage({ type: 'bossnu-preview-telemetry', ...payload }, '*');
+  window.addEventListener('error', (e) => send({ level: 'error', message: e.message || 'Runtime error', stack: e.error && e.error.stack }));
+  window.addEventListener('unhandledrejection', (e) => send({ level: 'error', message: String(e.reason && e.reason.message || e.reason || 'Unhandled rejection') }));
+  const orig = console.error;
+  console.error = function() {
+    try { send({ level: 'error', message: Array.from(arguments).map(String).join(' ') }); } catch {}
+    return orig.apply(console, arguments);
+  };
+  window.addEventListener('load', () => send({ level: 'info', message: 'load', readyState: document.readyState }));
+})();
+<\/script>`;
+
 function withPicker(html: string) {
   if (html.includes("</body>")) return html.replace("</body>", `${PICKER}</body>`);
   return html + PICKER;
+}
+
+function withTelemetry(html: string) {
+  if (html.includes("</body>")) return html.replace("</body>", `${TELEMETRY_BRIDGE}</body>`);
+  return html + TELEMETRY_BRIDGE;
 }
 
 const DEVICE_WIDTH: Record<PreviewDevice, string> = {
@@ -54,6 +78,70 @@ const DEVICE_LABEL: Record<PreviewDevice, string> = {
   tablet: "แท็บเล็ต",
   phone: "มือถือ",
 };
+
+type PreviewMode = "single" | "dual";
+
+type ConsoleLine = { id: number; level: "error" | "info"; message: string; at: number };
+
+function DeviceFrame({
+  device,
+  path,
+  children,
+  className,
+}: {
+  device: PreviewDevice;
+  path?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  if (device === "desktop") {
+    return (
+      <div className={cn("relative flex min-h-full flex-col overflow-hidden rounded-xl bg-surface shadow-border", className)}>
+        <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-border bg-zinc-900/90 px-3">
+          <span className="size-2.5 rounded-full bg-red-400/80" />
+          <span className="size-2.5 rounded-full bg-amber-400/80" />
+          <span className="size-2.5 rounded-full bg-green-400/80" />
+          <div className="ml-3 flex h-5 flex-1 items-center rounded-md bg-zinc-800/80 px-2">
+            <span className="truncate text-[10px] text-zinc-400">{path || "/"}</span>
+          </div>
+        </div>
+        {children}
+      </div>
+    );
+  }
+
+  if (device === "tablet") {
+    return (
+      <div className={cn("relative mx-auto flex flex-col overflow-hidden rounded-[1.25rem] border-[3px] border-zinc-700 bg-zinc-900 shadow-2xl", className)} style={{ width: 768, maxWidth: "100%" }}>
+        <div className="flex h-6 shrink-0 items-center justify-center border-b border-zinc-700 bg-zinc-900">
+          <div className="h-1 w-16 rounded-full bg-zinc-600" />
+        </div>
+        <div className="relative min-h-0 flex-1 bg-surface">{children}</div>
+        <div className="flex h-5 shrink-0 items-center justify-center border-t border-zinc-700 bg-zinc-900">
+          <div className="size-2 rounded-full bg-zinc-600" />
+        </div>
+      </div>
+    );
+  }
+
+  // phone — notch style
+  return (
+    <div className={cn("relative mx-auto flex flex-col overflow-hidden rounded-[1.75rem] border-[3px] border-zinc-700 bg-zinc-900 shadow-2xl", className)} style={{ width: 390, maxWidth: "100%" }}>
+      <div className="relative flex h-7 shrink-0 items-center justify-center border-b border-zinc-700 bg-zinc-900">
+        <div className="absolute left-1/2 top-1.5 h-4 w-24 -translate-x-1/2 rounded-full bg-zinc-950" />
+        <span className="absolute left-4 text-[9px] font-medium text-zinc-400">9:41</span>
+        <span className="absolute right-4 flex gap-0.5">
+          <span className="block h-1.5 w-3 rounded-sm bg-zinc-500" />
+          <span className="block h-1.5 w-1 rounded-sm bg-zinc-500" />
+        </span>
+      </div>
+      <div className="relative min-h-0 flex-1 bg-surface">{children}</div>
+      <div className="flex h-5 shrink-0 items-center justify-center border-t border-zinc-700 bg-zinc-900">
+        <div className="h-1 w-20 rounded-full bg-zinc-600" />
+      </div>
+    </div>
+  );
+}
 
 export function PreviewPane() {
   const { project } = useBuilder(useShallow((s) => ({ project: s.projects.find((p) => p.id === s.activeId) ?? null })));
@@ -75,6 +163,15 @@ export function PreviewPane() {
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "ready">("idle");
   const [codeKind, setCodeKind] = useState<"html" | "markdown" | "javascript" | "implementation">("html");
   const [pageIndex, setPageIndex] = useState(0);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("single");
+  const [fullscreen, setFullscreen] = useState(false);
+  const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([]);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [flash, setFlash] = useState(false);
+  const [loadMs, setLoadMs] = useState<number | null>(null);
+  const loadStarted = useRef<number>(0);
+  const consoleId = useRef(0);
+
   const pages = useMemo(() => project?.pages?.length ? project.pages : project ? [{
     id: "home",
     title: project.title || "หน้าแรก",
@@ -94,7 +191,13 @@ export function PreviewPane() {
   useEffect(() => {
     setPreviewLoading(Boolean(activePage?.html));
     setRunStatus(activePage?.html ? "running" : "idle");
-  }, [activePage?.html, activePage?.path]);
+    setConsoleLines([]);
+    loadStarted.current = performance.now();
+    setLoadMs(null);
+    setFlash(true);
+    const t = window.setTimeout(() => setFlash(false), 600);
+    return () => window.clearTimeout(t);
+  }, [activePage?.html, activePage?.path, runKey]);
 
   function runPreview() {
     if (!activePage?.html) return;
@@ -105,7 +208,8 @@ export function PreviewPane() {
 
   const srcdoc = useMemo(() => {
     if (!activePage?.html) return "";
-    const html = activePage.html;
+    let html = activePage.html;
+    html = withTelemetry(html);
     if (!project?.pages?.length) return selectMode ? withPicker(html) : html;
     const router = `<script>
       document.addEventListener("click", function(e) {
@@ -124,10 +228,31 @@ export function PreviewPane() {
 
   useEffect(() => {
     function onMsg(e: MessageEvent) {
-      const data = e.data as { type?: string; tag?: string; text?: string; path?: string };
+      const data = e.data as {
+        type?: string;
+        tag?: string;
+        text?: string;
+        path?: string;
+        level?: string;
+        message?: string;
+      };
       if (data?.type === "gupanu-page" && data.path) {
         const next = pages.findIndex((p) => p.path === data.path);
         if (next >= 0) setPageIndex(next);
+        return;
+      }
+      if (data?.type === "bossnu-preview-telemetry") {
+        const level = data.level === "error" ? "error" : "info";
+        const message = String(data.message || "");
+        if (message === "load") {
+          setLoadMs(Math.round(performance.now() - loadStarted.current));
+          return;
+        }
+        setConsoleLines((prev) => {
+          const next = [...prev, { id: ++consoleId.current, level, message: message.slice(0, 300), at: Date.now() }];
+          return next.slice(-40);
+        });
+        if (level === "error") setConsoleOpen(true);
         return;
       }
       if (data?.type !== "gupanu-select") return;
@@ -142,6 +267,17 @@ export function PreviewPane() {
   if (!project) return null;
 
   const current = project;
+  const errorCount = consoleLines.filter((l) => l.level === "error").length;
+  const qualityLabel =
+    lifecycleState === "DONE" && errorCount === 0
+      ? "Verified"
+      : lifecycleState === "DONE"
+        ? "Verified · warnings"
+        : runStatus === "ready"
+          ? "Live"
+          : runStatus === "running"
+            ? "Running"
+            : "Idle";
 
   async function download() {
     if (!current.html.trim()) {
@@ -157,7 +293,7 @@ export function PreviewPane() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${current.title.replace(/[^\w\u0E00-\u0E7F]+/g, "-").toLowerCase() || "gupanu-app"}.html`;
+    a.download = `${current.title.replace(/[^\w\u0E00-\u0E7F]+/g, "-").toLowerCase() || "bossnu-app"}.html`;
     a.click();
     URL.revokeObjectURL(url);
     setTimeout(() => setDownloadStatus(null), 2000);
@@ -165,16 +301,11 @@ export function PreviewPane() {
 
   async function publishSite() {
     if (!current.html.trim() || publishBusy) return;
-
-    // Publishing is a delivery action, not another preview button. Require the
-    // same browser verification gate used by the builder before sending the
-    // artifact to Puter Hosting.
     if (lifecycleState !== "DONE") {
       setDownloadStatus("ยังเผยแพร่ไม่ได้: ต้องสร้าง → Preview → Verify ให้ผ่านก่อน");
       setTimeout(() => setDownloadStatus(null), 4500);
       return;
     }
-
     setPublishBusy(true);
     setDownloadStatus("กำลังตรวจสอบแอปก่อนเผยแพร่...");
     try {
@@ -226,14 +357,39 @@ export function PreviewPane() {
     window.open(url, "_blank", "noopener");
   }
 
+  function renderIframe(keySuffix: string) {
+    return (
+      <iframe
+        key={project.id + ":" + (activePage?.path || "/") + ":" + keySuffix + ":" + runKey}
+        ref={keySuffix === device ? frame : undefined}
+        title={`พรีวิว-${keySuffix}`}
+        srcDoc={srcdoc}
+        onLoad={() => {
+          setPreviewLoading(false);
+          setRunStatus("ready");
+          if (loadMs == null) setLoadMs(Math.round(performance.now() - loadStarted.current));
+        }}
+        sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
+        className="min-h-0 flex-1 bg-surface"
+        style={{ width: "100%", minHeight: "100%", border: 0 }}
+      />
+    );
+  }
+
+  const shellClass = fullscreen
+    ? "fixed inset-0 z-[80] flex flex-col bg-bg p-2 md:p-3"
+    : "flex min-h-0 min-w-0 flex-1 flex-col bg-bg p-2 md:p-3";
+
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-bg p-2 md:p-3">
+    <section className={shellClass}>
       {downloadStatus ? (
         <div className="mb-2 rounded-lg border border-border bg-muted-fill px-3 py-1.5 text-xs text-fg">
           {downloadStatus}
         </div>
       ) : null}
-      <div className="mb-2 flex items-center gap-1">
+
+      {/* Top bar */}
+      <div className="mb-2 flex flex-wrap items-center gap-1">
         <div className="flex rounded-full bg-muted-fill p-0.5">
           <button
             type="button"
@@ -256,7 +412,32 @@ export function PreviewPane() {
             <Code2 className="size-3" /> โค้ด
           </button>
         </div>
+
+        {/* Quality / live status — beyond Grok */}
+        <div className="ml-1 hidden items-center gap-1.5 rounded-full border border-white/10 bg-zinc-950/60 px-2.5 py-1 text-[10px] sm:flex">
+          <Activity className={cn("size-3", runStatus === "ready" ? "text-emerald-400" : "text-violet-400")} />
+          <span className={cn(
+            "font-semibold",
+            lifecycleState === "DONE" ? "text-emerald-400" : "text-zinc-300",
+          )}>
+            {qualityLabel}
+          </span>
+          {loadMs != null ? <span className="text-zinc-500">· {loadMs}ms</span> : null}
+          {errorCount > 0 ? <span className="text-red-400">· {errorCount} err</span> : null}
+        </div>
+
         <div className="ml-auto flex items-center gap-0.5">
+          <Tooltip label="โหมดคู่ (เดสก์ท็อป + มือถือ)">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Dual preview"
+              onClick={() => setPreviewMode((m) => (m === "dual" ? "single" : "dual"))}
+              className={previewMode === "dual" ? "text-violet-400" : "text-muted"}
+            >
+              <Columns2 />
+            </Button>
+          </Tooltip>
           {(["desktop", "tablet", "phone"] as const).map((d) => {
             const Icon = d === "desktop" ? Monitor : d === "tablet" ? Tablet : Smartphone;
             return (
@@ -265,8 +446,11 @@ export function PreviewPane() {
                   variant="ghost"
                   size="icon-sm"
                   aria-label={DEVICE_LABEL[d]}
-                  onClick={() => setDevice(d)}
-                  className={device === d ? "text-fg" : "text-muted"}
+                  onClick={() => {
+                    setDevice(d);
+                    setPreviewMode("single");
+                  }}
+                  className={device === d && previewMode === "single" ? "text-fg" : "text-muted"}
                 >
                   <Icon />
                 </Button>
@@ -321,6 +505,17 @@ export function PreviewPane() {
               </div>
             ) : null}
           </div>
+          <Tooltip label="Console">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Console"
+              onClick={() => setConsoleOpen((v) => !v)}
+              className={errorCount > 0 ? "text-red-400" : consoleOpen ? "text-fg" : "text-muted"}
+            >
+              <Activity />
+            </Button>
+          </Tooltip>
           <Tooltip label="ดาวน์โหลด HTML">
             <Button variant="ghost" size="icon-sm" aria-label="ดาวน์โหลด" onClick={() => void download()} disabled={!activePage?.html}>
               <Download />
@@ -357,6 +552,17 @@ export function PreviewPane() {
               <ExternalLink />
             </Button>
           </Tooltip>
+          <Tooltip label={fullscreen ? "ออกจากเต็มจอ" : "เต็มจอ"}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Fullscreen"
+              onClick={() => setFullscreen((v) => !v)}
+              className={fullscreen ? "text-violet-400" : "text-muted"}
+            >
+              {fullscreen ? <Minimize2 /> : <Maximize2 />}
+            </Button>
+          </Tooltip>
         </div>
       </div>
 
@@ -378,10 +584,14 @@ export function PreviewPane() {
         </div>
       ) : null}
 
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-surface shadow-border">
+      <div className={cn(
+        "relative min-h-0 flex-1 overflow-hidden rounded-xl bg-surface shadow-border",
+        flash && "ring-2 ring-violet-500/50 transition-shadow duration-500",
+      )}>
         {!project.html ? (
           <div className="flex h-full flex-col items-center justify-center px-8 text-center">
-            <p className="text-sm text-muted">แอปจะแสดงที่นี่เมื่อ GuPanu สร้างเสร็จ</p>
+            <p className="text-sm text-muted">แอปจะแสดงที่นี่เมื่อ Bossnu สร้างเสร็จ</p>
+            <p className="mt-1 text-xs text-subtle">Preview-first · Dual device · Live console</p>
           </div>
         ) : tab === "code" ? (
           <div className="flex h-full min-h-0 flex-col">
@@ -405,7 +615,11 @@ export function PreviewPane() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-end border-b border-border bg-muted-fill/30 px-2 py-1"><Button variant="ghost" size="sm" onClick={() => void copyCode()} className="h-7 text-[11px]">{copied ? "✓ คัดลอกแล้ว" : "Copy Code"}</Button></div>
+            <div className="flex items-center justify-end border-b border-border bg-muted-fill/30 px-2 py-1">
+              <Button variant="ghost" size="sm" onClick={() => void copyCode()} className="h-7 text-[11px]">
+                {copied ? "✓ คัดลอกแล้ว" : "Copy Code"}
+              </Button>
+            </div>
             <pre className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed text-fg">
               {codeKind === "html"
                 ? (activePage?.html || project.html)
@@ -418,47 +632,69 @@ export function PreviewPane() {
           </div>
         ) : (
           <div className="relative flex h-full min-h-0 justify-center overflow-auto bg-[radial-gradient(circle_at_top,rgba(139,92,246,.08),transparent_42%)] p-2 sm:p-4">
-            <div
-              className={cn(
-                "relative flex min-h-full shrink-0 flex-col overflow-hidden rounded-xl bg-surface shadow-border transition-[width] duration-200",
-                device === "desktop" ? "w-full" : "max-w-full border border-border",
-              )}
-              style={{ width: DEVICE_WIDTH[device] }}
-            >
-              {device !== "desktop" ? (
-                <div className="flex h-7 shrink-0 items-center gap-1 border-b border-border bg-muted-fill px-2">
-                  <span className="size-1.5 rounded-full bg-red-400/70" />
-                  <span className="size-1.5 rounded-full bg-amber-400/70" />
-                  <span className="size-1.5 rounded-full bg-green-400/70" />
-                  <span className="ml-2 truncate text-[9px] text-subtle">{activePage?.path || "/"}</span>
+            {previewMode === "dual" ? (
+              <div className="flex w-full min-h-full flex-col gap-3 lg:flex-row lg:items-stretch">
+                <div className="flex min-h-[320px] min-w-0 flex-1 flex-col">
+                  <div className="mb-1 text-center text-[10px] font-medium uppercase tracking-wider text-zinc-500">Desktop</div>
+                  <DeviceFrame device="desktop" path={activePage?.path}>
+                    {renderIframe("desktop")}
+                  </DeviceFrame>
                 </div>
-              ) : null}
-              {runStatus !== "idle" ? (
-                <div className="absolute bottom-2 left-2 z-10 rounded-full bg-zinc-950/85 px-2.5 py-1 text-[10px] text-zinc-300 shadow-lg backdrop-blur-md">
-                  {runStatus === "running" ? "▶ กำลังรันพรีวิว…" : "● Preview พร้อม"}
+                <div className="flex min-h-[320px] w-full shrink-0 flex-col lg:w-[400px]">
+                  <div className="mb-1 text-center text-[10px] font-medium uppercase tracking-wider text-zinc-500">Phone</div>
+                  <DeviceFrame device="phone" path={activePage?.path}>
+                    {renderIframe("phone")}
+                  </DeviceFrame>
                 </div>
-              ) : null}
-              {previewLoading && srcdoc ? (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-surface/60 backdrop-blur-[2px]">
-                  <div className="rounded-full bg-muted-fill px-3 py-1.5 text-[11px] text-muted shadow-border">กำลังโหลดพรีวิว…</div>
-                </div>
-              ) : null}
-              <iframe
-                key={project.id + ":" + (activePage?.path || "/") + ":" + device + ":" + runKey}
-                ref={frame}
-                title="พรีวิวสด"
-                srcDoc={srcdoc}
-                onLoad={() => { setPreviewLoading(false); setRunStatus("ready"); }}
-                sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
-                className="min-h-0 flex-1 bg-surface"
-                style={{ width: "100%", minHeight: "100%" }}
-              />
-            </div>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "relative flex min-h-full shrink-0 flex-col transition-[width] duration-200",
+                  device === "desktop" ? "w-full" : "max-w-full",
+                )}
+                style={device === "desktop" ? { width: "100%" } : { width: DEVICE_WIDTH[device] }}
+              >
+                <DeviceFrame device={device} path={activePage?.path}>
+                  {previewLoading && srcdoc ? (
+                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-surface/60 backdrop-blur-[2px]">
+                      <div className="rounded-full bg-muted-fill px-3 py-1.5 text-[11px] text-muted shadow-border">กำลังโหลดพรีวิว…</div>
+                    </div>
+                  ) : null}
+                  {renderIframe(device)}
+                </DeviceFrame>
+              </div>
+            )}
           </div>
         )}
+
         {selectMode && tab === "preview" ? (
-          <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[11px] font-medium text-accent-fg">
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-violet-500 px-2.5 py-1 text-[11px] font-medium text-white shadow-lg">
             คลิกองค์ประกอบเพื่อแก้ไข
+          </div>
+        ) : null}
+
+        {/* Live console overlay — beyond Grok */}
+        {consoleOpen && tab === "preview" ? (
+          <div className="absolute bottom-0 left-0 right-0 z-20 max-h-40 overflow-auto border-t border-border bg-zinc-950/95 p-2 backdrop-blur-md">
+            <div className="mb-1 flex items-center justify-between px-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Live Console</span>
+              <button type="button" className="text-[10px] text-zinc-500 hover:text-zinc-300" onClick={() => setConsoleLines([])}>
+                Clear
+              </button>
+            </div>
+            {consoleLines.length === 0 ? (
+              <p className="px-1 text-[11px] text-zinc-600">ไม่มี log — runtime errors จะโชว์ที่นี่อัตโนมัติ</p>
+            ) : (
+              <ul className="space-y-0.5 font-mono text-[10px]">
+                {consoleLines.map((line) => (
+                  <li key={line.id} className={line.level === "error" ? "text-red-400" : "text-zinc-400"}>
+                    <span className="text-zinc-600">{new Date(line.at).toLocaleTimeString()}</span>{" "}
+                    {line.message}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ) : null}
       </div>
