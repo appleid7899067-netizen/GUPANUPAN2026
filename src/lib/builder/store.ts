@@ -9,6 +9,7 @@ import type {
   PreviewDevice,
   Project,
   Suggestion,
+  DocumentContext,
   ThemeChoice,
   Version,
   AgentActivity,
@@ -72,6 +73,8 @@ type BuilderState = {
   setPages: (id: string, pages: import("./types").AppPage[]) => void;
   setHtml: (id: string, html: string, versionLabel?: string) => void;
   setSuggestions: (id: string, suggestions: Suggestion[]) => void;
+  addDocument: (id: string, document: DocumentContext) => void;
+  clearDocuments: (id: string) => void;
   restoreVersion: (id: string, versionId: string) => void;
   active: () => Project | null;
 };
@@ -201,6 +204,10 @@ export const useBuilder = create<BuilderState>()(
             };
           }),
         })),
+      addDocument: (id, document) =>
+        set((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, documents: [...(p.documents ?? []), document].slice(-8), updatedAt: Date.now() } : p) })),
+      clearDocuments: (id) =>
+        set((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, documents: [], updatedAt: Date.now() } : p) })),
       setSuggestions: (id, suggestions) =>
         set((s) => ({
           projects: s.projects.map((p) => (p.id === id ? { ...p, suggestions } : p)),
