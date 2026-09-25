@@ -1,4 +1,4 @@
-import { getSql, type Sql } from "@/lib/db";
+import { getSql, type Sql } from "../db";
 import { canTransition } from "./state-machine";
 import type { BuilderLifecycleState } from "./types";
 
@@ -124,6 +124,10 @@ export async function transitionExecution(
 
     if (current.state === to) {
       return { ...mapExecution(current), changed: false };
+    }
+
+    if (current.cancel_requested && to !== "FAILED") {
+      throw new Error("Execution cancellation requested");
     }
 
     if (!canTransition(current.state, to)) {
