@@ -256,6 +256,8 @@ export function buildAppSpecPrompt(spec: AppSpec, existingHtml: boolean): string
   return [
     "=== APP SPECIFICATION ===",
     `Goal: ${spec.goal}`,
+    `Detected user intent: ${spec.intent ?? "general"}`,
+    "USER REQUEST IS THE SOURCE OF TRUTH: preserve the concrete nouns, audience, actions, content type, and requested behavior from the user's prompt. Do not replace the requested product with a generic template just because a keyword matched.",
     `UI style: ${spec.ui.style}`,
     `Template: ${spec.ui.template}`,
     `Colors: ${spec.ui.colors.join(", ")}`,
