@@ -25,6 +25,10 @@ function looksLikeHtml(s: string) {
 
 export function extractHtml(raw: string): string | null {
   raw = sanitizeModelText(raw);
+
+  // Preserve the complete HTML artifact. When several HTML fences exist,
+  // prefer the first complete document because extractPages() owns multi-page
+  // extraction. Never reconstruct the document by stripping script/style tags.
   const fences: string[] = [];
   let m: RegExpExecArray | null;
   const re = new RegExp(HTML_FENCE.source, "gi");
@@ -32,10 +36,13 @@ export function extractHtml(raw: string): string | null {
     const body = (m[1] ?? "").trim();
     if (body) fences.push(body);
   }
-  for (let i = fences.length - 1; i >= 0; i--) {
-    const f = fences[i]!;
-    if (looksLikeHtml(f) || f.includes("<body") || f.includes("<div")) return f;
-  }
+
+  const complete = fences.filter((f) => looksLikeHtml(f) && /<head[\s>][\s\S]*<body[\s>][\s\S]*<\/body>[\s>][\s\S]*<\/html>/i.test(f));
+  if (complete.length) return complete[0]!;
+
+  const candidate = fences.find((f) => looksLikeHtml(f) || f.includes("<body") || f.includes("<main") || f.includes("<div"));
+  if (candidate) return candidate;
+
   const trimmed = raw.trim();
   if (looksLikeHtml(trimmed)) return trimmed;
   return null;
@@ -52,9 +59,14 @@ export function extractPages(raw: string): Array<{ title: string; path: string; 
     if (!html || (!looksLikeHtml(html) && !html.includes("<body") && !html.includes("<main") && !html.includes("<div"))) continue;
     const title = extractTitle(html, `หน้า ${pages.length + 1}`);
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `page-${pages.length + 1}`;
-    pages.push({ title, path: pages.length === 0 ? "/" : `/${slug}`, html });
+    const path = pages.length === 0 ? "/" : `/${slug}`;
+
+    // Keep each page as the original artifact. No tag stripping or JS
+    // reconstruction happens here, so preview and stored pages remain faithful.
+    pages.push({ title, path, html });
   }
 
+  // If the model returned one complete HTML document without a fence, keep it.
   if (pages.length === 0) {
     const html = extractHtml(raw);
     if (html) pages.push({ title: extractTitle(html, "หน้าแรก"), path: "/", html });
@@ -177,3 +189,31 @@ export function extractImplementation(raw: string, html: string): string {
   const js = extractJavaScript(html);
   return js ? "HTML\n\n" + html + "\n\nJavaScript\n\n" + js : html || raw;
 }
+
+
+export type ArtifactExtractionEvidence = {
+  htmlFound: boolean;
+  htmlFenceCount: number;
+  pageCount: number;
+  scriptBlockCount: number;
+  extractedJavaScriptChars: number;
+  preservedHtml: boolean;
+};
+
+export function inspectArtifactExtraction(raw: string): ArtifactExtractionEvidence {
+  const cleaned = sanitizeModelText(raw);
+  const fenceMatches = cleaned.match(new RegExp(HTML_FENCE.source, "gi")) ?? [];
+  const html = extractHtml(cleaned);
+  const pages = extractPages(cleaned);
+  const scriptBlocks = html?.match(/<script\b/gi)?.length ?? 0;
+  const javascript = html ? extractJavaScript(html) : "";
+
+  return {
+    htmlFound: Boolean(html),
+    htmlFenceCount: fenceMatches.length,
+    pageCount: pages.length,
+    scriptBlockCount: scriptBlocks,
+    extractedJavaScriptChars: javascript.length,
+    preservedHtml: Boolean(html && /<style\b/i.test(html) && (!scriptBlocks || /<script\b/i.test(html))),
+  };
+};
