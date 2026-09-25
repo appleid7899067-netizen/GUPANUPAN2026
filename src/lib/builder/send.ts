@@ -212,8 +212,8 @@ export async function sendPrompt(text: string) {
 
     if (finalVerified) {
       move("VERIFIED", "All artifact verification gates passed");
-    } else if (!artifact.ok) {
-      if (useBuilder.getState().lifecycleState !== "FAILED") move("FAILED", "Verification failed after repair budget");
+    } else {
+      if (useBuilder.getState().lifecycleState !== "FAILED") move("FAILED", "Verification gates did not all pass");
     }
 
     if (!finalVerified && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
