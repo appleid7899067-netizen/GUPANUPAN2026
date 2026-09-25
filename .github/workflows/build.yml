@@ -1,0 +1,67 @@
+name: GUPANUPAN2026 Build Gate
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Typecheck • Lint • Test • Production Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Production build
+        env:
+          NODE_ENV: production
+          NITRO_PRESET: node-server
+          RENDER: "true"
+        run: npm run build
+
+      - name: Verify Render server output
+        run: |
+          test -f .output/server/index.mjs
+          echo "OK: Nitro node-server output exists"
+
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gupanu-production-build
+          path: |
+            .output/**
+            render.yaml
+            package.json
+            package-lock.json
+          retention-days: 7
