@@ -9,51 +9,45 @@ export const DEFAULT_PROJECT_FILES: ProjectFile[] = [
       {
         private: true,
         type: "module",
-        scripts: { dev: "vite", build: "vite build", preview: "vite preview" },
+        scripts: { dev: "next dev", build: "next build", start: "next start" },
         dependencies: { react: "^19.2.0", "react-dom": "^19.2.0" },
-        devDependencies: { "@vitejs/plugin-react": "^5.2.0", vite: "^8.2.0", typescript: "^5.7.0" },
+        devDependencies: { next: "latest", typescript: "^5.7.0", "@types/react": "^19.2.0", "@types/node": "^22.16.5" },
       },
       null,
       2,
     ),
   },
   {
-    path: "index.html",
-    language: "html",
-    kind: "config",
-    content: "<!doctype html><html><head><meta charset=\"UTF-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /><title>App</title></head><body><div id=\"root\"></div><script type=\"module\" src=\"/src/main.tsx\"></script></body></html>",
-  },
-  {
-    path: "src/main.tsx",
+    path: "src/app/layout.tsx",
     language: "tsx",
     kind: "source",
-    content: 'import { StrictMode } from "react";\nimport { createRoot } from "react-dom/client";\nimport App from "./App";\n\ncreateRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);\n',
+    content: 'import type { ReactNode } from "react";\nimport "./globals.css";\n\nexport default function RootLayout({ children }: { children: ReactNode }) {\n  return <html lang="th"><body>{children}</body></html>;\n}\n',
   },
   {
-    path: "src/App.tsx",
+    path: "src/app/page.tsx",
     language: "tsx",
     kind: "source",
-    content: 'export default function App() {\n  return <main><h1>New App</h1></main>;\n}\n',
+    content: 'export default function HomePage() {\n  return <main><h1>New App</h1></main>;\n}\n',
   },
   {
-    path: "src/index.css",
+    path: "src/app/globals.css",
     language: "css",
     kind: "style",
-    content: '@import "tailwindcss";\n\n:root { font-family: system-ui, sans-serif; }\nbody { margin: 0; min-width: 320px; }\n',
+    content: ':root { font-family: system-ui, sans-serif; }\nbody { margin: 0; min-width: 320px; }\n',
   },
   {
-    path: "vite.config.ts",
+    path: "next.config.ts",
     language: "ts",
     kind: "config",
-    content: 'import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\n\nexport default defineConfig({ plugins: [react()] });\n',
+    content: 'import type { NextConfig } from "next";\nconst nextConfig: NextConfig = {};\nexport default nextConfig;\n',
   },
 ];
 
 export function createReactViteSource(now = Date.now()): ProjectSource {
   return {
     files: DEFAULT_PROJECT_FILES.map((file) => ({ ...file })),
-    entryFile: "src/App.tsx",
-    framework: "react-vite",
+    entryFile: "src/app/page.tsx",
+    framework: "nextjs",
     packageManager: "npm",
     updatedAt: now,
   };
