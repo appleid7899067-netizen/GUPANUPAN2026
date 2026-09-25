@@ -3,7 +3,7 @@ import { validateHtmlArtifact } from "@/lib/boss-engine";
 import { validateBossArtifact } from "@/lib/boss-core";
 import { classifyExtractionFailure, rememberExtractionFailure } from "@/lib/extraction-resilience";
 import { streamGenerate } from "./generate-client";
-import { extractDisplayText, extractHtml, extractSuggestions, extractTitle, extractJavaScript, extractMarkdown, extractImplementation, extractPages } from "./parse";
+import { extractDisplayText, extractHtml, extractSuggestions, extractTitle, extractJavaScript, extractMarkdown, extractImplementation, extractPages, inspectArtifactExtraction } from "./parse";
 import { useBuilder } from "./store";
 import type { ExampleApp } from "./templates";
 import type { AgentActivityStatus } from "./types";
@@ -103,6 +103,12 @@ export async function sendPrompt(text: string) {
     const javascript = extractJavaScript(nextHtml ?? "");
     const implementation = extractImplementation(finalFull, nextHtml ?? "");
     const generatedPages = extractPages(finalFull);
+    const extractionEvidence = inspectArtifactExtraction(finalFull);
+    activity(
+      "ตรวจ artifact หลัง parse",
+      "verifying",
+      `HTML=${extractionEvidence.htmlFound ? "พบ" : "ไม่พบ"} · pages=${extractionEvidence.pageCount} · script=${extractionEvidence.scriptBlockCount}`,
+    );
 
     if (!finalVerified && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
