@@ -6,6 +6,8 @@ type SandboxBody = {
   timeoutMs?: unknown;
 };
 
+process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
+
 const MAX_HTML_BYTES = 750_000;
 const MAX_TIMEOUT_MS = 15_000;
 const DEFAULT_TIMEOUT_MS = 8_000;
