@@ -54,6 +54,9 @@ export type MobilePane = "chat" | "preview";
 
 
 export type AgentActivityStatus = "working" | "success" | "error" | "fixing" | "verifying";
+export type BuilderLifecycleState =
+  | "GOAL" | "PLANNING" | "BUILDING" | "GENERATED" | "PREVIEWING" | "PREVIEWED"
+  | "VERIFYING" | "VERIFIED" | "DONE" | "FAILED" | "ANALYZING" | "REPAIRING";
 
 export type AgentActivity = {
   id: string;
