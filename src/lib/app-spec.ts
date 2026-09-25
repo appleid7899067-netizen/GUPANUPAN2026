@@ -89,12 +89,29 @@ function inferStyle(prompt: string): string {
 
 function inferTemplate(prompt: string): AppSpec["ui"]["template"] {
   const t = prompt.toLowerCase();
-  if (/dashboard|แดชบอร์ด|admin|ผู้ดูแล/.test(t)) return "dashboard";
-  if (/shop|store|ร้าน|สินค้า|ecommerce|e-commerce|cart|checkout|ตะกร้า/.test(t)) return "commerce";
-  if (/blog|article|บทความ|ข่าว|magazine|นิตยสาร/.test(t)) return "content";
-  if (/portfolio|พอร์ต|ผลงาน|agency|เอเจนซี/.test(t)) return "portfolio";
-  if (/app|แอป|mobile|saas|software/.test(t)) return "app";
+
+  // Understand the user's requested product first. Specific nouns and flows
+  // take priority over generic words such as "app" or "website".
+  if (/ร้าน|สินค้า|shop|store|ecommerce|e-commerce|cart|checkout|ตะกร้า|ชำระเงิน|order/.test(t)) return "commerce";
+  if (/dashboard|แดชบอร์ด|admin|ผู้ดูแล|analytics|analytics|kpi|metric|report|รายงาน/.test(t)) return "dashboard";
+  if (/blog|article|บทความ|ข่าว|magazine|นิตยสาร|สาระ|บทความข่าว/.test(t)) return "content";
+  if (/portfolio|พอร์ต|ผลงาน|agency|เอเจนซี|case study|เคสงาน/.test(t)) return "portfolio";
+  if (/app|แอป|mobile|saas|software|ระบบ|เครื่องมือ|ตัวจัดการ|จัดการ/.test(t)) return "app";
   return "landing";
+}
+
+function inferIntent(prompt: string): string {
+  const t = prompt.toLowerCase();
+  if (/สร้าง|ทำ|build|create|make|design|ออกแบบ/.test(t)) return "create";
+  if (/แก้|ปรับ|เปลี่ยน|เพิ่ม|ลบ|edit|update|change|add|remove|ปรับปรุง/.test(t)) return "modify";
+  if (/ขาย|ร้าน|สินค้า|shop|store|checkout|cart/.test(t)) return "commerce";
+  if (/จอง|booking|appointment|นัดหมาย/.test(t)) return "booking";
+  if (/เรียน|course|lesson|quiz|education|การศึกษา/.test(t)) return "education";
+  if (/จด|note|notes|บันทึก|notebook/.test(t)) return "notes";
+  if (/แชท|chat|คุย|conversation|messaging/.test(t)) return "chat";
+  if (/ค้นหา|search|ค้น/.test(t)) return "search";
+  if (/ติดตาม|tracker|tracking|ติดตามงาน|progress/.test(t)) return "tracking";
+  return "general";
 }
 
 function inferComposition(prompt: string, template: AppSpec["ui"]["template"], style: string): AppSpec["ui"]["composition"] {
@@ -149,7 +166,7 @@ export function compileAppSpec(
 
   return {
     goal,
-    features: inferFeatures(goal),
+    features: inferFeatures(goal),\n    // Keep the user's actual intent available to the generation contract.\n    intent: inferIntent(goal),
     ui: {
       style: inferStyle(goal),
       colors: unique(
