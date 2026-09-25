@@ -15,6 +15,8 @@ export type PublishResult = {
 type PuterHosting = {
   create?: (subdomain: string, folderPath: string) => Promise<unknown>;
   publish?: (subdomain: string, folderPath: string) => Promise<unknown>;
+  update?: (subdomain: string, folderPath: string) => Promise<unknown>;
+  get?: (subdomain: string) => Promise<unknown>;
 };
 
 function getHosting(): PuterHosting | null {
@@ -39,8 +41,20 @@ export async function publishToPuterSite(subdomain: string, folderPath: string):
 
   try {
     const result = await create(clean, folderPath);
-    const url = extractUrl(result) ?? `https://${clean}.puter.site`;
-    return { ok: true, subdomain: clean, url, evidence: ["hosting_call_returned", "site_url_resolved"] };
+    const returned = result as { subdomain?: string; address?: string; root_dir?: unknown };
+    const returnedSubdomain = returned?.subdomain ?? clean;
+    let verified: unknown = result;
+    if (hosting.get) {
+      verified = await hosting.get(returnedSubdomain);
+    }
+    const verifiedObject = verified as { subdomain?: string; address?: string; root_dir?: unknown };
+    const url = verifiedObject?.address ?? extractUrl(verified) ?? `https://${returnedSubdomain}.puter.site`;
+    return {
+      ok: Boolean(verifiedObject?.subdomain ?? returnedSubdomain),
+      subdomain: returnedSubdomain,
+      url,
+      evidence: ["hosting_call_returned", hosting.get ? "hosting_get_verified" : "site_url_resolved"],
+    };
   } catch (error) {
     return {
       ok: false,
