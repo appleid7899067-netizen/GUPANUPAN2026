@@ -1,4 +1,5 @@
 import { ModelSelect } from "./model-select";
+import { DeployModal } from "./DeployModal";
 import { usePuterAuth } from "@/lib/puter-auth";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Menu, Monitor, Moon, Plus, Sun } from "lucide-react";
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useBuilder } from "@/lib/builder/store";
 import { cn } from "@/lib/utils";
+import React from "react";
 
 function PuterSessionButton() {
   const { ready, signedIn, user, loading, signIn, signOut } = usePuterAuth();
@@ -41,6 +43,8 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
   const newProject = useBuilder((s) => s.newProject);
   const mobilePane = useBuilder((s) => s.mobilePane);
   const setMobilePane = useBuilder((s) => s.setMobilePane);
+  const active = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
+  const [deployOpen, setDeployOpen] = React.useState(false);
 
   const nextTheme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
@@ -101,6 +105,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
 
       {!inEditor ? <div className="flex-1" /> : <div className="hidden flex-1 md:block" />}
 
+      {inEditor && active?.html ? <button type="button" onClick={() => setDeployOpen(true)} className="mr-1 rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 shadow-sm hover:bg-emerald-400">🚀 Deploy</button> : null}
       <Tooltip label={`ธีม: ${theme}`}>
         <Button
           variant="ghost"
@@ -120,6 +125,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
       </Link>
       <ModelSelect className="hidden md:inline-flex" />
       <PuterSessionButton />
+      {active?.html ? <DeployModal projectId={active.id} projectName={active.title} html={active.html} isOpen={deployOpen} onClose={() => setDeployOpen(false)} onSuccess={() => {}} /> : null}
     </header>
   );
 }
