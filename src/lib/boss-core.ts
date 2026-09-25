@@ -101,6 +101,26 @@ export function buildBossCorePlan(
  * runtime planning/model routing; this layer adds a higher-level control loop
  * without replacing it.
  */
+export function validateBossArtifact(raw: string, prompt = "") {
+  const html = /<!doctype html|<html[\\s>]/i.test(raw);
+  const complete = /<head[\\s>][\\s\\S]*<body[\\s>][\\s\\S]*<\\/body>[\\s>][\\s\\S]*<\\/html>/i.test(raw);
+  const hasViewport = /<meta[^>]+name=["']viewport["']/i.test(raw);
+  const hasTitle = /<title[\\s>][\\s\\S]*<\\/title>/i.test(raw);
+  const hasUi = /<button|<a\\b|<input|<nav|<main|<section/i.test(raw);
+  const hasBehavior = /<script[\\s>]|onclick=|addEventListener\\s*\\(|localStorage/i.test(raw);
+  const interactiveRequest = /button|form|search|filter|toggle|login|cart|checkout|booking|chat|dashboard|แชท|ค้นหา|ปุ่ม|ฟอร์ม|ตะกร้า|จอง|ล็อกอิน/i.test(prompt);
+  const evidence = [
+    ...(html ? ["html_detected"] : []),
+    ...(complete ? ["complete_document"] : []),
+    ...(hasViewport ? ["viewport"] : []),
+    ...(hasTitle ? ["title"] : []),
+    ...(hasUi ? ["product_ui"] : []),
+    ...(hasBehavior ? ["behavior_code"] : []),
+  ];
+  const ok = html && complete && hasViewport && hasTitle && hasUi && (!interactiveRequest || hasBehavior);
+  return { ok, html, complete, hasViewport, hasTitle, hasUi, hasBehavior, interactiveRequest, evidence };
+}
+
 export function buildBossCoreContext(plan: BossCorePlan): string {
   const runtime: BossRuntime = createBossRuntime(plan.goal);
   return [
@@ -121,6 +141,9 @@ export function buildBossCoreContext(plan: BossCorePlan): string {
     plan.mode === "clone"
       ? "CLONE CONTRACT: inspect the reference first when a real browser/web tool is available. Extract information architecture, spacing rhythm, typography direction, visual hierarchy, component patterns, responsive behavior, and interaction ideas. Then create an original implementation that follows the user's requested content and changes. Do not copy proprietary text, branding, or assets unless authorized."
       : "",
+    "MASTER TEMPLATE CONTRACT: choose information architecture before styling. Compose the product from AppShell, Header/Navigation, Hero/Overview, primary workspace, feature/content blocks, data surfaces, actions, states, and Footer when appropriate. For apps, prioritize a usable workspace over a decorative hero. For landing pages, prioritize narrative hierarchy and conversion. Every major block must have a reason to exist and must connect to the requested product.",
+    "INTERACTION CONTRACT: primary controls must have real behavior. Use anchors, client-side state, localStorage, filtering, navigation, dialogs, forms, or feedback states where appropriate. Do not leave decorative buttons pretending to work.",
+    "QUALITY CONTRACT: first render must be a finished product surface, not a wireframe. Avoid one giant vertical block when the product naturally needs cards, grids, split layouts, tabs, sidebars, or distinct sections.",
     "Do not replace the existing Boss Engine. This is an additional control layer.",
     "=== END BOSS CORE ===",
   ].filter(Boolean).join("\n");
