@@ -3,36 +3,24 @@ import { GuPanuMark } from "./logo";
 import { PromptBox } from "./prompt-box";
 import { FeaturedFeed } from "./featured-feed";
 import { EXAMPLES } from "@/lib/builder/templates";
-import { pickStarters, STARTERS } from "@/lib/builder/starters";
 import { useBuilder } from "@/lib/builder/store";
+import { buildWorldPlan } from "@/lib/boss-unified-core";
 
-const TYPEWORDS = ["ความคิดของคุณ", "SaaS Dashboard", "AI Tool", "Mobile App", "Landing Page"];
+const TYPEWORDS = ["ความฝันของคุณ", "ธุรกิจของคุณ", "ชีวิตของคุณ", "โลกใหม่ของคุณ"];
 
-const QUICK_STARTS = [
-  ["📋", "Kanban board", "[Web App]"],
-  ["🎮", "Memory game", "[Game]"],
-  ["⏱️", "Pomodoro timer", "[Tool]"],
-  ["🤖", "AI knowledge base", "[AI App]"],
-];
-
-const NEXT_ACTIONS = [
-  ["สร้างแอปต่อ", "สร้างแอปจากไอเดียใหม่", "สร้างแอปใหม่ให้ฉัน"],
-  ["แก้ไขแอป", "ปรับของที่มีอยู่", "แก้ไขแอปที่กำลังทำอยู่"],
-  ["เพิ่มฟีเจอร์", "ต่อยอดความสามารถ", "เพิ่มฟีเจอร์ใหม่ให้แอปนี้"],
-  ["เผยแพร่แอป", "นำขึ้นเว็บทันที", "เตรียมแอปนี้เพื่อเผยแพร่"],
+const WORLD_ACTIONS = [
+  ["🏢", "สร้างธุรกิจ", "เปลี่ยนไอเดียธุรกิจให้เป็นระบบที่ใช้งานจริง"],
+  ["🌱", "สร้างชีวิต", "สร้างเครื่องมือส่วนตัวที่ช่วยให้ชีวิตง่ายขึ้น"],
+  ["🌌", "สร้างโลกใหม่", "สร้างระบบหลายส่วนที่เชื่อมต่อและเติบโตต่อได้"],
 ] as const;
 
 export function Landing() {
   const setDraft = useBuilder((s) => s.setDraft);
-  const [starters, setStarters] = useState(() => STARTERS.slice(0, 6));
   const [sandboxId, setSandboxId] = useState(EXAMPLES[0]?.id ?? "");
   const [typeIndex, setTypeIndex] = useState(0);
   useEffect(() => { const timer = window.setInterval(() => setTypeIndex((i) => (i + 1) % TYPEWORDS.length), 2600); return () => window.clearInterval(timer); }, []);
   const sandbox = EXAMPLES.find((x) => x.id === sandboxId) ?? EXAMPLES[0];
 
-  useEffect(() => {
-    setStarters(pickStarters(6));
-  }, []);
 
   return (
     <div className="boss-app-bg relative flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-none">
@@ -53,7 +41,7 @@ export function Landing() {
             BOSSNU.SILELO · PUTER
           </div>
           <h1 className="max-w-4xl font-display text-3xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
-            Panupan สร้างให้ จาก <span className="boss-typewriter">{TYPEWORDS[typeIndex]}</span>
+            บอกความฝันมา เดี๋ยวบอสสร้างโลกให้ <span className="boss-typewriter">{TYPEWORDS[typeIndex]}</span>
           </h1>
           <p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
             ONE SYSTEM • ENDLESS POSSIBILITIES
@@ -66,9 +54,26 @@ export function Landing() {
           </div>
         </div>
 
-        <section className="mx-auto mt-6 w-full max-w-3xl" aria-labelledby="quick-prompts-title">
-          <div className="mb-2 flex items-center justify-between gap-3"><div><h2 id="quick-prompts-title" className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-300">ลองเริ่มจากไอเดีย</h2><p className="mt-1 text-xs text-zinc-500">กดแล้วใส่ Prompt ให้พร้อมใช้งานทันที</p></div><span className="text-[10px] text-zinc-600">QUICK PROMPTS</span></div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">{QUICK_STARTS.map(([icon, label, tag]) => <button key={label} type="button" onClick={() => setDraft(`สร้าง ${label} แบบทันสมัย ใช้งานได้จริง`)} className="group shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-400/30 hover:bg-white/[0.06]"><span className="mr-1.5">{icon}</span><span className="text-xs font-medium text-zinc-200">{label}</span><span className="ml-2 text-[9px] text-violet-300/70">{tag}</span></button>)}{starters.slice(0, 3).map((s) => <button key={s.label} type="button" onClick={() => setDraft(s.prompt)} className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs text-zinc-300 transition-all duration-300 hover:scale-[1.02] hover:border-violet-400/30 hover:text-white">{s.label}</button>)}</div>
+        <section className="mx-auto mt-7 w-full max-w-4xl" aria-labelledby="world-actions-title">
+          <div className="mb-4 text-center">
+            <h2 id="world-actions-title" className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-300">เลือกโลกที่อยากสร้าง</h2>
+            <p className="mt-1 text-xs text-zinc-500">ไม่ต้องรู้ภาษาโปรแกรม บอสจะถามสิ่งสำคัญก่อนเริ่มลงมือ</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {WORLD_ACTIONS.map(([icon, title, detail]) => (
+              <button key={title} type="button"
+                onClick={() => {
+                  const prompt = title === "สร้างธุรกิจ" ? "ฉันอยากสร้างธุรกิจ ช่วยถามฉัน 3 คำถามสำคัญก่อน แล้วออกแบบระบบที่ต้องใช้ให้ครบ" : title === "สร้างชีวิต" ? "ฉันอยากสร้างเครื่องมือสำหรับชีวิต ช่วยถามฉัน 3 คำถามสำคัญก่อน แล้วออกแบบระบบที่ต้องใช้ให้ครบ" : "ฉันอยากสร้างโลกใหม่ ช่วยถามฉัน 3 คำถามสำคัญก่อน แล้วแตกเป็นระบบที่เชื่อมต่อกันให้ครบ";
+                  const plan = buildWorldPlan(prompt);
+                  setDraft(prompt + "\n\n[World surfaces: " + plan.surfaces.join(", ") + "]");
+                }}
+                className="group min-h-36 rounded-2xl border border-white/[0.08] bg-white/[0.035] p-5 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-violet-400/40 hover:bg-white/[0.07] active:scale-[0.99]">
+                <div className="text-3xl">{icon}</div>
+                <div className="mt-5 text-lg font-semibold text-white">{title}</div>
+                <div className="mt-1 text-xs leading-5 text-zinc-500 group-hover:text-zinc-400">{detail}</div>
+              </button>
+            ))}
+          </div>
         </section>
 
         {sandbox ? (
@@ -83,28 +88,6 @@ export function Landing() {
             </div>
           </section>
         ) : null}
-
-        <section className="mx-auto mt-7 w-full max-w-3xl" aria-labelledby="next-action-title">
-          <div className="mb-3 text-center">
-            <h2 id="next-action-title" className="text-sm font-medium text-zinc-200">
-              แล้วอยากให้บอสทำอะไรต่อ?
-            </h2>
-            <p className="mt-1 text-xs text-zinc-500">เลือกได้เลย หรือพิมพ์สิ่งที่ต้องการในช่องด้านบน</p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {NEXT_ACTIONS.map(([title, detail, prompt]) => (
-              <button
-                key={title}
-                type="button"
-                onClick={() => setDraft(prompt)}
-                className="boss-bento group rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-3 text-left backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-400/30 hover:bg-white/[0.045] active:scale-[0.98]"
-              >
-                <div className="text-sm font-medium text-zinc-100">{title}</div>
-                <div className="mt-1 text-[11px] leading-4 text-zinc-500 transition-colors group-hover:text-zinc-400">{detail}</div>
-              </button>
-            ))}
-          </div>
-        </section>
 
         <div className="mx-auto mt-6 grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-3">
           {[
@@ -121,9 +104,9 @@ export function Landing() {
         </div>
 
         <section className="boss-ecosystem mx-auto mt-8 w-full max-w-3xl" aria-label="Technology ecosystem">
-          <div className="boss-ecosystem-label">TECHNOLOGY ECOSYSTEM</div>
+          <div className="boss-ecosystem-label">BOSSNU UNIFIED · WORLD OS</div>
           <div className="boss-ecosystem-track">
-            {["PUTER", "GITHUB", "VERCEL", "NETLIFY", "BOLT.NEW"].map((brand) => (
+            {["PUTER OS", "GITHUB MEMORY", "VERCEL PORTAL", "NETLIFY PORTAL", "SILELO CORE"].map((brand) => (
               <span key={brand} className="boss-brand-pill">
                 <span className="boss-brand-dot" aria-hidden="true" />
                 {brand}
