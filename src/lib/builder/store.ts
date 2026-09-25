@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { uid } from "@/lib/utils";
-import { createReactViteSource } from "./project-source";
+import { createProjectSource } from "./project-source";
 import { DEFAULT_MODEL_ID } from "@/lib/models";
 import type {
   ChatMessage,
@@ -29,7 +29,7 @@ function emptyProject(partial?: Partial<Project>): Project {
     title: "Untitled",
     messages: [],
     html: "",
-    source: createReactViteSource(now),
+    source: createProjectSource(now),
     versions: [],
     suggestions: [],
     createdAt: now,
@@ -141,7 +141,7 @@ export const useBuilder = create<BuilderState>()(
           selectMode: false,
         }),
       createAndActivate: (seed) => {
-        const project = emptyProject({ source: createReactViteSource(), ...seed });
+        const project = emptyProject({ source: createProjectSource(), ...seed });
         set((s) => ({
           projects: [project, ...s.projects].slice(0, MAX_PROJECTS),
           activeId: project.id,
