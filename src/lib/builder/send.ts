@@ -143,7 +143,6 @@ export async function sendPrompt(text: string) {
           }
           patched = result.content;
         }
-        const repairedCheck = validateBossArtifact(patched, trimmed);
         finalFull = injectBossnuRuntime(patched, { telemetry: true });
         artifact = validateBossArtifact(finalFull, trimmed);
         const repairedHtml = extractHtml(finalFull);
@@ -153,8 +152,8 @@ export async function sendPrompt(text: string) {
           store.setMobilePane("preview");
           activity("อัปเดต Preview หลังซ่อม", "working", `Preview ใช้ artifact จากรอบซ่อม ${healingAttempt}`);
         }
-        if (repairedCheck.ok) {
-          activity("Patch + ตรวจซ้ำผ่าน", "verifying", repairedCheck.evidence.join(", "));
+        if (artifact.ok) {
+          activity("Patch + ตรวจซ้ำผ่าน", "verifying", artifact.evidence.join(", "));
           break;
         }
       } catch (recoveryError) {
