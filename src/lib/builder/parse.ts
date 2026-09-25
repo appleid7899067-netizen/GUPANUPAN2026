@@ -3,6 +3,16 @@ import type { Suggestion } from "./types";
 const HTML_FENCE = /```(?:html|htm|xml)?\s*\n([\s\S]*?)```/gi;
 const SUGGEST_FENCE = /```suggestions\s*\n([\s\S]*?)```/i;
 
+/** Hide provider reasoning/event envelopes from the user-facing chat. */
+export function sanitizeModelText(raw: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/\{\s*"type"\s*:\s*"(?:reasoning|thinking)(?:\.delta)?"[\s\S]*?\}\s*/gi, "")
+    .replace(/^\s*\{\s*"reasoning"\s*:\s*"[^\n]*"\s*\}\s*$/gim, "")
+    .replace(/\{\s*"type"\s*:\s*"usage"[\s\S]*$/i, "")
+    .trim();
+}
+
 function looksLikeHtml(s: string) {
   const t = s.trim();
   return (
@@ -74,7 +84,7 @@ export function extractSuggestions(raw: string): Suggestion[] {
 }
 
 export function extractDisplayText(raw: string): string {
-  let text = raw
+  let text = sanitizeModelText(raw)
     .replace(SUGGEST_FENCE, "")
     .replace(/\`\`\`(?:html|htm|xml)?\\s*\\n[\\s\\S]*?\`\`\`/gi, "")
     .trim();
