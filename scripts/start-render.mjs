@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
 const nodeServer = join(root, ".output/server/index.mjs");
 const vercelServer = join(root, ".vercel/output/functions/__server.func/index.mjs");
 
