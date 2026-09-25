@@ -24,6 +24,7 @@ function looksLikeHtml(s: string) {
 }
 
 export function extractHtml(raw: string): string | null {
+  raw = sanitizeModelText(raw);
   const fences: string[] = [];
   let m: RegExpExecArray | null;
   const re = new RegExp(HTML_FENCE.source, "gi");
@@ -41,6 +42,7 @@ export function extractHtml(raw: string): string | null {
 }
 
 export function extractPages(raw: string): Array<{ title: string; path: string; html: string }> {
+  raw = sanitizeModelText(raw);
   const pages: Array<{ title: string; path: string; html: string }> = [];
   const re = new RegExp(HTML_FENCE.source, "gi");
   let match: RegExpExecArray | null;
