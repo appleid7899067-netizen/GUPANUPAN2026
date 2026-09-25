@@ -64,6 +64,7 @@ export function PreviewPane() {
   const selectMode = useBuilder((s) => s.selectMode);
   const setSelectMode = useBuilder((s) => s.setSelectMode);
   const restoreVersion = useBuilder((s) => s.restoreVersion);
+  const lifecycleState = useBuilder((s) => s.lifecycleState);
   const setDraft = useBuilder((s) => s.setDraft);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
@@ -164,9 +165,42 @@ export function PreviewPane() {
 
   async function publishSite() {
     if (!current.html.trim() || publishBusy) return;
+
+    // Publishing is a delivery action, not another preview button. Require the
+    // same browser verification gate used by the builder before sending the
+    // artifact to Puter Hosting.
+    if (lifecycleState !== "DONE") {
+      setDownloadStatus("ยังเผยแพร่ไม่ได้: ต้องสร้าง → Preview → Verify ให้ผ่านก่อน");
+      setTimeout(() => setDownloadStatus(null), 4500);
+      return;
+    }
+
     setPublishBusy(true);
-    setDownloadStatus("กำลังเผยแพร่ไป Puter .site...");
+    setDownloadStatus("กำลังตรวจสอบแอปก่อนเผยแพร่...");
     try {
+      const response = await fetch("/api/sandbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html: current.html, timeoutMs: 8000 }),
+      });
+      const verification = (await response.json().catch(() => null)) as
+        | { ok?: boolean; error?: string; pageErrors?: string[]; consoleErrors?: string[] }
+        | null;
+
+      if (!response.ok || !verification?.ok) {
+        const evidence = [
+          verification?.error,
+          ...(verification?.pageErrors ?? []),
+          ...(verification?.consoleErrors ?? []),
+        ].filter(Boolean).join(" | ");
+        throw new Error(
+          evidence
+            ? `ตรวจ Sandbox ไม่ผ่าน: ${evidence.slice(0, 500)}`
+            : `ตรวจ Sandbox ไม่ผ่าน (HTTP ${response.status})`,
+        );
+      }
+
+      setDownloadStatus("ตรวจผ่านแล้ว กำลังเผยแพร่ไป Puter .site...");
       const result = await publishToPuterSite(current.html, current.title);
       setDownloadStatus(`เผยแพร่แล้ว: ${result.url}`);
       window.open(result.url, "_blank", "noopener");
@@ -298,8 +332,10 @@ export function PreviewPane() {
               size="icon-sm"
               aria-label="เผยแพร่ Puter .site"
               onClick={() => void publishSite()}
-              disabled={!project.html || publishBusy}
-              className={publishBusy ? "text-accent" : "text-muted"}
+              disabled={!project.html || publishBusy || lifecycleState !== "DONE"}
+              className={cn(
+                publishBusy ? "text-accent" : lifecycleState === "DONE" ? "text-muted" : "text-subtle",
+              )}
             >
               <Globe2 />
             </Button>
