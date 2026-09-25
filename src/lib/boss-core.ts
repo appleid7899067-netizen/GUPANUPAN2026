@@ -1,0 +1,127 @@
+import { classifyBossIntent, createBossRuntime, type BossIntent, type BossRuntime } from "@/lib/boss-engine";
+
+export type BossCoreMode = "chat" | "build" | "edit" | "research" | "debug" | "clone";
+
+export type BossCorePlan = {
+  mode: BossCoreMode;
+  intent: BossIntent;
+  goal: string;
+  referenceUrl?: string;
+  phases: string[];
+  context: string[];
+  constraints: string[];
+  verify: string[];
+};
+
+const URL_RE = /https?:\/\/[^\s<>"']+/i;
+
+function cleanUrl(value: string): string | undefined {
+  const match = value.match(URL_RE);
+  if (!match) return undefined;
+  return match[0].replace(/[),.;]+$/, "");
+}
+
+function detectMode(prompt: string, intent: BossIntent, referenceUrl?: string): BossCoreMode {
+  const t = prompt.toLowerCase();
+  if (referenceUrl && /clone|โคลน|เหมือน|ถอดแบบ|อ้างอิง|reference/.test(t)) return "clone";
+  if (intent === "debug") return "debug";
+  if (intent === "research" || intent === "search") return "research";
+  if (intent === "edit") return "edit";
+  if (intent === "build") return "build";
+  return "chat";
+}
+
+function inferContext(prompt: string, history: { role: string; content: string }[], html: string): string[] {
+  const context: string[] = [];
+  if (html.trim()) context.push("Existing generated app is available. Preserve working behavior and modify only what the user requested.");
+  const recent = history.slice(-6).map((m) => m.content).filter(Boolean);
+  if (recent.length) context.push("Recent conversation context is authoritative for continuity: " + recent.join(" | ").slice(0, 4500));
+  if (/mobile|มือถือ|โทรศัพท์/.test(prompt.toLowerCase())) context.push("Mobile-first constraints are explicit.");
+  if (/desktop|คอม|เดสก์ท็อป/.test(prompt.toLowerCase())) context.push("Desktop layout constraints are explicit.");
+  return context;
+}
+
+function inferConstraints(prompt: string): string[] {
+  const t = prompt.toLowerCase();
+  const out = [
+    "Preserve existing working features unless explicitly asked to remove them.",
+    "Do not invent completed actions or verification evidence.",
+    "Use the user's concrete nouns, audience, content, and requested behavior as the source of truth.",
+  ];
+  if (/ไม่เอา|without|no /.test(t)) out.push("Honor explicit exclusions in the user's request.");
+  if (/รูป|image|ภาพ/.test(t)) out.push("Treat requested imagery as structural content, not empty placeholders.");
+  if (/ลิงก์|url|website|เว็บ/.test(t)) out.push("Treat supplied URLs as reference/context inputs, not as permission to claim a site was cloned unless it was actually inspected.");
+  return out;
+}
+
+function inferPhases(mode: BossCoreMode): string[] {
+  switch (mode) {
+    case "clone":
+      return ["Understand request", "Inspect reference", "Extract structure and visual language", "Adapt content and behavior", "Build", "Preview", "Verify"];
+    case "research":
+      return ["Understand request", "Search/inspect", "Synthesize evidence", "Apply findings", "Verify"];
+    case "debug":
+      return ["Reproduce/inspect", "Diagnose", "Change smallest relevant part", "Run/observe", "Verify"];
+    case "edit":
+      return ["Understand requested delta", "Preserve existing app", "Edit", "Preview", "Verify"];
+    case "build":
+      return ["Understand product", "Plan information architecture", "Build", "Preview", "Verify"];
+    default:
+      return ["Understand request", "Respond"];
+  }
+}
+
+export function buildBossCorePlan(
+  prompt: string,
+  history: { role: string; content: string }[] = [],
+  html = "",
+): BossCorePlan {
+  const intent = classifyBossIntent(prompt);
+  const referenceUrl = cleanUrl(prompt);
+  const mode = detectMode(prompt, intent, referenceUrl);
+  return {
+    mode,
+    intent,
+    goal: prompt.trim(),
+    referenceUrl,
+    phases: inferPhases(mode),
+    context: inferContext(prompt, history, html),
+    constraints: inferConstraints(prompt),
+    verify: [
+      "Verify the generated artifact is complete before saving it.",
+      "Verify requested interactions are represented by real behavior.",
+      "Verify explicit user requirements were preserved.",
+      "Never report success from model text alone.",
+    ],
+  };
+}
+
+/**
+ * Additive agent-core contract. Existing Boss Engine remains the source of
+ * runtime planning/model routing; this layer adds a higher-level control loop
+ * without replacing it.
+ */
+export function buildBossCoreContext(plan: BossCorePlan): string {
+  const runtime: BossRuntime = createBossRuntime(plan.goal);
+  return [
+    "=== BOSS CORE ===",
+    "Operating principle: understand -> plan -> act -> observe -> recover -> verify.",
+    "Mode: " + plan.mode,
+    "Intent: " + plan.intent,
+    "Goal: " + plan.goal,
+    plan.referenceUrl ? "Reference URL: " + plan.referenceUrl : "Reference URL: none",
+    "Phases: " + plan.phases.join(" -> "),
+    "Existing Boss Engine tier: " + runtime.tier,
+    "Core context:",
+    ...plan.context.map((x) => "- " + x),
+    "Core constraints:",
+    ...plan.constraints.map((x) => "- " + x),
+    "Verification gate:",
+    ...plan.verify.map((x) => "- " + x),
+    plan.mode === "clone"
+      ? "CLONE CONTRACT: inspect the reference first when a real browser/web tool is available. Extract information architecture, spacing rhythm, typography direction, visual hierarchy, component patterns, responsive behavior, and interaction ideas. Then create an original implementation that follows the user's requested content and changes. Do not copy proprietary text, branding, or assets unless authorized."
+      : "",
+    "Do not replace the existing Boss Engine. This is an additional control layer.",
+    "=== END BOSS CORE ===",
+  ].filter(Boolean).join("\n");
+}
