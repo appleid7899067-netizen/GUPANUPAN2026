@@ -64,7 +64,8 @@ export function PreviewPane() {
   const restoreVersion = useBuilder((s) => s.restoreVersion);
   const setDraft = useBuilder((s) => s.setDraft);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);\n  const [copied, setCopied] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [publishBusy, setPublishBusy] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(true);
   const [codeKind, setCodeKind] = useState<"html" | "markdown" | "javascript" | "implementation">("html");
@@ -165,7 +166,15 @@ export function PreviewPane() {
     }
   }
 
-  async function copyCode() {\n    const source = codeKind === "html" ? (activePage?.html || current.html) : codeKind === "markdown" ? (activePage?.markdown || current.markdown || "") : codeKind === "javascript" ? (activePage?.javascript || current.javascript || "") : (activePage?.implementation || current.implementation || current.html);\n    if (!source) return;\n    await navigator.clipboard?.writeText(source);\n    setCopied(true);\n    setTimeout(() => setCopied(false), 1600);\n  }\n\n  function openNew() {
+  async function copyCode() {
+    const source = codeKind === "html" ? (activePage?.html || current.html) : codeKind === "markdown" ? (activePage?.markdown || current.markdown || "") : codeKind === "javascript" ? (activePage?.javascript || current.javascript || "") : (activePage?.implementation || current.implementation || current.html);
+    if (!source) return;
+    await navigator.clipboard?.writeText(source);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  }
+
+  function openNew() {
     const blob = new Blob([current.html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank", "noopener");
@@ -336,7 +345,8 @@ export function PreviewPane() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-end border-b border-border bg-muted-fill/30 px-2 py-1"><Button variant="ghost" size="sm" onClick={() => void copyCode()} className="h-7 text-[11px]">{copied ? "✓ คัดลอกแล้ว" : "Copy Code"}</Button></div>\n            <pre className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed text-fg">
+            <div className="flex items-center justify-end border-b border-border bg-muted-fill/30 px-2 py-1"><Button variant="ghost" size="sm" onClick={() => void copyCode()} className="h-7 text-[11px]">{copied ? "✓ คัดลอกแล้ว" : "Copy Code"}</Button></div>
+            <pre className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed text-fg">
               {codeKind === "html"
                 ? (activePage?.html || project.html)
                 : codeKind === "markdown"
