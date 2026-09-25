@@ -104,7 +104,7 @@ export async function sendPrompt(text: string) {
     const implementation = extractImplementation(finalFull, nextHtml ?? "");
     const generatedPages = extractPages(finalFull);
 
-    if (!validation.ok && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
+    if (!finalVerified && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
       activity(
         "กำลังแก้ไขปัญหา",
