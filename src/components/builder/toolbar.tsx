@@ -17,7 +17,7 @@ function PuterSessionButton() {
       <button
         type="button"
         onClick={() => void signOut()}
-        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:text-fg"
+        className="rounded-full border border-border px-3 py-1 text-xs text-muted transition-all duration-300 hover:scale-[1.02] hover:text-fg"
         title={user?.username ?? "Puter"}
       >
         {user?.username ? `@${user.username}` : "Puter"} · ออก
@@ -50,7 +50,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1 px-2">
+    <header className="flex h-12 shrink-0 items-center gap-1 border-b border-white/[0.06] bg-zinc-950/55 px-2 backdrop-blur-2xl supports-[backdrop-filter]:bg-zinc-950/40">
       <Tooltip label={inEditor ? "ย้อนกลับ" : "กลับ"}>
         <Button
           variant="ghost"
