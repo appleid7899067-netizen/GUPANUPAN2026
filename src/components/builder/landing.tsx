@@ -6,7 +6,7 @@ import { EXAMPLES } from "@/lib/builder/templates";
 import { pickStarters, STARTERS } from "@/lib/builder/starters";
 import { useBuilder } from "@/lib/builder/store";
 
-const TYPEWORDS = ["ความคิดของคุณ", "SaaS Dashboard", "AI Tool", "Mobile App", "Landing Page"];\n\nconst NEXT_ACTIONS = [
+const TYPEWORDS = ["ความคิดของคุณ", "SaaS Dashboard", "AI Tool", "Mobile App", "Landing Page"];\n\nconst QUICK_STARTS = [\n  ["📋", "Kanban board", "[Web App]"],\n  ["🎮", "Memory game", "[Game]"],\n  ["⏱️", "Pomodoro timer", "[Tool]"],\n  ["🤖", "AI knowledge base", "[AI App]"],\n];\n\nconst NEXT_ACTIONS = [
   ["สร้างแอปต่อ", "สร้างแอปจากไอเดียใหม่", "สร้างแอปใหม่ให้ฉัน"],
   ["แก้ไขแอป", "ปรับของที่มีอยู่", "แก้ไขแอปที่กำลังทำอยู่"],
   ["เพิ่มฟีเจอร์", "ต่อยอดความสามารถ", "เพิ่มฟีเจอร์ใหม่ให้แอปนี้"],
@@ -57,7 +57,7 @@ export function Landing() {
 
         <section className="mx-auto mt-6 w-full max-w-3xl" aria-labelledby="quick-prompts-title">
           <div className="mb-2 flex items-center justify-between gap-3"><div><h2 id="quick-prompts-title" className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-300">ลองเริ่มจากไอเดีย</h2><p className="mt-1 text-xs text-zinc-500">กดแล้วใส่ Prompt ให้พร้อมใช้งานทันที</p></div><span className="text-[10px] text-zinc-600">QUICK PROMPTS</span></div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">{starters.slice(0, 6).map((s) => <button key={s.label} type="button" onClick={() => setDraft(s.prompt)} className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs text-zinc-300 hover:border-violet-400/30 hover:text-white">{s.label}</button>)}</div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">{QUICK_STARTS.map(([icon, label, tag]) => <button key={label} type="button" onClick={() => setDraft(`สร้าง ${label} แบบทันสมัย ใช้งานได้จริง`)} className="group shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-400/30 hover:bg-white/[0.06]"><span className="mr-1.5">{icon}</span><span className="text-xs font-medium text-zinc-200">{label}</span><span className="ml-2 text-[9px] text-violet-300/70">{tag}</span></button>)}{starters.slice(0, 3).map((s) => <button key={s.label} type="button" onClick={() => setDraft(s.prompt)} className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs text-zinc-300 transition-all duration-300 hover:scale-[1.02] hover:border-violet-400/30 hover:text-white">{s.label}</button>)}</div>
         </section>
 
         {sandbox ? (
