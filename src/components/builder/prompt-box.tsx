@@ -1,4 +1,4 @@
-import { ArrowUp, Square, Paperclip, Mic, WandSparkles, Sparkles } from "lucide-react";
+import { ArrowUp, Square, Paperclip, Mic, WandSparkles, Sparkles, Lightbulb, Users, ListChecks, StickyNote } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,15 @@ export function PromptBox({ large, placeholder = "บอกความฝัน
   const [exampleIndex, setExampleIndex] = useState(0);
   const [listening, setListening] = useState(false);
   const [mode, setMode] = useState<"fast" | "quality">("fast");
+  const [captureMode, setCaptureMode] = useState<"general" | "meeting" | "idea" | "task">("general");
+  const [captureOpen, setCaptureOpen] = useState(false);
+
+  const captureModes = {
+    general: { label: "ทั่วไป", hint: "ให้บอสจัดโครงสร้างเอง", icon: StickyNote },
+    meeting: { label: "ประชุม", hint: "ประเด็น · มติ · งานต่อ", icon: Users },
+    idea: { label: "ไอเดีย", hint: "แตกแนวคิดและโอกาสต่อยอด", icon: Lightbulb },
+    task: { label: "งาน", hint: "เป้าหมาย · ขั้นตอน · เช็กผล", icon: ListChecks },
+  } as const;
 
   useEffect(() => {
     const timer = window.setInterval(() => setExampleIndex((i) => (i + 1) % PROMPT_EXAMPLES.length), 2600);
@@ -44,10 +53,18 @@ export function PromptBox({ large, placeholder = "บอกความฝัน
 
   const canSend = draft.trim().length > 0 && !generating;
 
+  function applyCaptureMode() {
+    setCaptureOpen((open) => !open);
+  }
+
   function enhancePrompt() {
     const value = draft.trim();
     if (!value) return;
-    setDraft(`${value}. Build this as a polished production-ready ${mode === "quality" ? "high-quality" : "fast"} web app with responsive layout, clear navigation, reusable components, real interactions, loading/empty/error states, and a refined visual system.`);
+    const capture = captureModes[captureMode];
+    const contextInstruction = captureMode === "general"
+      ? ""
+      : ` Work in ${capture.label.toLowerCase()} capture mode: ${capture.hint}. Extract the useful structure automatically and keep the result actionable.`;
+    setDraft(`${value}. Build this as a polished production-ready ${mode === "quality" ? "high-quality" : "fast"} web app with responsive layout, clear navigation, reusable components, real interactions, loading/empty/error states, and a refined visual system.${contextInstruction}`);
     requestAnimationFrame(() => ref.current?.focus());
   }
 
@@ -91,12 +108,42 @@ export function PromptBox({ large, placeholder = "บอกความฝัน
           e.currentTarget.value = "";
         }}
       />
+      {captureOpen ? (
+        <div className="mb-2 rounded-2xl border border-white/[0.07] bg-white/[0.035] p-2 backdrop-blur-xl">
+          <div className="mb-1.5 flex items-center justify-between px-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle">SMART CAPTURE</span>
+            <span className="text-[10px] text-muted">เลือกบริบท แล้วบอสจัดโครงให้</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {Object.entries(captureModes).map(([key, item]) => {
+              const Icon = item.icon;
+              const selected = captureMode === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { setCaptureMode(key as typeof captureMode); setCaptureOpen(false); requestAnimationFrame(() => ref.current?.focus()); }}
+                  className={cn(
+                    "flex min-w-0 flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-center transition-all",
+                    selected ? "bg-accent/15 text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-accent)_25%,transparent)]" : "text-muted hover:bg-white/[0.06] hover:text-fg",
+                  )}
+                  aria-pressed={selected}
+                >
+                  <Icon className="size-4" />
+                  <span className="truncate text-[10px] font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
       <div className="prompt-toolbar mt-2 flex items-center gap-1 rounded-xl px-1.5 py-1">
+        <Button type="button" variant="ghost" size="icon-sm" aria-label="โหมดจับข้อมูลอัจฉริยะ" onClick={applyCaptureMode} className={cn("text-muted hover:text-fg", captureOpen && "text-accent")}><StickyNote /></Button>
         <Button type="button" variant="ghost" size="icon-sm" aria-label="แนบภาพ" onClick={() => fileRef.current?.click()} className="text-muted hover:text-fg"><Paperclip /></Button>
         <Button type="button" variant="ghost" size="icon-sm" aria-label="ขยาย Prompt ด้วย AI" onClick={enhancePrompt} disabled={!draft.trim()} className="text-muted hover:text-accent"><WandSparkles /></Button>
         <Button type="button" variant="ghost" size="icon-sm" aria-label="สั่งงานด้วยเสียง" onClick={startVoice} className={cn("text-muted hover:text-fg", listening && "text-accent")}><Mic /></Button>
         <button type="button" onClick={() => setMode(mode === "fast" ? "quality" : "fast")} className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium text-muted transition hover:bg-white/[0.09] hover:text-fg"><Sparkles className="size-3" /> {mode === "fast" ? "Fast" : "High Quality"}</button>
-        <span className="ml-auto text-[10px] text-subtle">{listening ? "กำลังฟัง…" : "Enter เพื่อสร้าง"}</span>
+        <span className="ml-auto hidden text-[10px] text-subtle sm:inline">{listening ? "กำลังฟัง…" : captureMode !== "general" ? `โหมด ${captureModes[captureMode].label}` : "Enter เพื่อสร้าง"}</span>
         <Button size="icon-sm" disabled={!canSend} aria-label={generating ? "Building" : "Send"} onClick={() => void sendPrompt(draft)} className="rounded-full">
           {generating ? <Square className="size-3 fill-current" /> : <ArrowUp className="size-4" />}
         </Button>
