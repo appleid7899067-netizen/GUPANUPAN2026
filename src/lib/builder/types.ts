@@ -5,6 +5,16 @@ export type Suggestion = {
   prompt: string;
 };
 
+export type DocumentContext = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  text?: string;
+  status: "ready" | "metadata";
+  createdAt: number;
+};
+
 export type ChatMessage = {
   id: string;
   role: ChatRole;
@@ -43,6 +53,7 @@ export type Project = {
   pages?: AppPage[];
   versions: Version[];
   suggestions: Suggestion[];
+  documents?: DocumentContext[];
   lifecycleState?: BuilderLifecycleState;
   createdAt: number;
   updatedAt: number;
