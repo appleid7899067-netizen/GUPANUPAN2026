@@ -44,14 +44,69 @@ export type BossPatch = {
   reason: string;
 };
 
-export type HealingAttempt = {
+export type RepairEvidence = {
   attempt: number;
+  parentAttemptId?: string;
+  error: string;
+  errorClass: ErrorClass;
+  classifyConfidence: number;
+  patch: BossPatch[];
+  patchSizeLines: number;
+  previewUpdated: boolean;
+  verification: { passed: boolean; evidence: string[] };
+  durationMs: number;
+  rollbackPointer?: string;
+};
+
+export type HealingAttempt = RepairEvidence & {
   maxAttempts: number;
   diagnosis: ErrorDiagnosis;
   snippets: TargetedSnippet[];
   patches: BossPatch[];
   verified: boolean;
 };
+
+export type RepairBudgetDecision = "auto-patch" | "auto-patch-guard" | "strategy-change" | "escalate";
+
+export function repairBudgetDecision(attempt: number): RepairBudgetDecision {
+  if (attempt <= 1) return "auto-patch";
+  if (attempt === 2) return "auto-patch-guard";
+  if (attempt === 3) return "strategy-change";
+  return "escalate";
+}
+
+export function patchSizeLines(patches: BossPatch[]): number {
+  return patches.reduce((total, patch) => total + Math.max(
+    patch.search.split("\n").length,
+    patch.replace.split("\n").length,
+  ), 0);
+}
+
+export function createRepairEvidence(input: {
+  attempt: number;
+  parentAttemptId?: string;
+  error: string;
+  diagnosis: ErrorDiagnosis;
+  patches: BossPatch[];
+  previewUpdated: boolean;
+  verification: { passed: boolean; evidence: string[] };
+  durationMs: number;
+  rollbackPointer?: string;
+}): RepairEvidence {
+  return {
+    attempt: input.attempt,
+    parentAttemptId: input.parentAttemptId,
+    error: input.error,
+    errorClass: input.diagnosis.classification,
+    classifyConfidence: input.diagnosis.classification === "unknown" ? 0.35 : 0.92,
+    patch: input.patches,
+    patchSizeLines: patchSizeLines(input.patches),
+    previewUpdated: input.previewUpdated,
+    verification: input.verification,
+    durationMs: input.durationMs,
+    rollbackPointer: input.rollbackPointer,
+  };
+}
 
 export const MAX_HEALING_ATTEMPTS = 3;
 
