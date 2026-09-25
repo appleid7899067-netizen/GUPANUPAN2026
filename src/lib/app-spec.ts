@@ -4,8 +4,12 @@ export type AppFeature = {
   description: string;
 };
 
+export type AppRuntime = "static-preview" | "browser-node" | "remote-node";
+
 export type AppSpec = {
   goal: string;
+  intent: string;
+  runtime: AppRuntime;
   features: AppFeature[];
   ui: {
     style: string;
@@ -149,6 +153,14 @@ function inferVisualAssets(prompt: string, template: AppSpec["ui"]["template"]):
   return { hero: true, sectionImages: 3, galleryImages: 3, ctaImage: true };
 }
 
+function inferRuntime(prompt: string, template: AppSpec["ui"]["template"]): AppRuntime {
+  const t = prompt.toLowerCase();
+  if (/node|npm|react|next|vite|backend|server|webcontainer|เวอร์ชันแพ็กเกจ|ติดตั้งแพ็กเกจ/.test(t)) return "browser-node";
+  if (/database|postgres|mysql|api|backend|graphql|rest|server|ฐานข้อมูล/.test(t)) return "remote-node";
+  if (template === "dashboard" || template === "app") return "browser-node";
+  return "static-preview";
+}
+
 function inferDataStrategy(prompt: string, hasExistingHtml: boolean): AppSpec["data"]["strategy"] {
   const t = prompt.toLowerCase();
   if (/database|postgres|mysql|ฐานข้อมูล/.test(t)) return "database";
@@ -164,11 +176,15 @@ export function compileAppSpec(
   const goal = prompt.trim();
   const hasExistingHtml = Boolean(options.hasExistingHtml);
 
+  const template = inferTemplate(goal);
+  const intent = inferIntent(goal);
+  const runtime = inferRuntime(goal, template);
+
   return {
     goal,
+    intent,
+    runtime,
     features: inferFeatures(goal),
-    // Keep the user's actual intent available to the generation contract.
-    intent: inferIntent(goal),
     ui: {
       style: inferStyle(goal),
       colors: unique(
@@ -177,9 +193,9 @@ export function compileAppSpec(
         /blue|น้ำเงิน/i.test(goal) ? ["blue"] : ["neutral"],
       ),
       responsive: true,
-      template: inferTemplate(goal),
-      composition: inferComposition(goal, inferTemplate(goal), inferStyle(goal)),
-      visualAssets: inferVisualAssets(goal, inferTemplate(goal)),
+      template,
+      composition: inferComposition(goal, template, inferStyle(goal)),
+      visualAssets: inferVisualAssets(goal, template),
     },
     data: { strategy: inferDataStrategy(goal, hasExistingHtml) },
     constraints: [
@@ -268,6 +284,7 @@ export function buildAppSpecPrompt(spec: AppSpec, existingHtml: boolean): string
     `Blocks: ${spec.ui.composition.blocks.join(" → ")}`,
     `Responsive: ${spec.ui.responsive ? "yes" : "no"}`,
     `Data strategy: ${spec.data.strategy}`,
+    `Runtime strategy: ${spec.runtime}`,
     "Core features (maximum 5):",
     featureLines,
     "Constraints:",
