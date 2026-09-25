@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Noto+Serif+Thai:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Kanit:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -6,7 +6,7 @@
 
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-display: "Kanit", "Figtree", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --color-bg: #09090b;
@@ -15,6 +15,7 @@
   --color-muted: #a1a1aa;
   --color-subtle: #71717a;
   --color-accent: #8b5cf6;
+  --color-cyan: #22d3ee;
   --color-accent-fg: #ffffff;
   --color-border: color-mix(in oklab, var(--color-fg) 12%, transparent);
   --color-border-strong: color-mix(in oklab, var(--color-fg) 22%, transparent);
@@ -398,4 +399,42 @@ html[data-theme="dark"] {
 }
 @media (prefers-reduced-motion: reduce) {
   .generation-star, .generation-core { animation: none; }
+}
+
+
+/* Premium AI builder layer */
+.boss-ai-hero {
+  position: relative;
+  isolation: isolate;
+}
+.boss-ai-hero::before,
+.boss-ai-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(55px);
+  opacity: .22;
+}
+.boss-ai-hero::before { width: 260px; height: 180px; left: 12%; top: 12%; background: #8b5cf6; }
+.boss-ai-hero::after { width: 220px; height: 160px; right: 12%; top: 18%; background: #22d3ee; }
+.boss-typewriter {
+  display: inline-block;
+  min-width: 9ch;
+  color: #c4b5fd;
+  border-right: 2px solid rgba(196,181,253,.7);
+  padding-right: 5px;
+  animation: boss-caret .85s steps(1) infinite;
+}
+@keyframes boss-caret { 50% { border-color: transparent; } }
+.prompt-command-glow {
+  box-shadow: 0 0 0 1px rgba(139,92,246,.12), 0 0 55px rgba(139,92,246,.12), 0 18px 70px rgba(0,0,0,.35);
+}
+.prompt-toolbar {
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+  backdrop-filter: blur(20px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .boss-typewriter { animation: none; border-right: 0; }
 }
