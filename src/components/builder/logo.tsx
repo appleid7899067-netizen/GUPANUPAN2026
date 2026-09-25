@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
-export function GuPanuMark({ className }: { className?: string }) {
+/** Primary mark — Panupan • BOSSNU */
+export function BossnuMark({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 32 32"
@@ -34,17 +35,23 @@ export function GuPanuMark({ className }: { className?: string }) {
   );
 }
 
-/** @deprecated use GuPanuMark */
-export const ForgeMark = GuPanuMark;
+/** @deprecated use BossnuMark — kept for compatibility */
+export const GuPanuMark = BossnuMark;
 
-export function GuPanuWordmark({ className }: { className?: string }) {
+/** @deprecated use BossnuMark */
+export const ForgeMark = BossnuMark;
+
+export function BossnuWordmark({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      <GuPanuMark className="size-7" />
+      <BossnuMark className="size-7" />
       <span className="font-display text-lg font-semibold tracking-tight">{BRAND.name}</span>
     </span>
   );
 }
 
-/** @deprecated use GuPanuWordmark */
-export const ForgeWordmark = GuPanuWordmark;
+/** @deprecated use BossnuWordmark — kept for compatibility */
+export const GuPanuWordmark = BossnuWordmark;
+
+/** @deprecated use BossnuWordmark */
+export const ForgeWordmark = BossnuWordmark;
