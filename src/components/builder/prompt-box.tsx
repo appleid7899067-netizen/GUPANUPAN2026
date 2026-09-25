@@ -6,6 +6,8 @@ import { useBuilder } from "@/lib/builder/store";
 import { sendPrompt } from "@/lib/builder/send";
 import { cn } from "@/lib/utils";
 
+const EMPTY_DOCUMENTS: NonNullable<import("@/lib/builder/types").Project["documents"]> = [];
+
 const PROMPT_EXAMPLES = [
   "อยากได้ระบบหอพักที่จองห้อง เก็บเงิน และมีแดชบอร์ดเจ้าของ…",
   "อยากสร้างธุรกิจร้านกาแฟที่ต่อยอดเป็น POS และสต็อกได้…",
@@ -21,7 +23,7 @@ export function PromptBox({ large, placeholder = "บอกความฝัน
   const fileRef = useRef<HTMLInputElement>(null);
   const activeId = useBuilder((s) => s.activeId);
   const addDocument = useBuilder((s) => s.addDocument);
-  const documents = useBuilder((s) => s.projects.find((x) => x.id === s.activeId)?.documents ?? []);
+  // Keep the empty fallback referentially stable. A fresh [] here makes Zustand\n  // v5 see a changed snapshot on every render and can trigger React #185.\n  const documents = useBuilder((s) => s.projects.find((x) => x.id === s.activeId)?.documents ?? EMPTY_DOCUMENTS);
   const [documentOpen, setDocumentOpen] = useState(false);
   const [exampleIndex, setExampleIndex] = useState(0);
   const [listening, setListening] = useState(false);
