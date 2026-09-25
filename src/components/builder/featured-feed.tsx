@@ -7,6 +7,7 @@ export function FeaturedFeed() {
       <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.18em] text-subtle">
         Example apps
       </h2>
+      <p className="mb-5 -mt-3 text-xs text-muted">ตัวอย่างพร้อม Preview และ Prompt สำหรับเริ่มต้น</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {EXAMPLES.map((ex) => (
           <button
@@ -27,7 +28,7 @@ export function FeaturedFeed() {
                 <h3 className="text-sm font-semibold text-fg">{ex.name}</h3>
                 <span className="text-[11px] uppercase tracking-wider text-subtle">{ex.category}</span>
               </div>
-              <p className="mt-1 text-sm leading-5 text-muted">{ex.description}</p>
+              <p className="mt-1 text-sm leading-5 text-muted">{ex.description}</p><span className="mt-3 inline-flex rounded-full bg-muted-fill px-2.5 py-1 text-[10px] font-medium text-fg">Try Prompt นี้ →</span>
             </div>
           </button>
         ))}
