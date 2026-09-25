@@ -64,19 +64,19 @@ export function ChatPanel() {
   };
 
   return (
-    <section className="boss-glass flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden overscroll-none touch-pan-y [contain:layout_paint] md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
-      <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-white/[0.06] bg-white/[0.025] px-3 py-2 backdrop-blur-2xl sm:px-4">
+    <section className="boss-glass mobile-no-blur mobile-compact-motion flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden overscroll-none touch-pan-y [contain:layout_paint] md:max-w-[26rem] md:shrink-0 lg:max-w-[28rem]">
+      <div className="mobile-no-blur flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 sm:px-4 sm:py-2">
         <span className="shrink-0 text-xs font-medium text-muted">แชท</span>
-        <div className="min-w-0 max-w-[72vw] overflow-hidden"><ModelSelect /></div>
+        <div className="min-w-0 max-w-[48vw] overflow-hidden sm:max-w-[72vw]"><ModelSelect /></div>
       </div>
       {activities.length > 0 ? <AgentActivityStrip activities={activities} active={generating} /> : null}
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 pb-5 scrollbar-none sm:px-4 sm:py-5">
-        <ol className="space-y-4">
+      <div className="boss-mobile-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 py-3 pb-4 scrollbar-none sm:px-4 sm:py-5">
+        <ol className="space-y-3">
           {project.messages.map((m) => (
             <MessageBubble key={m.id} message={m} onRetry={retryLastPrompt} canRetry={Boolean(lastUserMessage) && !generating} />
           ))}
           {generating ? (
-            <li className="generation-starfield relative overflow-hidden rounded-2xl px-1 py-2">
+            <li className="generation-starfield relative overflow-hidden rounded-xl px-1 py-1.5">
               <div className="generation-stars" aria-hidden="true">
                 {["✦", "·", "✧", "•", "✦", "·", "✧", "•", "✦", "·", "✧", "•"].map((star, i) => (
                   <span key={i} className={`generation-star generation-star-${i + 1}`}>{star}</span>
@@ -107,7 +107,7 @@ export function ChatPanel() {
                   ))}
                 </ul>
                 {live ? (
-                  <p className="max-w-[92%] text-sm leading-relaxed text-muted">{live}</p>
+                  <p className="max-w-full break-words text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">{live}</p>
                 ) : (
                   <p className="shimmer text-sm">กำลังทำงาน…</p>
                 )}
@@ -170,7 +170,7 @@ export function ChatPanel() {
           ))}
         </div>
       ) : null}
-      <div className="sticky bottom-0 z-10 shrink-0 border-t border-white/[0.06] bg-zinc-950/70 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-2xl sm:px-4">
+      <div className="mobile-no-blur sticky bottom-0 z-10 shrink-0 border-t border-white/[0.06] bg-zinc-950/95 px-2.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-2">
         <PromptBox placeholder="บอกสิ่งที่อยากเปลี่ยน…" />
       </div>
     </section>
@@ -205,7 +205,7 @@ function ChatText({ text }: { text: string }) {
       {lines.slice(0, 12).map((line, i) => (
         <span key={i} className="flex gap-2">
           <span className="shrink-0 text-accent">✦</span>
-          <span className="min-w-0">{line}</span>
+          <span className="min-w-0 break-words [overflow-wrap:anywhere]">{line}</span>
         </span>
       ))}
       {lines.length > 12 ? (
@@ -219,7 +219,7 @@ function MessageBubble({ message, onRetry, canRetry }: { message: ChatMessage; o
   if (message.role === "user") {
     return (
       <li className="flex justify-end">
-        <div className="max-w-[90%] rounded-2xl rounded-br-sm bg-accent px-4 py-2.5 text-sm leading-relaxed text-accent-fg shadow-sm transition-all duration-300 hover:shadow-md">
+        <div className="max-w-[88%] min-w-0 break-words rounded-2xl rounded-br-sm bg-accent px-3.5 py-2.5 text-sm leading-relaxed text-accent-fg shadow-sm [overflow-wrap:anywhere] sm:max-w-[90%] sm:px-4">
           {message.content}
         </div>
       </li>
@@ -229,7 +229,7 @@ function MessageBubble({ message, onRetry, canRetry }: { message: ChatMessage; o
   const retryable = canRetry && RETRY_PATTERNS.some((pattern) => pattern.test(displayText));
   return (
     <li>
-      <div className="max-w-full break-words text-sm leading-relaxed text-fg">
+      <div className="max-w-full min-w-0 break-words text-sm leading-relaxed text-fg [overflow-wrap:anywhere]">
         <ChatText text={displayText} />
         {retryable ? <button type="button" onClick={onRetry} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent transition-all duration-300 hover:scale-[1.02] hover:bg-accent/15 active:scale-[0.98]" aria-label="ลองเชื่อมต่อ AI อีกครั้ง">↻ ลองอีกครั้ง</button> : null}
       </div>
