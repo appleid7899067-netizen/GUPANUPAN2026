@@ -91,8 +91,12 @@ export async function sendPrompt(text: string) {
         console.warn("[GuPanu] Boss recovery failed", recoveryError);
       }
     }
+    // Two independent gates must pass before generated HTML is saved:
+    // 1) Boss Core verifies product completeness/behavior.
+    // 2) Boss Engine verifies the HTML document itself.
     const validation = validateHtmlArtifact(finalFull);
-    const nextHtml = validation.ok ? extractHtml(finalFull) : null;
+    const finalVerified = artifact.ok && validation.ok;
+    const nextHtml = finalVerified ? extractHtml(finalFull) : null;
     const display = extractDisplayText(finalFull);
     const suggestions = extractSuggestions(finalFull);
     const markdown = extractMarkdown(finalFull);
@@ -102,9 +106,21 @@ export async function sendPrompt(text: string) {
 
     if (!validation.ok && /ดึงข้อมูล|scrap|scrape|extract|api|สร้าง|build|เว็บ|app|html|แก้|edit/i.test(trimmed)) {
       useBuilder.getState().setGeneratingStatus("กำลังแก้ไขปัญหา");
-      activity("กำลังแก้ไขปัญหา", "fixing", validation.reason ?? "output validation failed");
+      activity(
+        "กำลังแก้ไขปัญหา",
+        "fixing",
+        !artifact.ok
+          ? "Boss Core verification failed: " + artifact.evidence.join(", ")
+          : "HTML verification failed: " + validation.evidence.join(", "),
+      );
       if (/ดึงข้อมูล|scrap|scrape|extract|api/i.test(trimmed)) {
-        rememberExtractionFailure({ target: trimmed, kind: "VALIDATION", cause: validation.reason ?? "output validation failed", strategy: "recheck schema/required fields and change extraction path", evidence: validation.evidence.join(",") });
+        rememberExtractionFailure({
+          target: trimmed,
+          kind: "VALIDATION",
+          cause: !artifact.ok ? "Boss Core verification failed" : "HTML verification failed",
+          strategy: "recheck schema/required fields and change extraction path",
+          evidence: [...artifact.evidence, ...validation.evidence].join(","),
+        });
       }
     }
 
