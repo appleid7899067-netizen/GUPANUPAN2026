@@ -10,6 +10,7 @@ import {
   Tablet,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useShallow } from "zustand/shallow";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useBuilder } from "@/lib/builder/store";
@@ -54,7 +55,7 @@ const DEVICE_LABEL: Record<PreviewDevice, string> = {
 };
 
 export function PreviewPane() {
-  const project = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
+  const { project } = useBuilder(useShallow((s) => ({ project: s.projects.find((p) => p.id === s.activeId) ?? null })));
   const device = useBuilder((s) => s.device);
   const setDevice = useBuilder((s) => s.setDevice);
   const tab = useBuilder((s) => s.editorTab);
