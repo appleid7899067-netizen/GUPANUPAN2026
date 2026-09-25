@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/shallow";
 import { PromptBox } from "./prompt-box";
 import { ModelSelect } from "./model-select";
 import { useBuilder } from "@/lib/builder/store";
@@ -37,15 +38,14 @@ const RETRY_PATTERNS = [
 ];
 
 export function ChatPanel() {
-  const project = useBuilder((s) => s.projects.find((p) => p.id === s.activeId) ?? null);
-  const generating = useBuilder((s) => s.generating);
+  const { activeId, project, generating } = useBuilder(useShallow((s) => ({ activeId: s.activeId, project: s.projects.find((p) => p.id === s.activeId) ?? null, generating: s.generating })));
   const streamText = useBuilder((s) => s.streamText);
   const generatingStatus = useBuilder((s) => s.generatingStatus);
-  const activities = useBuilder((s) => project ? (s.activities[project.id] ?? EMPTY_ACTIVITIES) : EMPTY_ACTIVITIES);
+  const activities = useBuilder((s) => activeId ? (s.activities[activeId] ?? EMPTY_ACTIVITIES) : EMPTY_ACTIVITIES);
   const bottom = useRef<HTMLDivElement>(null);
   const [arenaOpen, setArenaOpen] = useState(false);
   const [arenaChoice, setArenaChoice] = useState<"A" | "B" | null>(null);
-  const arenaVersions = project.versions.slice(-2);
+  const arenaVersions = project?.versions.slice(-2) ?? [];
 
   // Scroll only when a message/task starts. Do not scroll on every streamed
   // token, otherwise the viewport jumps while the model is generating.
