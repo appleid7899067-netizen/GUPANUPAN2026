@@ -18,7 +18,7 @@ function PuterSessionButton() {
       <button
         type="button"
         onClick={() => void signOut()}
-        className="rounded-full border border-border px-3 py-1 text-xs text-muted transition-all duration-300 hover:scale-[1.02] hover:text-fg"
+        className="max-w-[92px] min-w-0 truncate rounded-full border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:text-fg sm:max-w-none sm:px-3"
         title={user?.username ?? "Puter"}
       >
         {user?.username ? `@${user.username}` : "Puter"} · ออก
@@ -30,7 +30,7 @@ function PuterSessionButton() {
       type="button"
       onClick={() => void signIn()}
       disabled={loading}
-      className="rounded-full bg-violet-500 px-3 py-1 text-xs font-medium text-white shadow-[0_0_24px_rgba(139,92,246,.22)] disabled:opacity-50"
+      className="max-w-[104px] truncate rounded-full bg-violet-500 px-2.5 py-1 text-xs font-medium text-white shadow-[0_0_16px_rgba(139,92,246,.16)] disabled:opacity-50 sm:max-w-none sm:px-3"
     >
       {loading ? "…" : "ล็อกอิน Puter"}
     </button>
@@ -51,7 +51,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1 border-b border-white/[0.06] bg-zinc-950/55 px-2 backdrop-blur-2xl supports-[backdrop-filter]:bg-zinc-950/40">
+    <header className="mobile-no-blur flex h-12 min-w-0 shrink-0 items-center gap-0.5 overflow-hidden border-b border-white/[0.06] bg-zinc-950/95 px-1.5 sm:gap-1 sm:px-2">
       <Tooltip label={inEditor ? "ย้อนกลับ" : "กลับ"}>
         <Button
           variant="ghost"
@@ -92,7 +92,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
               type="button"
               onClick={() => setMobilePane(pane)}
               className={cn(
-                "h-7 rounded-full px-3 text-xs font-medium",
+                "h-7 rounded-full px-2.5 text-xs font-medium sm:px-3",
                 mobilePane === pane ? "bg-surface text-fg shadow-border" : "text-muted",
               )}
             >
@@ -106,7 +106,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
 
       {!inEditor ? <div className="flex-1" /> : <div className="hidden flex-1 md:block" />}
 
-      {inEditor && active?.html ? <button type="button" onClick={() => setDeployOpen(true)} className="mr-1 rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 shadow-sm hover:bg-emerald-400">🚀 Deploy</button> : null}
+      {inEditor && active?.html ? <button type="button" onClick={() => setDeployOpen(true)} className="mr-0.5 max-w-[76px] truncate rounded-full bg-emerald-500 px-2 py-1.5 text-[11px] font-semibold text-zinc-950 shadow-sm hover:bg-emerald-400 sm:mr-1 sm:max-w-none sm:px-3 sm:text-xs">🚀 Deploy</button> : null}
       <Tooltip label={`ธีม: ${theme}`}>
         <Button
           variant="ghost"
