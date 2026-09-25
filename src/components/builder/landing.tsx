@@ -6,7 +6,16 @@ import { EXAMPLES } from "@/lib/builder/templates";
 import { pickStarters, STARTERS } from "@/lib/builder/starters";
 import { useBuilder } from "@/lib/builder/store";
 
-const TYPEWORDS = ["ความคิดของคุณ", "SaaS Dashboard", "AI Tool", "Mobile App", "Landing Page"];\n\nconst QUICK_STARTS = [\n  ["📋", "Kanban board", "[Web App]"],\n  ["🎮", "Memory game", "[Game]"],\n  ["⏱️", "Pomodoro timer", "[Tool]"],\n  ["🤖", "AI knowledge base", "[AI App]"],\n];\n\nconst NEXT_ACTIONS = [
+const TYPEWORDS = ["ความคิดของคุณ", "SaaS Dashboard", "AI Tool", "Mobile App", "Landing Page"];
+
+const QUICK_STARTS = [
+  ["📋", "Kanban board", "[Web App]"],
+  ["🎮", "Memory game", "[Game]"],
+  ["⏱️", "Pomodoro timer", "[Tool]"],
+  ["🤖", "AI knowledge base", "[AI App]"],
+];
+
+const NEXT_ACTIONS = [
   ["สร้างแอปต่อ", "สร้างแอปจากไอเดียใหม่", "สร้างแอปใหม่ให้ฉัน"],
   ["แก้ไขแอป", "ปรับของที่มีอยู่", "แก้ไขแอปที่กำลังทำอยู่"],
   ["เพิ่มฟีเจอร์", "ต่อยอดความสามารถ", "เพิ่มฟีเจอร์ใหม่ให้แอปนี้"],
@@ -16,7 +25,9 @@ const TYPEWORDS = ["ความคิดของคุณ", "SaaS Dashboard", 
 export function Landing() {
   const setDraft = useBuilder((s) => s.setDraft);
   const [starters, setStarters] = useState(() => STARTERS.slice(0, 6));
-  const [sandboxId, setSandboxId] = useState(EXAMPLES[0]?.id ?? "");\n  const [typeIndex, setTypeIndex] = useState(0);\n  useEffect(() => { const timer = window.setInterval(() => setTypeIndex((i) => (i + 1) % TYPEWORDS.length), 2600); return () => window.clearInterval(timer); }, []);
+  const [sandboxId, setSandboxId] = useState(EXAMPLES[0]?.id ?? "");
+  const [typeIndex, setTypeIndex] = useState(0);
+  useEffect(() => { const timer = window.setInterval(() => setTypeIndex((i) => (i + 1) % TYPEWORDS.length), 2600); return () => window.clearInterval(timer); }, []);
   const sandbox = EXAMPLES.find((x) => x.id === sandboxId) ?? EXAMPLES[0];
 
   useEffect(() => {
