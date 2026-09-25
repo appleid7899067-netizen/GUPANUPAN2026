@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { GuPanuMark } from "./logo";
+import { BossnuMark } from "./logo";
 import { PromptBox } from "./prompt-box";
 import { FeaturedFeed } from "./featured-feed";
 import { EXAMPLES } from "@/lib/builder/templates";
@@ -36,7 +36,7 @@ export function Landing() {
             <div className="boss-typography-subtitle">× Sliola</div>
           </div>
 
-          <GuPanuMark className="mb-4 size-10" />
+          <BossnuMark className="mb-4 size-10" />
           <div className="mb-3 inline-flex items-center rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-zinc-400 backdrop-blur-md">
             BOSSNU.SILELO · PUTER
           </div>
