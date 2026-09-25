@@ -10,6 +10,9 @@ import type { AgentActivityStatus } from "./types";
 function activity(label: string, status: AgentActivityStatus, detail?: string) {
   const s = useBuilder.getState();
   if (!s.activeId) return;
+  const previous = s.activities[s.activeId] ?? [];
+  const last = previous[previous.length - 1];
+  if (last && last.label === label && last.status === status) return;
   s.pushActivity(s.activeId, { id: uid(), label, detail, status, createdAt: Date.now() });
 }
 
@@ -122,6 +125,7 @@ export async function sendPrompt(text: string) {
       createdAt: Date.now(),
     });
   } finally {
+    activity("เรียบร้อย", "success");
     store.setGenerating(false);
     store.setStreamText("");
     store.setGeneratingStatus("เรียบร้อย");
