@@ -101,15 +101,19 @@ export async function sendPrompt(text: string) {
           "The artifact is the single file generated.html. Return JSON only. Do not return HTML. Do not wrap JSON in markdown.",
         ].join("\n\n");
         const repaired = await streamGenerate(
-          { prompt: remediationPrompt, html: finalFull, history, model: modelId },
+          { prompt: remediationPrompt, html: finalFull, history, model: modelId, recovery: true },
           (t) => useBuilder.getState().setStreamText(t),
           undefined,
           (status) => useBuilder.getState().setGeneratingStatus(status),
         );
         const patches = parseRemediationPatches(repaired);
         if (!patches.length) {
-          activity("ไม่พบ Patch ที่ปลอดภัย", "error", "Remediation model did not return valid patch JSON");
-          break;
+          activity(
+            "ไม่พบ Patch ที่ปลอดภัย",
+            "error",
+            "รอบซ่อมนี้ไม่มี patch ที่ยืนยันได้ จึงเก็บ artifact เดิมไว้และลอง recovery รอบถัดไป",
+          );
+          continue;
         }
         let patched = finalFull;
         for (const patch of patches) {
@@ -187,10 +191,16 @@ export async function sendPrompt(text: string) {
       }
     }
 
+    const assistantContent = nextHtml
+      ? (display || "สร้างเสร็จแล้ว ดูผลลัพธ์ได้ที่พรีวิว")
+      : finalVerified
+        ? (display || "สร้างเสร็จแล้ว ดูผลลัพธ์ได้ที่พรีวิว")
+        : "ยังสร้างผลงานที่ตรวจสอบผ่านไม่สำเร็จ รอบนี้ยังไม่มีผลงานใหม่ถูกบันทึกไว้ กรุณาลองอีกครั้ง";
+
     store.pushMessage(id, {
       id: uid(),
       role: "assistant",
-      content: display || (nextHtml ? "พร้อมแล้ว ดูที่พรีวิวได้เลย" : "ขอรายละเอียดเพิ่มนิดนึงก่อนสร้าง"),
+      content: assistantContent,
       createdAt: Date.now(),
     });
 
