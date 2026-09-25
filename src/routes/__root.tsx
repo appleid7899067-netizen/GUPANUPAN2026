@@ -1,7 +1,6 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PuterAuthProvider } from "@/lib/puter-auth";
-import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/builder/theme-provider";
 import { BRAND } from "@/lib/brand";
@@ -29,7 +28,6 @@ export const Route = createRootRoute({
         <HeadContent />
       </head>
       <body>
-        <PreviewHostBridge />
         <PuterAuthProvider>
           <AuthProvider>
             <ThemeProvider>
