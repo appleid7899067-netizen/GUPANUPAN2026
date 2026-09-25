@@ -93,7 +93,10 @@ export async function sendPrompt(text: string) {
         console.warn("[GuPanu] Boss recovery failed", recoveryError);
       }
     }
-    // Every generated artifact gets the zero-config Puter runtime and preview telemetry before gates run.\n    finalFull = injectBossnuRuntime(finalFull, { telemetry: true });\n\n    // Two independent gates must pass before generated HTML is saved:
+    // Every generated artifact gets the zero-config Puter runtime and preview telemetry before gates run.
+    finalFull = injectBossnuRuntime(finalFull, { telemetry: true });
+
+    // Two independent gates must pass before generated HTML is saved:
     // 1) Boss Core verifies product completeness/behavior.
     // 2) Boss Engine verifies the HTML document itself.
     const validation = validateHtmlArtifact(finalFull);
