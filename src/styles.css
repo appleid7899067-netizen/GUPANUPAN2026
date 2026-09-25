@@ -438,3 +438,55 @@ html[data-theme="dark"] {
 @media (prefers-reduced-motion: reduce) {
   .boss-typewriter { animation: none; border-right: 0; }
 }
+
+
+/* Mobile hand-fit + low-end performance pass. Keep the editor inside the viewport
+   and remove expensive blur/animation work while the user is scrolling or typing. */
+.mobile-no-blur {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.mobile-compact-motion {
+  -webkit-tap-highlight-color: transparent;
+}
+@media (max-width: 768px) {
+  html, body, #root {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .boss-app-bg {
+    width: 100%;
+    max-width: 100%;
+    contain: layout paint;
+  }
+
+  .mobile-no-blur {
+    background: rgba(17,17,22,.98) !important;
+  }
+
+  .prompt-command-glow {
+    box-shadow: 0 0 0 1px rgba(139,92,246,.10) !important;
+  }
+
+  .prompt-toolbar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .generation-star,
+  .generation-core,
+  .shimmer {
+    animation: none !important;
+  }
+
+  .generation-stars {
+    display: none;
+  }
+
+  .boss-mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+  }
+}
