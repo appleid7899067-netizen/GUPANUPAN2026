@@ -307,33 +307,10 @@ export function PreviewPane() {
       return;
     }
     setPublishBusy(true);
-    setDownloadStatus("กำลังตรวจสอบแอปก่อนเผยแพร่...");
+          setDownloadStatus("กำลังเผยแพร่ Canvas เวอร์ชันที่ตรวจผ่านไป Puter .site...");
     try {
-      const response = await fetch("/api/sandbox", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html: current.html, timeoutMs: 8000 }),
-      });
-      const verification = (await response.json().catch(() => null)) as
-        | { ok?: boolean; error?: string; pageErrors?: string[]; consoleErrors?: string[] }
-        | null;
-
-      if (!response.ok || !verification?.ok) {
-        const evidence = [
-          verification?.error,
-          ...(verification?.pageErrors ?? []),
-          ...(verification?.consoleErrors ?? []),
-        ].filter(Boolean).join(" | ");
-        throw new Error(
-          evidence
-            ? `ตรวจ Sandbox ไม่ผ่าน: ${evidence.slice(0, 500)}`
-            : `ตรวจ Sandbox ไม่ผ่าน (HTTP ${response.status})`,
-        );
-      }
-
-      setDownloadStatus("ตรวจผ่านแล้ว กำลังเผยแพร่ไป Puter .site...");
       const result = await publishToPuterSite(current.html, current.title);
-      setDownloadStatus(`เผยแพร่แล้ว: ${result.url}`);
+      setDownloadStatus(`Canvas เผยแพร่แล้ว: ${result.url}`);
       window.open(result.url, "_blank", "noopener");
     } catch (error) {
       setDownloadStatus(error instanceof Error ? error.message : "เผยแพร่ .site ไม่สำเร็จ");
@@ -427,11 +404,11 @@ export function PreviewPane() {
         </div>
 
         <div className="ml-auto flex items-center gap-0.5">
-          <Tooltip label="โหมดคู่ (เดสก์ท็อป + มือถือ)">
+          <Tooltip label="Canvas แบบคู่ (เดสก์ท็อป + มือถือ)">
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Dual preview"
+              aria-label="Canvas แบบคู่"
               onClick={() => setPreviewMode((m) => (m === "dual" ? "single" : "dual"))}
               className={previewMode === "dual" ? "text-violet-400" : "text-muted"}
             >
@@ -535,11 +512,11 @@ export function PreviewPane() {
               <Globe2 />
             </Button>
           </Tooltip>
-          <Tooltip label="รันพรีวิวใหม่">
+          <Tooltip label="รีเฟรช Canvas">
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="รันพรีวิวใหม่"
+              aria-label="รีเฟรช Canvas"
               onClick={runPreview}
               disabled={!activePage?.html || previewLoading}
               className={previewLoading ? "text-accent" : "text-muted"}
@@ -590,8 +567,8 @@ export function PreviewPane() {
       )}>
         {!project.html ? (
           <div className="flex h-full flex-col items-center justify-center px-8 text-center">
-            <p className="text-sm text-muted">แอปจะแสดงที่นี่เมื่อ Bossnu สร้างเสร็จ</p>
-            <p className="mt-1 text-xs text-subtle">Preview-first · Dual device · Live console</p>
+            <p className="text-sm text-muted">Canvas จะแสดงแอปเดียวกับที่แชทกำลังแก้</p>
+            <p className="mt-1 text-xs text-subtle">Chat ↔ Canvas · Dual device · Live console</p>
           </div>
         ) : tab === "code" ? (
           <div className="flex h-full min-h-0 flex-col">
