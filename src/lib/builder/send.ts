@@ -69,3 +69,10 @@ export async function sendPrompt(text: string) {
     useBuilder.getState().setStreamText("");
   }
 }
+
+
+export function openExample(example: { prompt: string }) {
+  const store = useBuilder.getState();
+  if (!store.activeId) store.createAndActivate({ title: "Example App" });
+  void sendPrompt(example.prompt);
+}
