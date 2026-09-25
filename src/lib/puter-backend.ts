@@ -108,3 +108,13 @@ export function buildBossnuClientSdkInjection(): string {
 })();
 </script>`;
 }
+
+
+export function injectBossnuRuntime(html: string, options: { telemetry?: boolean } = {}): string {
+  if (!html.trim() || /BossnuBackend|bossnu-preview/.test(html)) return html;
+  const sdk = buildBossnuClientSdkInjection();
+  const telemetry = options.telemetry ? `\n<script>\n(() => {\n  const send = (event) => window.parent?.postMessage({ source: "bossnu-preview", ...event }, "*");\n  window.addEventListener("error", (e) => send({ kind: "runtime", message: e.message || "Runtime error", stack: e.error?.stack || "" }));\n  window.addEventListener("unhandledrejection", (e) => send({ kind: "runtime", message: String(e.reason?.message || e.reason || "Unhandled rejection"), stack: e.reason?.stack || "" }));\n  const original = console.error;\n  console.error = (...args) => { try { send({ kind: "runtime", message: args.map(String).join(" ") }); } catch {} original(...args); };\n})();\n</script>` : "";
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, sdk + telemetry + "\n</head>");
+  if (/<body[\s>]/i.test(html)) return html.replace(/<body([\s>])/i, sdk + telemetry + "\n<body$1");
+  return sdk + telemetry + html;
+}
