@@ -7,13 +7,13 @@ import { sendPrompt } from "@/lib/builder/send";
 import { cn } from "@/lib/utils";
 
 const PROMPT_EXAMPLES = [
-  "Build a SaaS Dashboard with Tailwind...",
-  "Create a habit tracker app...",
-  "Build an AI knowledge base...",
-  "Create a modern booking platform...",
+  "อยากได้ระบบหอพักที่จองห้อง เก็บเงิน และมีแดชบอร์ดเจ้าของ…",
+  "อยากสร้างธุรกิจร้านกาแฟที่ต่อยอดเป็น POS และสต็อกได้…",
+  "อยากมีระบบจัดการชีวิตที่ใช้ได้ทั้งมือถือและคอม…",
+  "อยากสร้างแพลตฟอร์มของตัวเอง แล้วให้บอสแตกเป็นระบบให้ครบ…",
 ];
 
-export function PromptBox({ large, placeholder = "What should we build today?" }: { large?: boolean; placeholder?: string }) {
+export function PromptBox({ large, placeholder = "บอกความฝันมา เดี๋ยวบอสสร้างโลกให้…" }: { large?: boolean; placeholder?: string }) {
   const draft = useBuilder((s) => s.draft);
   const generating = useBuilder((s) => s.generating);
   const setDraft = useBuilder((s) => s.setDraft);
