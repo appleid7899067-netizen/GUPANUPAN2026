@@ -66,6 +66,7 @@ export function PreviewPane() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
   const [publishBusy, setPublishBusy] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(true);
   const [codeKind, setCodeKind] = useState<"html" | "markdown" | "javascript" | "implementation">("html");
   const [pageIndex, setPageIndex] = useState(0);
   const pages = project?.pages?.length ? project.pages : project ? [{
@@ -83,6 +84,10 @@ export function PreviewPane() {
   useEffect(() => {
     setPageIndex(0);
   }, [project?.id]);
+
+  useEffect(() => {
+    setPreviewLoading(Boolean(activePage?.html));
+  }, [activePage?.html, activePage?.path]);
 
   const srcdoc = useMemo(() => {
     if (!activePage?.html) return "";
@@ -342,15 +347,38 @@ export function PreviewPane() {
             </pre>
           </div>
         ) : (
-          <div className="flex h-full justify-center overflow-auto bg-muted-fill/50">
-            <iframe
-              ref={frame}
-              title="พรีวิวสด"
-              srcDoc={srcdoc}
-              sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
-              className="h-full bg-surface"
-              style={{ width: DEVICE_WIDTH[device], maxWidth: "100%" }}
-            />
+          <div className="relative flex h-full min-h-0 justify-center overflow-auto bg-[radial-gradient(circle_at_top,rgba(139,92,246,.08),transparent_42%)] p-2 sm:p-4">
+            <div
+              className={cn(
+                "relative flex min-h-full shrink-0 flex-col overflow-hidden rounded-xl bg-surface shadow-border transition-[width] duration-200",
+                device === "desktop" ? "w-full" : "max-w-full border border-border",
+              )}
+              style={{ width: DEVICE_WIDTH[device] }}
+            >
+              {device !== "desktop" ? (
+                <div className="flex h-7 shrink-0 items-center gap-1 border-b border-border bg-muted-fill px-2">
+                  <span className="size-1.5 rounded-full bg-red-400/70" />
+                  <span className="size-1.5 rounded-full bg-amber-400/70" />
+                  <span className="size-1.5 rounded-full bg-green-400/70" />
+                  <span className="ml-2 truncate text-[9px] text-subtle">{activePage?.path || "/"}</span>
+                </div>
+              ) : null}
+              {previewLoading && srcdoc ? (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-surface/60 backdrop-blur-[2px]">
+                  <div className="rounded-full bg-muted-fill px-3 py-1.5 text-[11px] text-muted shadow-border">กำลังโหลดพรีวิว…</div>
+                </div>
+              ) : null}
+              <iframe
+                key={project.id + ":" + (activePage?.path || "/") + ":" + device}
+                ref={frame}
+                title="พรีวิวสด"
+                srcDoc={srcdoc}
+                onLoad={() => setPreviewLoading(false)}
+                sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
+                className="min-h-0 flex-1 bg-surface"
+                style={{ width: "100%", minHeight: "100%" }}
+              />
+            </div>
           </div>
         )}
         {selectMode && tab === "preview" ? (
