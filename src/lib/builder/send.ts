@@ -11,6 +11,37 @@ import type { ExampleApp } from "./templates";
 import type { AgentActivityStatus, BuilderLifecycleState } from "./types";
 import { transition } from "./state-machine";
 
+type BrowserSandboxResult = {
+  ok: boolean;
+  runtime?: string;
+  durationMs?: number;
+  evidence?: string[];
+  snapshot?: { title: string; bodyTextLength: number; bodyChildren: number; readyState: string };
+  consoleErrors?: string[];
+  pageErrors?: string[];
+  error?: string;
+};
+
+async function verifyBrowserSandbox(html: string): Promise<BrowserSandboxResult> {
+  try {
+    const response = await fetch("/api/sandbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ html, timeoutMs: 8000 }),
+    });
+    const result = (await response.json().catch(() => ({}))) as BrowserSandboxResult;
+    if (!response.ok) {
+      return { ok: false, error: `Sandbox HTTP ${response.status}`, ...result };
+    }
+    return result;
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 function activity(label: string, status: AgentActivityStatus, detail?: string) {
   const s = useBuilder.getState();
   if (!s.activeId) return;
@@ -63,6 +94,7 @@ export async function sendPrompt(text: string) {
   store.setSelectMode(false);
 
   let latestTelemetry: Parameters<typeof diagnoseTelemetry>[0] | null = null;
+  let browserSandbox: BrowserSandboxResult | null = null;
   let completed = false;
   const stopTelemetry = startPreviewTelemetryCollector((event) => {
     latestTelemetry = event;
@@ -102,11 +134,38 @@ export async function sendPrompt(text: string) {
       store.setMobilePane("preview");
       move("PREVIEWED", "Initial artifact is visible in Preview");
       activity("สร้างแอปเข้า Preview", "working", "แสดง artifact รอบแรกแล้ว จากนั้นจึงตรวจและซ่อมถ้าจำเป็น");
+
+      activity("กำลังรัน Sandbox จริง", "verifying", "เปิด artifact ด้วย browser runtime จริงและเก็บ console/page errors");
+      browserSandbox = await verifyBrowserSandbox(initialHtml);
+      if (browserSandbox.ok) {
+        activity(
+          "Sandbox ผ่าน",
+          "verifying",
+          [...(browserSandbox.evidence ?? []), `runtime=${browserSandbox.runtime ?? "browser"}`, `duration=${browserSandbox.durationMs ?? 0}ms`].join(", "),
+        );
+      } else {
+        activity(
+          "Sandbox พบปัญหา",
+          "error",
+          [
+            browserSandbox.error,
+            ...(browserSandbox.pageErrors ?? []),
+            ...(browserSandbox.consoleErrors ?? []),
+          ].filter(Boolean).join(" | ").slice(0, 500),
+        );
+      }
     }
 
     move("VERIFYING", "Verify the Preview artifact");
     activity("กำลังตรวจสอบ Preview", "verifying", "ตรวจ artifact และผลจากพรีวิวจริง");
     let artifact = validateBossArtifact(finalFull, trimmed);
+    if (browserSandbox && !browserSandbox.ok) {
+      artifact = {
+        ...artifact,
+        ok: false,
+        evidence: [...artifact.evidence, "browser_sandbox_failed"],
+      };
+    }
     let healingAttempt = 0;
 
     // Bounded self-healing loop. Each retry receives only verification evidence,
@@ -162,6 +221,19 @@ export async function sendPrompt(text: string) {
         artifact = validateBossArtifact(finalFull, trimmed);
         const repairedHtml = extractHtml(finalFull);
         if (repairedHtml.trim()) {
+          browserSandbox = await verifyBrowserSandbox(repairedHtml);
+          if (browserSandbox.ok) {
+            activity("Sandbox ผ่านหลังซ่อม", "verifying", [...(browserSandbox.evidence ?? []), `duration=${browserSandbox.durationMs ?? 0}ms`].join(", "));
+          } else {
+            artifact = {
+              ...artifact,
+              ok: false,
+              evidence: [...artifact.evidence, "browser_sandbox_failed_after_repair"],
+            };
+            activity("Sandbox ยังไม่ผ่านหลังซ่อม", "error", [browserSandbox.error, ...(browserSandbox.pageErrors ?? []), ...(browserSandbox.consoleErrors ?? [])].filter(Boolean).join(" | ").slice(0, 500));
+          }
+        }
+        if (repairedHtml.trim()) {
           store.setHtml(id, repairedHtml, `ซ่อมรอบที่ ${healingAttempt}`);
           store.setEditorTab("preview");
           store.setMobilePane("preview");
@@ -196,7 +268,7 @@ export async function sendPrompt(text: string) {
     // 1) Boss Core verifies product completeness/behavior.
     // 2) Boss Engine verifies the HTML document itself.
     const validation = validateHtmlArtifact(finalFull);
-    const finalVerified = artifact.ok && validation.ok;
+    const finalVerified = artifact.ok && validation.ok && Boolean(browserSandbox?.ok);
     const nextHtml = finalVerified ? extractHtml(finalFull) : null;
     const display = extractDisplayText(finalFull);
     const suggestions = extractSuggestions(finalFull);
