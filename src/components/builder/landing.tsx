@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { GuPanuMark } from "./logo";
 import { PromptBox } from "./prompt-box";
 import { FeaturedFeed } from "./featured-feed";
+import { EXAMPLES } from "@/lib/builder/templates";
 import { pickStarters, STARTERS } from "@/lib/builder/starters";
 import { useBuilder } from "@/lib/builder/store";
 
@@ -15,6 +16,8 @@ const NEXT_ACTIONS = [
 export function Landing() {
   const setDraft = useBuilder((s) => s.setDraft);
   const [starters, setStarters] = useState(() => STARTERS.slice(0, 6));
+  const [sandboxId, setSandboxId] = useState(EXAMPLES[0]?.id ?? "");
+  const sandbox = EXAMPLES.find((x) => x.id === sandboxId) ?? EXAMPLES[0];
 
   useEffect(() => {
     setStarters(pickStarters(6));
@@ -51,6 +54,24 @@ export function Landing() {
             <PromptBox large />
           </div>
         </div>
+
+        <section className="mx-auto mt-6 w-full max-w-3xl" aria-labelledby="quick-prompts-title">
+          <div className="mb-2 flex items-center justify-between gap-3"><div><h2 id="quick-prompts-title" className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-300">ลองเริ่มจากไอเดีย</h2><p className="mt-1 text-xs text-zinc-500">กดแล้วใส่ Prompt ให้พร้อมใช้งานทันที</p></div><span className="text-[10px] text-zinc-600">QUICK PROMPTS</span></div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">{starters.slice(0, 6).map((s) => <button key={s.label} type="button" onClick={() => setDraft(s.prompt)} className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs text-zinc-300 hover:border-violet-400/30 hover:text-white">{s.label}</button>)}</div>
+        </section>
+
+        {sandbox ? (
+          <section className="mx-auto mt-7 w-full max-w-5xl" aria-labelledby="sandbox-title">
+            <div className="mb-3 flex items-end justify-between gap-3"><div><h2 id="sandbox-title" className="text-sm font-semibold text-zinc-100">Live Preview Sandbox</h2><p className="mt-1 text-xs text-zinc-500">เลือกตัวอย่าง แล้วดูหน้าเว็บจริงก่อนเริ่มแก้ด้วย Boss</p></div><button type="button" onClick={() => setDraft(sandbox.prompt)} className="shrink-0 rounded-full bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white">ใช้ Prompt นี้</button></div>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white shadow-2xl">
+                <div className="flex h-8 items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-3"><i className="size-2 rounded-full bg-zinc-300" /><i className="size-2 rounded-full bg-zinc-300" /><i className="size-2 rounded-full bg-zinc-300" /><span className="ml-2 truncate text-[9px] text-zinc-400">{sandbox.name} · Live Preview</span></div>
+                <iframe title={sandbox.name + " live preview"} srcDoc={sandbox.html} sandbox="" className="h-[360px] w-full border-0 bg-white" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-1">{EXAMPLES.slice(0, 6).map((ex) => <button key={ex.id} type="button" onClick={() => setSandboxId(ex.id)} className={sandbox.id === ex.id ? "rounded-xl border border-violet-400/40 bg-violet-400/[0.08] p-3 text-left" : "rounded-xl border border-white/[0.07] bg-white/[0.025] p-3 text-left"}><div className="text-sm font-medium text-zinc-100">{ex.name}</div><div className="mt-1 text-[11px] text-zinc-500">{ex.category}</div></button>)}</div>
+            </div>
+          </section>
+        ) : null}
 
         <section className="mx-auto mt-7 w-full max-w-3xl" aria-labelledby="next-action-title">
           <div className="mb-3 text-center">
@@ -100,21 +121,6 @@ export function Landing() {
           </div>
         </section>
 
-        <p className="mt-6 text-center text-xs font-medium text-subtle">
-          หรือเลือกไอเดียเริ่มต้น
-        </p>
-        <div className="chip-fade mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {starters.map((s) => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={() => setDraft(s.prompt)}
-              className="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-muted hover:border-fg/20 hover:text-fg"
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
       </div>
       <FeaturedFeed />
     </div>
