@@ -12,6 +12,7 @@ import type {
   ThemeChoice,
   Version,
   AgentActivity,
+  BuilderLifecycleState,
 } from "./types";
 
 const MAX_PROJECTS = 24;
@@ -46,6 +47,8 @@ type BuilderState = {
   generatingStatus: string;
   draft: string;
   activities: Record<string, AgentActivity[]>;
+  lifecycleState: BuilderLifecycleState;
+  setLifecycleState: (state: BuilderLifecycleState) => void;
   modelId: string;
   setModelId: (id: string) => void;
   setTheme: (theme: ThemeChoice) => void;
@@ -89,7 +92,9 @@ export const useBuilder = create<BuilderState>()(
       generatingStatus: "",
       draft: "",
       activities: {},
+      lifecycleState: "GOAL",
       modelId: DEFAULT_MODEL_ID,
+      setLifecycleState: (lifecycleState) => set({ lifecycleState }),
       setModelId: (modelId) => set({ modelId }),
       setTheme: (theme) => set({ theme }),
       setDevice: (device) => set({ device }),
@@ -119,6 +124,7 @@ export const useBuilder = create<BuilderState>()(
           streamText: "",
           generatingStatus: "",
           generating: false,
+          lifecycleState: "GOAL",
           editorTab: "preview",
           mobilePane: "chat",
           sidebarOpen: false,
@@ -132,6 +138,7 @@ export const useBuilder = create<BuilderState>()(
           draft: "",
           streamText: "",
           generating: false,
+          lifecycleState: "GOAL",
           editorTab: "preview",
           mobilePane: "chat",
           sidebarOpen: false,
@@ -220,6 +227,7 @@ export const useBuilder = create<BuilderState>()(
         theme: s.theme,
         modelId: s.modelId,
         activities: s.activities,
+        lifecycleState: s.lifecycleState,
       }),
     },
   ),
