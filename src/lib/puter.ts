@@ -48,14 +48,22 @@ function scoreCandidate(model:PuterModel, preferred:string):number {
 
 export async function resolveBossModel(preferred?:string):Promise<string>{
   const catalog=await puterListModels();
+  // A model selected from the live Puter catalog must be allowed even when
+  // it is not present in our old curated pool. The pool is only a fallback.
+  if(preferred && catalog.some(m=>m.id===preferred)) return preferred;
+
   const poolIds=new Set(BOSS_MODEL_POOL.map(m=>m.id));
   const requested=preferred && poolIds.has(preferred)?preferred:undefined;
-  if(requested && catalog.some(m=>m.id===requested))return requested;
   if(catalog.length){
     const poolMatches=catalog.filter(m=>poolIds.has(m.id));
-    if(poolMatches.length){return [...poolMatches].sort((a,b)=>scoreCandidate(b,requested??DEFAULT_FREE_MODEL)-scoreCandidate(a,requested??DEFAULT_FREE_MODEL))[0]!.id;}
+    if(poolMatches.length){
+      return [...poolMatches].sort(
+        (a,b)=>scoreCandidate(b,requested??DEFAULT_FREE_MODEL)-scoreCandidate(a,requested??DEFAULT_FREE_MODEL),
+      )[0]!.id;
+    }
+    return [...catalog].sort((a,b)=>catalogCost(a)-catalogCost(b))[0]!.id;
   }
-  return requested ?? DEFAULT_FREE_MODEL;
+  return requested ?? preferred ?? DEFAULT_FREE_MODEL;
 }
 
 export async function puterFreeChat(messages:Array<{role:string;content:string}>,opts?:{model?:string;onDelta?:(text:string)=>void;webSearch?:boolean}):Promise<{ok:boolean;text:string;model?:string;error?:string}>{
