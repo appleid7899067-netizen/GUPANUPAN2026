@@ -7,7 +7,7 @@ import {
   buildRemediationPrompt,
   parseRemediationPatches,
   applySearchReplacePatch,
-  startPreviewTelemetryCollector,
+  startAppTelemetryCollector,
   extractTargetedSnippet,
   looksLikeFullHtmlRewrite,
   MAX_HEALING_ATTEMPTS,
@@ -74,10 +74,10 @@ export async function sendPrompt(text: string) {
 
   let latestTelemetry: Parameters<typeof diagnoseTelemetry>[0] | null = null;
   let completed = false;
-  const stopTelemetry = startPreviewTelemetryCollector((event) => {
+  const stopTelemetry = startAppTelemetryCollector((event) => {
     latestTelemetry = event;
     const diagnosis = diagnoseTelemetry(event);
-    activity("พรีวิวรายงานปัญหา", "error", `${diagnosis.classification}: ${diagnosis.summary}`);
+    activity("Appรายงานปัญหา", "error", `${diagnosis.classification}: ${diagnosis.summary}`);
   });
 
   try {
@@ -100,24 +100,24 @@ export async function sendPrompt(text: string) {
       `ลำดับงาน: ${corePlan.phases.join(" → ")}`,
     );
 
-    // BUILD CONTRACT: get the first usable artifact into Preview before any
-    // recovery gate. Preview is the working surface; repair is a response to
+    // BUILD CONTRACT: get the first usable artifact into App before any
+    // recovery gate. App is the working surface; repair is a response to
     // observed/static evidence, never a prerequisite for showing the app.
     let finalFull = injectBossnuRuntime(full, { telemetry: true });
     const initialHtml = extractHtml(finalFull);
     if (initialHtml.trim()) {
-      move("PREVIEWING", "First usable artifact is being placed into Preview");
+      move("PREVIEWING", "First usable artifact is being placed into App");
       store.setHtml(id, initialHtml, trimmed.slice(0, 42));
       store.setEditorTab("preview");
-      store.setMobilePane("preview");
-      move("PREVIEWED", "Initial artifact is visible in Preview");
-      activity("สร้างแอปเข้า Preview", "working", "แสดง artifact รอบแรกแล้ว จากนั้นจึงตรวจและซ่อมถ้าจำเป็น");
+      store.setMobilePane("app");
+      move("PREVIEWED", "Initial artifact is visible in App");
+      activity("สร้างแอปเข้า App", "working", "แสดง artifact รอบแรกแล้ว จากนั้นจึงตรวจและซ่อมถ้าจำเป็น");
 
-      activity("Preview พร้อมตรวจสอบ", "verifying", "แอพถูกแสดงใน Preview แล้ว ตรวจโครงสร้างและพฤติกรรมต่อโดยตรง");
+      activity("App พร้อมตรวจสอบ", "verifying", "แอพถูกแสดงใน App แล้ว ตรวจโครงสร้างและพฤติกรรมต่อโดยตรง");
 
 
-    move("VERIFYING", "Verify the Preview artifact");
-    activity("กำลังตรวจสอบ Preview", "verifying", "ตรวจ artifact และผลจากพรีวิวจริง");
+    move("VERIFYING", "Verify the App artifact");
+    activity("กำลังตรวจสอบ App", "verifying", "ตรวจ artifact และผลจากAppจริง");
     let artifact = validateBossArtifact(finalFull, trimmed);
     let healingAttempt = 0;
 
@@ -208,11 +208,11 @@ export async function sendPrompt(text: string) {
         if (repairedHtml.trim()) {
           store.setHtml(id, repairedHtml, `ซ่อมรอบที่ ${healingAttempt}`);
           store.setEditorTab("preview");
-          store.setMobilePane("preview");
+          store.setMobilePane("app");
           move("PREVIEWING", "Repaired artifact is being rendered again");
-          move("PREVIEWED", "Repaired artifact is visible in Preview");
-          move("VERIFYING", "Verify repaired Preview");
-          activity("อัปเดต Preview หลังซ่อม", "working", `Preview ใช้ artifact จากรอบซ่อม ${healingAttempt}`);
+          move("PREVIEWED", "Repaired artifact is visible in App");
+          move("VERIFYING", "Verify repaired App");
+          activity("อัปเดต App หลังซ่อม", "working", `App ใช้ artifact จากรอบซ่อม ${healingAttempt}`);
         }
         if (artifact.ok) {
           activity(usedFullRewrite ? "Full Rewrite + ตรวจซ้ำผ่าน" : "Patch + ตรวจซ้ำผ่าน", "verifying", artifact.evidence.join(", "));
@@ -286,7 +286,7 @@ export async function sendPrompt(text: string) {
     }
 
     const assistantContent = nextHtml
-      ? (display || "สร้างเสร็จแล้ว ดูผลลัพธ์ได้ที่พรีวิว")
+      ? (display || "สร้างเสร็จแล้ว ดูผลลัพธ์ได้ที่App")
       : "ยังสร้างผลงานที่ตรวจสอบผ่านไม่สำเร็จ รอบนี้ยังไม่มีผลงานใหม่ถูกบันทึกไว้ กรุณาลองอีกครั้ง";
 
     store.pushMessage(id, {
@@ -314,10 +314,10 @@ export async function sendPrompt(text: string) {
       if (project && (project.title === "Untitled" || project.messages.filter((m) => m.role === "user").length <= 1)) {
         store.renameProject(id, extractTitle(nextHtml, project.title));
       }
-      store.setMobilePane("preview");
+      store.setMobilePane("app");
       move("DONE", "Verified artifact is ready for delivery");
       completed = true;
-      activity("ตรวจ Preview ผ่าน", "success", "สร้าง → Preview → Verify ครบวงจรแล้ว");
+      activity("ตรวจ App ผ่าน", "success", "สร้าง → App → Verify ครบวงจรแล้ว");
     }
     store.setSuggestions(id, suggestions);
   } catch (err) {
@@ -371,7 +371,7 @@ export function openExample(example: ExampleApp) {
       {
         id: uid(),
         role: "assistant",
-        content: `${example.name} พร้อมในพรีวิวแล้ว บอกได้เลยว่าจะแก้ตรงไหน`,
+        content: `${example.name} พร้อมในAppแล้ว บอกได้เลยว่าจะแก้ตรงไหน`,
         createdAt: Date.now(),
       },
     ],
