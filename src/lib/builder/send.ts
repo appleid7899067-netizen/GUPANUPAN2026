@@ -1,6 +1,6 @@
 import { uid } from "@/lib/utils";
 import { validateHtmlArtifact } from "@/lib/boss-engine";
-import { validateBossArtifact } from "@/lib/boss-core";
+import { buildBossCorePlan, validateBossArtifact } from "@/lib/boss-core";
 import { canHeal, diagnoseTelemetry, buildRemediationPrompt, parseRemediationPatches, applySearchReplacePatch, startPreviewTelemetryCollector, extractTargetedSnippet, MAX_HEALING_ATTEMPTS } from "@/lib/boss-self-healing";
 import { injectBossnuRuntime } from "@/lib/puter-backend";
 import { classifyExtractionFailure, rememberExtractionFailure } from "@/lib/extraction-resilience";
@@ -54,6 +54,7 @@ export async function sendPrompt(text: string) {
   store.setSelectMode(false);
 
   let latestTelemetry: Parameters<typeof diagnoseTelemetry>[0] | null = null;
+  let completed = false;
   const stopTelemetry = startPreviewTelemetryCollector((event) => {
     latestTelemetry = event;
     const diagnosis = diagnoseTelemetry(event);
@@ -72,9 +73,27 @@ export async function sendPrompt(text: string) {
         else if (/สร้าง|แก้ไข/.test(status)) activity(status, "working");
       },
     );
-    activity("กำลังตรวจสอบผลลัพธ์", "verifying", "ตรวจ output จริงก่อนบันทึกลงโปรเจกต์");
-    let artifact = validateBossArtifact(full, trimmed);
-    let finalFull = full;
+    const corePlan = buildBossCorePlan(trimmed, history, html);
+    activity(
+      `รู้แล้วว่านี่คือ: ${corePlan.mode === "build" ? "แอปใหม่" : corePlan.mode === "edit" ? "การแก้แอปเดิม" : corePlan.mode === "clone" ? "การสร้างจากเว็บอ้างอิง" : corePlan.mode}`,
+      "working",
+      `ลำดับงาน: ${corePlan.phases.join(" → ")}`,
+    );
+
+    // BUILD CONTRACT: get the first usable artifact into Preview before any
+    // recovery gate. Preview is the working surface; repair is a response to
+    // observed/static evidence, never a prerequisite for showing the app.
+    let finalFull = injectBossnuRuntime(full, { telemetry: true });
+    const initialHtml = extractHtml(finalFull);
+    if (initialHtml.trim()) {
+      store.setHtml(id, initialHtml, trimmed.slice(0, 42));
+      store.setEditorTab("preview");
+      store.setMobilePane("preview");
+      activity("สร้างแอปเข้า Preview", "working", "แสดง artifact รอบแรกแล้ว จากนั้นจึงตรวจและซ่อมถ้าจำเป็น");
+    }
+
+    activity("กำลังตรวจสอบ Preview", "verifying", "ตรวจ artifact และผลจากพรีวิวจริง");
+    let artifact = validateBossArtifact(finalFull, trimmed);
     let healingAttempt = 0;
 
     // Bounded self-healing loop. Each retry receives only verification evidence,
@@ -125,8 +144,15 @@ export async function sendPrompt(text: string) {
           patched = result.content;
         }
         const repairedCheck = validateBossArtifact(patched, trimmed);
-        finalFull = patched;
-        artifact = repairedCheck;
+        finalFull = injectBossnuRuntime(patched, { telemetry: true });
+        artifact = validateBossArtifact(finalFull, trimmed);
+        const repairedHtml = extractHtml(finalFull);
+        if (repairedHtml.trim()) {
+          store.setHtml(id, repairedHtml, `ซ่อมรอบที่ ${healingAttempt}`);
+          store.setEditorTab("preview");
+          store.setMobilePane("preview");
+          activity("อัปเดต Preview หลังซ่อม", "working", `Preview ใช้ artifact จากรอบซ่อม ${healingAttempt}`);
+        }
         if (repairedCheck.ok) {
           activity("Patch + ตรวจซ้ำผ่าน", "verifying", repairedCheck.evidence.join(", "));
           break;
@@ -148,9 +174,6 @@ export async function sendPrompt(text: string) {
         `ครบ ${MAX_HEALING_ATTEMPTS} รอบแล้ว: ${artifact.evidence.join(", ")}`,
       );
     }
-
-    // Every generated artifact gets the zero-config Puter runtime and preview telemetry before gates run.
-    finalFull = injectBossnuRuntime(finalFull, { telemetry: true });
 
     // Two independent gates must pass before generated HTML is saved:
     // 1) Boss Core verifies product completeness/behavior.
@@ -223,6 +246,8 @@ export async function sendPrompt(text: string) {
         store.renameProject(id, extractTitle(nextHtml, project.title));
       }
       store.setMobilePane("preview");
+      completed = true;
+      activity("ตรวจ Preview ผ่าน", "success", "สร้าง → Preview → Verify ครบวงจรแล้ว");
     }
     store.setSuggestions(id, suggestions);
   } catch (err) {
@@ -244,10 +269,16 @@ export async function sendPrompt(text: string) {
     });
   } finally {
     stopTelemetry();
-    activity("เรียบร้อย", "success");
+    if (completed) {
+      activity("เรียบร้อย", "success");
+      store.setGeneratingStatus("เสร็จแล้ว");
+    } else if (useBuilder.getState().activities[id ?? ""]?.some((a) => a.status === "error")) {
+      store.setGeneratingStatus("ตรวจพบปัญหา");
+    } else {
+      store.setGeneratingStatus("ยังไม่ผ่านการตรวจ");
+    }
     store.setGenerating(false);
     store.setStreamText("");
-    store.setGeneratingStatus("เรียบร้อย");
   }
 }
 
