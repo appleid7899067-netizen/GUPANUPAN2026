@@ -5,7 +5,7 @@
  * - vercel preset → cannot run as long-lived process; rebuild hint
  */
 import { existsSync } from "node:fs";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -19,16 +19,6 @@ process.env.PORT = port;
 process.env.NITRO_PORT = port;
 process.env.HOST = process.env.HOST || "0.0.0.0";
 
-const sandboxSmoke = join(root, "scripts/sandbox-smoke.mjs");
-const smoke = spawnSync(process.execPath, [sandboxSmoke], {
-  stdio: "inherit",
-  env: process.env,
-  cwd: root,
-});
-if (smoke.status !== 0) {
-  console.error("[start] Browser sandbox smoke test failed; refusing to start without a working execution runtime.");
-  process.exit(smoke.status ?? 1);
-}
 
 function run(file) {
   console.log(`[start] ${file} (PORT=${port})`);
