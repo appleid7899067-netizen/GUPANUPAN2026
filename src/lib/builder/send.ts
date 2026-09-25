@@ -1,6 +1,8 @@
 import { uid } from "@/lib/utils";
 import { validateHtmlArtifact } from "@/lib/boss-engine";
 import { validateBossArtifact } from "@/lib/boss-core";
+import { diagnoseTelemetry, buildRemediationPrompt } from "@/lib/boss-self-healing";
+import { injectBossnuRuntime } from "@/lib/puter-backend";
 import { classifyExtractionFailure, rememberExtractionFailure } from "@/lib/extraction-resilience";
 import { streamGenerate } from "./generate-client";
 import { extractDisplayText, extractHtml, extractSuggestions, extractTitle, extractJavaScript, extractMarkdown, extractImplementation, extractPages, inspectArtifactExtraction } from "./parse";
@@ -91,7 +93,7 @@ export async function sendPrompt(text: string) {
         console.warn("[GuPanu] Boss recovery failed", recoveryError);
       }
     }
-    // Two independent gates must pass before generated HTML is saved:
+    // Every generated artifact gets the zero-config Puter runtime and preview telemetry before gates run.\n    finalFull = injectBossnuRuntime(finalFull, { telemetry: true });\n\n    // Two independent gates must pass before generated HTML is saved:
     // 1) Boss Core verifies product completeness/behavior.
     // 2) Boss Engine verifies the HTML document itself.
     const validation = validateHtmlArtifact(finalFull);
