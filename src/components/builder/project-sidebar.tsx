@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ export function ProjectSidebar() {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {filtered.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-muted">No projects yet.</p>
+            <div className="mx-3 my-4 rounded-2xl border border-dashed border-border p-5 text-center"><div className="mx-auto mb-3 flex size-9 items-center justify-center rounded-xl bg-muted-fill"><Sparkles className="size-4 text-accent" /></div><p className="text-sm font-medium text-fg">สร้างโปรเจกต์แรกของคุณ</p><p className="mt-1 text-xs leading-5 text-muted">เริ่มจากไอเดียสั้น ๆ แล้วให้ Boss สร้างโครงแอปให้</p><Button className="mt-3 w-full" size="sm" onClick={() => { newProject(); setOpen(false); }}><Plus className="size-3.5" /> สร้างโครงการแรก</Button></div>
           ) : (
             <ul className="space-y-0.5">
               {filtered.map((p) => (
