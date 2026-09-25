@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PromptBox } from "./prompt-box";
 import { ModelSelect } from "./model-select";
 import { useBuilder } from "@/lib/builder/store";
@@ -43,6 +43,9 @@ export function ChatPanel() {
   const generatingStatus = useBuilder((s) => s.generatingStatus);
   const activities = useBuilder((s) => project ? (s.activities[project.id] ?? EMPTY_ACTIVITIES) : EMPTY_ACTIVITIES);
   const bottom = useRef<HTMLDivElement>(null);
+  const [arenaOpen, setArenaOpen] = useState(false);
+  const [arenaChoice, setArenaChoice] = useState<"A" | "B" | null>(null);
+  const arenaVersions = project.versions.slice(-2);
 
   // Scroll only when a message/task starts. Do not scroll on every streamed
   // token, otherwise the viewport jumps while the model is generating.
@@ -114,8 +117,51 @@ export function ChatPanel() {
         </ol>
         <div ref={bottom} />
       </div>
+      {!generating && arenaOpen ? (
+        <div className="shrink-0 px-3 pb-2 sm:px-4">
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.035] p-3 backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle">BOSS ARENA</div>
+                <p className="mt-0.5 text-xs text-muted">เทียบเวอร์ชัน แล้วให้ Boss รู้ว่าคุณชอบแนวไหน</p>
+              </div>
+              <button type="button" onClick={() => { setArenaOpen(false); setArenaChoice(null); }} className="text-xs text-subtle hover:text-fg">ปิด</button>
+            </div>
+            {arenaVersions.length >= 2 ? (
+              <>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {arenaVersions.map((version, index) => {
+                    const choice = index === 0 ? "A" : "B";
+                    const selected = arenaChoice === choice;
+                    return (
+                      <button key={version.id} type="button" onClick={() => setArenaChoice(choice as "A" | "B")} className={cn("min-w-0 rounded-xl border p-3 text-left transition-all", selected ? "border-accent/50 bg-accent/10" : "border-white/[0.06] bg-white/[0.025] hover:bg-white/[0.06]")}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-fg">แบบ {choice}</span>
+                          {selected ? <span className="text-[10px] text-accent">เลือกแล้ว</span> : null}
+                        </div>
+                        <p className="mt-1 truncate text-[11px] text-muted">{version.label}</p>
+                        <p className="mt-2 text-[10px] text-subtle">{version.html.length.toLocaleString()} ตัวอักษร</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button type="button" disabled={!arenaChoice} onClick={() => {
+                  if (!arenaChoice) return;
+                  const picked = arenaVersions[arenaChoice === "A" ? 0 : 1];
+                  setArenaOpen(false);
+                  setArenaChoice(null);
+                  void sendPrompt(`จาก Boss Arena ผมเลือกเวอร์ชัน ${arenaChoice} (${picked.label}) ให้ใช้เป็นแนวทางหลัก ปรับ Preview ปัจจุบันให้รักษาจุดเด่นของเวอร์ชันนี้ และตรวจผลให้เรียบร้อย`);
+                }} className="mt-2 w-full rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-accent-fg transition-opacity disabled:cursor-not-allowed disabled:opacity-40">ใช้แนวทางที่เลือกกับ Preview</button>
+              </>
+            ) : (
+              <div className="mt-3 rounded-xl bg-white/[0.025] p-3 text-xs leading-relaxed text-muted">ต้องมีอย่างน้อย 2 เวอร์ชันก่อนจึงเปิดการดวลได้ สร้างอีกเวอร์ชันแล้วกลับมาเลือกได้ทันที</div>
+            )}
+          </div>
+        </div>
+      ) : null}
       {!generating ? (
         <div className="chip-fade flex gap-2 overflow-x-auto px-3 pb-2 scrollbar-none sm:px-4" aria-label="คำสั่งลัด">
+          <button type="button" onClick={() => setArenaOpen((open) => !open)} className={cn("shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all", arenaOpen ? "border-accent/30 bg-accent/10 text-accent" : "border-white/[0.07] bg-white/[0.045] text-muted hover:bg-white/[0.08] hover:text-fg")}>⚔️ Arena</button>
           {QUICK_PROMPTS.map((item) => (
             <button key={item.label} type="button" onClick={() => void sendPrompt(item.prompt)} className="shrink-0 rounded-full border border-white/[0.07] bg-white/[0.045] px-3 py-1.5 text-xs font-medium text-muted backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:bg-white/[0.08] hover:text-fg active:scale-[0.98]">{item.label}</button>
           ))}
