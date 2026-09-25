@@ -22,11 +22,28 @@ export type ChatMessage = {
   createdAt: number;
 };
 
+export type ProjectFile = {
+  path: string;
+  content: string;
+  language?: string;
+  kind?: "source" | "config" | "style" | "asset" | "test";
+};
+
+export type ProjectSource = {
+  files: ProjectFile[];
+  entryFile: string;
+  framework: "react-vite" | "nextjs" | "unknown";
+  packageManager: "npm" | "pnpm" | "yarn" | "unknown";
+  updatedAt: number;
+};
+
 export type AppPage = {
   id: string;
   title: string;
   path: string;
+  /** @deprecated Legacy artifact. New builds must use source.files. */
   html: string;
+  source?: ProjectSource;
   markdown?: string;
   javascript?: string;
   implementation?: string;
@@ -61,7 +78,7 @@ export type Project = {
 
 export type ThemeChoice = "light" | "dark" | "system";
 export type PreviewDevice = "desktop" | "tablet" | "phone";
-export type EditorTab = "preview" | "code";
+export type EditorTab = "preview" | "code" | "files";
 export type MobilePane = "chat" | "app";
 
 
