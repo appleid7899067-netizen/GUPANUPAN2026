@@ -2,7 +2,7 @@ import { ModelSelect } from "./model-select";
 import { DeployModal } from "./DeployModal";
 import { usePuterAuth } from "@/lib/puter-auth";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Menu, Monitor, Moon, Plus, Sun } from "lucide-react";
+import { ArrowLeft, Menu, Monitor, Moon, Plus, Sun, MessageSquare, AppWindow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useBuilder } from "@/lib/builder/store";
@@ -85,21 +85,32 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
       </Tooltip>
 
       {inEditor ? (
-        <div className="mx-auto flex rounded-full bg-muted-fill p-0.5 md:hidden">
-          {(["chat", "preview"] as const).map((pane) => (
-            <button
-              key={pane}
-              type="button"
-              onClick={() => setMobilePane(pane)}
-              className={cn(
-                "h-7 rounded-full px-2.5 text-xs font-medium sm:px-3",
-                mobilePane === pane ? "bg-surface text-fg shadow-border" : "text-muted",
-              )}
-            >
-              {pane === "preview" ? "พรีวิว" : "แชท"}
-            </button>
-          ))}
-        </div>
+        <nav aria-label="ห้องทำงาน" className="absolute left-1/2 flex -translate-x-1/2 rounded-full bg-muted-fill p-0.5">
+          <button
+            type="button"
+            onClick={() => setMobilePane("chat")}
+            aria-current={mobilePane === "chat" ? "page" : undefined}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors sm:px-4",
+              mobilePane === "chat" ? "bg-surface text-fg shadow-border" : "text-muted hover:text-fg",
+            )}
+          >
+            <MessageSquare className="size-3.5" />
+            AI Chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePane("app")}
+            aria-current={mobilePane === "app" ? "page" : undefined}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors sm:px-4",
+              mobilePane === "app" ? "bg-surface text-fg shadow-border" : "text-muted hover:text-fg",
+            )}
+          >
+            <AppWindow className="size-3.5" />
+            App
+          </button>
+        </nav>
       ) : (
         <div className="flex-1" />
       )}
