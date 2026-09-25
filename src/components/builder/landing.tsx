@@ -6,7 +6,7 @@ import { EXAMPLES } from "@/lib/builder/templates";
 import { pickStarters, STARTERS } from "@/lib/builder/starters";
 import { useBuilder } from "@/lib/builder/store";
 
-const NEXT_ACTIONS = [
+const TYPEWORDS = ["ความคิดของคุณ", "SaaS Dashboard", "AI Tool", "Mobile App", "Landing Page"];\n\nconst NEXT_ACTIONS = [
   ["สร้างแอปต่อ", "สร้างแอปจากไอเดียใหม่", "สร้างแอปใหม่ให้ฉัน"],
   ["แก้ไขแอป", "ปรับของที่มีอยู่", "แก้ไขแอปที่กำลังทำอยู่"],
   ["เพิ่มฟีเจอร์", "ต่อยอดความสามารถ", "เพิ่มฟีเจอร์ใหม่ให้แอปนี้"],
@@ -16,7 +16,7 @@ const NEXT_ACTIONS = [
 export function Landing() {
   const setDraft = useBuilder((s) => s.setDraft);
   const [starters, setStarters] = useState(() => STARTERS.slice(0, 6));
-  const [sandboxId, setSandboxId] = useState(EXAMPLES[0]?.id ?? "");
+  const [sandboxId, setSandboxId] = useState(EXAMPLES[0]?.id ?? "");\n  const [typeIndex, setTypeIndex] = useState(0);\n  useEffect(() => { const timer = window.setInterval(() => setTypeIndex((i) => (i + 1) % TYPEWORDS.length), 2600); return () => window.clearInterval(timer); }, []);
   const sandbox = EXAMPLES.find((x) => x.id === sandboxId) ?? EXAMPLES[0];
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function Landing() {
       <div className="boss-orb left-[8%] top-8 size-48 bg-violet-500" aria-hidden="true" />
       <div className="boss-orb right-[10%] top-24 size-56 bg-fuchsia-500" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-5 pb-8 pt-8 md:min-h-[calc(100dvh-16rem)]">
+      <div className="boss-ai-hero relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-5 pb-8 pt-8 md:min-h-[calc(100dvh-16rem)]">
         <div className="mb-7 flex flex-col items-center text-center">
           <div className="boss-typography-hero mb-6 w-full max-w-4xl rounded-2xl px-6 py-10 sm:px-10 sm:py-14" aria-label="Panupan × Sliola • BOSSNU UNIFIED">
             <div className="boss-typography-kicker">BOSSNU UNIFIED</div>
@@ -42,14 +42,14 @@ export function Landing() {
             BOSSNU.SILELO · PUTER
           </div>
           <h1 className="max-w-4xl font-display text-3xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
-            Panupan สร้างให้ จากความคิดของคุณ
+            Panupan สร้างให้ จาก <span className="boss-typewriter">{TYPEWORDS[typeIndex]}</span>
           </h1>
           <p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
             ONE SYSTEM • ENDLESS POSSIBILITIES
           </p>
         </div>
 
-        <div className="boss-shimmer-border boss-hero-glow mx-auto w-full max-w-3xl rounded-2xl bg-zinc-950/80 p-px backdrop-blur-xl">
+        <div className="boss-shimmer-border boss-hero-glow prompt-command-glow mx-auto w-full max-w-3xl rounded-2xl bg-zinc-950/75 p-px backdrop-blur-2xl">
           <div className="rounded-2xl bg-zinc-950/90">
             <PromptBox large />
           </div>
