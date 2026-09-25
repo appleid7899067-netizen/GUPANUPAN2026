@@ -76,7 +76,6 @@ export async function streamGenerate(
       });
       if (result.ok && result.text.trim()) {
         onStatus?.(liveStatusFor(payload.prompt, "verify"));
-        onStatus?.(liveStatusFor(payload.prompt, "done"));
         return result.text;
       }
       if (result.error && result.error !== "PUTER_SIGN_IN_REQUIRED") {
@@ -144,6 +143,5 @@ export async function streamGenerate(
     }
   }
   onStatus?.(liveStatusFor(payload.prompt, "verify"));
-  onStatus?.(liveStatusFor(payload.prompt, "done"));
   return sanitizeModelText(full);
 }
