@@ -4,6 +4,7 @@ import { puterFreeChat, puterIsSignedIn } from "@/lib/puter";
 import { buildAppSpecPrompt, buildVisualAssetPrompt, compileAppSpec } from "@/lib/app-spec";
 import { routeModelTier } from "@/lib/boss-engine";
 import { recommendedModelForTier } from "@/lib/models";
+import { sanitizeModelText } from "./parse";
 
 export type GeneratePayload = {
   prompt: string;
@@ -112,8 +113,9 @@ export async function streamGenerate(
           if (json.error?.message) throw new Error(json.error.message);
           const delta = json.choices?.[0]?.delta?.content ?? "";
           if (delta) {
+            if (!delta || /"type"\s*:\s*"(?:reasoning|thinking)"/i.test(delta)) continue;
             full += delta;
-            onDelta(full);
+            onDelta(sanitizeModelText(full));
           }
         } catch (err) {
           if (err instanceof SyntaxError) continue;
@@ -124,5 +126,5 @@ export async function streamGenerate(
   }
   onStatus?.(liveStatusFor(payload.prompt, "verify"));
   onStatus?.(liveStatusFor(payload.prompt, "done"));
-  return full;
+  return sanitizeModelText(full);
 }
