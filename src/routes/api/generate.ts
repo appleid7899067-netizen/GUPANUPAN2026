@@ -5,6 +5,8 @@ type Body = {
   prompt?: unknown;
   html?: unknown;
   history?: unknown;
+  mode?: unknown;
+  state?: unknown;
 };
 
 export const Route = createFileRoute("/api/generate")({
@@ -27,6 +29,29 @@ export const Route = createFileRoute("/api/generate")({
         }
 
         const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+        if (body.mode === "patch") {
+          const state = body.state && typeof body.state === "object" ? body.state : {};
+          const patchPrompt = [
+            "You are an AI App Builder. Return ONLY a JSON array.",
+            'Allowed ops: addComponent, updateTheme, pushRoute.',
+            'Never return HTML, JSX, markdown, or prose.',
+            JSON.stringify({ pages: state, userMessage: prompt }),
+          ].join("\n");
+          const upstream = await fetch("https://api.x.ai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify({
+              model: "grok-4.5",
+              stream: false,
+              temperature: 0.2,
+              max_tokens: 4096,
+              messages: [{ role: "system", content: "Output valid JSON only." }, { role: "user", content: patchPrompt }],
+            }),
+          });
+          if (!upstream.ok) return Response.json({ error: "Patch model failed." }, { status: 502 });
+          const data = await upstream.json() as { choices?: { message?: { content?: string } }[] };
+          return new Response(data.choices?.[0]?.message?.content ?? "[]", { headers: { "Content-Type": "application/json" } });
+        }
         if (!prompt || prompt.length > 8000) {
           return Response.json({ error: "Please describe what to build." }, { status: 400 });
         }
