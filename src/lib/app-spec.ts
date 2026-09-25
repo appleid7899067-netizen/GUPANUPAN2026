@@ -166,7 +166,9 @@ export function compileAppSpec(
 
   return {
     goal,
-    features: inferFeatures(goal),\n    // Keep the user's actual intent available to the generation contract.\n    intent: inferIntent(goal),
+    features: inferFeatures(goal),
+    // Keep the user's actual intent available to the generation contract.
+    intent: inferIntent(goal),
     ui: {
       style: inferStyle(goal),
       colors: unique(
