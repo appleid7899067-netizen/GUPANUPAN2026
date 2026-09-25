@@ -144,6 +144,11 @@ export function buildBossCoreContext(plan: BossCorePlan): string {
     "MASTER TEMPLATE CONTRACT: choose information architecture before styling. Compose the product from AppShell, Header/Navigation, Hero/Overview, primary workspace, feature/content blocks, data surfaces, actions, states, and Footer when appropriate. For apps, prioritize a usable workspace over a decorative hero. For landing pages, prioritize narrative hierarchy and conversion. Every major block must have a reason to exist and must connect to the requested product.",
     "INTERACTION CONTRACT: primary controls must have real behavior. Use anchors, client-side state, localStorage, filtering, navigation, dialogs, forms, or feedback states where appropriate. Do not leave decorative buttons pretending to work.",
     "QUALITY CONTRACT: first render must be a finished product surface, not a wireframe. Avoid one giant vertical block when the product naturally needs cards, grids, split layouts, tabs, sidebars, or distinct sections.",
+    "SELF-HEALING CONTRACT: telemetry -> classify -> minimize context -> targeted patch -> sandbox re-run -> verify. Prefer dependency fixes without LLM when deterministic; for syntax/type/runtime failures, send only the relevant file/stack snippet. Never rewrite unrelated files.",
+    "PATCH CONTRACT: remediation should be expressed as exact search/replace patches, not whole-file rewrites. Apply one bounded change, then verify before another.",
+    "LOOP GUARD: maximum self-healing attempts are 3. If the guard is exhausted, preserve the last known-good artifact and expose the concrete failure evidence.",
+    "PUTER ZERO-CONFIG CONTRACT: generated apps may use window.BossnuBackend for auth, KV/document data, and file storage. Do not require users to configure third-party API keys for these baseline services.",
+    "PUTER PUBLISH CONTRACT: publishing is a separate verified action. Build the artifact, verify it, then hand it to the Puter Hosting adapter. Never claim a .puter.site URL exists until the hosting operation returns evidence.",
     "Do not replace the existing Boss Engine. This is an additional control layer.",
     "=== END BOSS CORE ===",
   ].filter(Boolean).join("\n");
