@@ -103,6 +103,5 @@ export function buildUnifiedSystemPrompt(prompt: string): string {
     "Execution: " + plan.executionOrder.join(" -> "),
     "Verification: " + plan.verificationGate.join(" | "),
     "=== END BOSSNU UNIFIED CORE ===",
-  ].join("
-");
+  ].join("\n");
 }
