@@ -25,7 +25,13 @@ const MAX_PROJECTS = 24;
 const MAX_VERSIONS = 12;
 
 const defaultCanvas = (): CanvasState => ({
-  pages: { home: { id: "home", title: "Home", path: "/", components: [] } },
+  pages: {
+    home: { id: "home", title: "Home", path: "/", components: [
+      { id: "home-settings", type: "button", props: { text: "Settings", route: "settings" } },
+      { id: "home-chat", type: "button", props: { text: "Chat", route: "chat" } },
+    ] },
+    settings: { id: "settings", title: "Settings", path: "/settings", components: [] },
+  },
   stack: [{ id: "home" }],
   theme: { primary: "#000000", background: "#ffffff", text: "#111111" },
 });
@@ -221,8 +227,13 @@ export const useBuilder = create<BuilderState>()(
             return { ...p, canvas: { ...canvas, stack: [...canvas.stack, { id: patch.pageId }] }, updatedAt: Date.now() };
           }),
         })),
-      pushCanvasRoute: (id, pageId) =>
-        get().applyCanvasPatch(id, { op: "pushRoute", pageId }),
+      pushCanvasRoute: (id, pageId) => {
+        if (pageId === "chat") {
+          set({ mobilePane: "chat" });
+          return;
+        }
+        get().applyCanvasPatch(id, { op: "pushRoute", pageId });
+      },
       popCanvasRoute: (id) =>
         set((s) => ({
           projects: s.projects.map((p) => {
