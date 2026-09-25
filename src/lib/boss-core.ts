@@ -106,7 +106,7 @@ export function validateBossArtifact(raw: string, prompt = "") {
   const complete = /<head[\s>][\s\S]*<body[\s>][\s\S]*<\/body>[\s>][\s\S]*<\/html>/i.test(raw);
   const hasViewport = /<meta[^>]+name=["']viewport["']/i.test(raw);
   const hasTitle = /<title[\s>][\s\S]*<\/title>/i.test(raw);
-  const hasUi = /<button|<a\\b|<input|<nav|<main|<section/i.test(raw);
+  const hasUi = /<button|<a\b|<input|<nav|<main|<section/i.test(raw);
   const hasBehavior = /<script[\s>]|onclick=|addEventListener\s*\(|localStorage/i.test(raw);
   const interactiveRequest = /button|form|search|filter|toggle|login|cart|checkout|booking|chat|dashboard|แชท|ค้นหา|ปุ่ม|ฟอร์ม|ตะกร้า|จอง|ล็อกอิน/i.test(prompt);
   const evidence = [
