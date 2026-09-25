@@ -43,6 +43,7 @@ export type Project = {
   pages?: AppPage[];
   versions: Version[];
   suggestions: Suggestion[];
+  lifecycleState?: BuilderLifecycleState;
   createdAt: number;
   updatedAt: number;
 };
