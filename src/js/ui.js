@@ -128,7 +128,17 @@ function renderSkeleton() {
         // hero centered in the first viewport while the community feed peeks
         // above the fold below it.
         h += `<div class="home-hero">`;
-        h += `<div class="chat-tagline"><a class="chat-tagline-logo" href="/"><span class="chat-tagline-brand" aria-hidden="true">P</span></a><h1 class="chat-tagline-text">Panupan</h1></div>`;
+        h += `<div class="panupan-hero-graphic" aria-hidden="true">
+    <div class="panupan-orbit panupan-orbit-a"></div>
+    <div class="panupan-orbit panupan-orbit-b"></div>
+    <div class="panupan-orbit panupan-orbit-c"></div>
+    <div class="panupan-glow"></div>
+    <div class="panupan-mark">P</div>
+    <span class="panupan-spark panupan-spark-1">✦</span>
+    <span class="panupan-spark panupan-spark-2">✧</span>
+    <span class="panupan-spark panupan-spark-3">·</span>
+</div>
+<div class="chat-tagline"><a class="chat-tagline-logo" href="/"><span class="chat-tagline-brand" aria-hidden="true">P</span></a><h1 class="chat-tagline-text">Panupan</h1></div>`;
         h += `<div class="chat-tagline-sub">สร้างแอปและเว็บไซต์ด้วย AI ของ Panupan</div>`;
         h += `<div class="chat-input">`;
             // Icon-only controls carry an accessible name (aria-label / title): a
