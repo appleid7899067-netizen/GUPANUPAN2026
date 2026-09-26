@@ -5016,6 +5016,16 @@ html[data-theme="dark"] .chat-input-message {
     color: var(--text);
 }
 html[data-theme="dark"] .chat-input-message::placeholder { color: var(--text-muted); }
+html[data-theme="dark"] .model-selector {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+html[data-theme="dark"] .model-selector option,
+html[data-theme="dark"] .model-selector optgroup {
+    background: var(--surface);
+    color: var(--text);
+}
 /* The primary Send control mirrors light mode's inversion (dark plate, white
    arrow): a light plate with a dark arrow. Its old #484d51 plate sat at 1.8:1
    against the dark composer — a grey square that barely read as a button. The
