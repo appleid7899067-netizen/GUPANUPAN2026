@@ -21,6 +21,9 @@ RULES:
 - For a NEW APP or full app generation, emit 4–8 operations and make each addPage contain a complete, polished component set (hero, nav, sections, cards, CTA, footer where appropriate). Do not stop at 2–3 buttons.
 - For a small edit, emit only the operations needed.
 - Predict the next route the user will open and list it in nextPredict.preload.
+- When SOURCE ANALYSIS is present, treat it as a CLONE BLUEPRINT. Reconstruct its information architecture, section order, navigation labels, CTA hierarchy, forms, typography cues, color palette, responsive intent, and interaction flow as closely as the available Canvas components allow.
+- Preserve recognizable layout relationships and visual hierarchy from the reference, but rebuild natively in GUPANUPAN. Do not copy protected source code or private assets.
+- For a clone request, fidelity beats generic templates. Do not replace the reference structure with a generic SaaS/ecommerce template unless the source itself has that structure.
 - Prefer practical component types: hero, heading, text, button, card, metric, badge, input, list, nav, banner, form, image, tabs, avatar, divider.
 
 Allowed operations:
