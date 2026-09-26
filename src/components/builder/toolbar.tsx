@@ -118,7 +118,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
           </Button>
         </Tooltip>
         <Tooltip label="โปรเจกต์ใหม่">
-          <Button variant="ghost" size="icon-sm" aria-label="โปรเจกต์ใหม่" onClick={newProject}>
+          <Button variant="ghost" size="icon-sm hidden sm:inline-flex" aria-label="โปรเจกต์ใหม่" onClick={newProject}>
             <Plus />
           </Button>
         </Tooltip>
@@ -128,7 +128,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
       {inEditor ? (
         <nav
           aria-label="ห้องทำงาน"
-          className="mx-1 flex min-w-0 flex-1 justify-center sm:mx-2"
+          className="mx-1 flex min-w-0 flex-1 justify-center overflow-hidden sm:mx-2"
         >
           <div className="inline-flex max-w-full rounded-full bg-muted-fill p-0.5">
             <button
@@ -162,26 +162,28 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
       )}
 
       {/* Right cluster — never overlap center */}
-      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+      <div className="ml-auto flex min-w-0 shrink-0 items-center gap-0.5 sm:gap-1">
         {inEditor && active?.canvas ? (
           <button
             type="button"
             onClick={() => setDeployOpen(true)}
-            className="max-w-[68px] shrink-0 truncate rounded-full bg-emerald-500 px-2 py-1 text-[11px] font-semibold text-zinc-950 shadow-sm hover:bg-emerald-400 sm:max-w-none sm:px-2.5 sm:text-xs"
+            className="shrink-0 whitespace-nowrap rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-semibold text-zinc-950 shadow-sm hover:bg-emerald-400 sm:px-2.5 sm:text-xs"
           >
             Deploy
           </button>
         ) : null}
-        <Tooltip label={`ธีม: ${theme}`}>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="สลับธีม"
-            onClick={() => setTheme(nextTheme)}
-          >
-            <ThemeIcon />
-          </Button>
-        </Tooltip>
+        <div className="hidden sm:block">
+          <Tooltip label={`ธีม: ${theme}`}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="สลับธีม"
+              onClick={() => setTheme(nextTheme)}
+            >
+              <ThemeIcon />
+            </Button>
+          </Tooltip>
+        </div>
         <Link
           to="/"
           className="mr-0.5 hidden text-xs font-medium text-muted hover:text-fg lg:inline"
