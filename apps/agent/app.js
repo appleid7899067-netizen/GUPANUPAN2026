@@ -15,6 +15,52 @@ const MODES = {
   plan: { name: "โหมดวางแผน", sys: "You are a planning assistant. Always respond in Thai with a numbered plan first, then ask which step to start with." },
 };
 
+/* ================= preloader 1% → 99% ================= */
+(function preloader() {
+  const loader = document.getElementById("loader");
+  const pct = document.getElementById("loaderPct");
+  const bar = document.getElementById("loaderBar");
+  if (!loader || !pct || !bar) return;
+  let p = 1;
+  let pageLoaded = document.readyState === "complete";
+  let finished = false;
+  const started = Date.now();
+  const paint = () => {
+    pct.textContent = p + "%";
+    bar.style.width = p + "%";
+  };
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    p = 100;
+    paint();
+    setTimeout(() => {
+      loader.classList.add("done");
+      setTimeout(() => loader.remove(), 500);
+    }, 250);
+  };
+  window.addEventListener("load", () => { pageLoaded = true; });
+  // safety: never trap the user on the loader
+  setTimeout(finish, 6000);
+  const tick = () => {
+    if (finished) return;
+    if (p < 99) {
+      // fast at first, crawl near 99
+      const step = p < 50 ? 1 + Math.floor(Math.random() * 3)
+        : p < 80 ? 1 + Math.floor(Math.random() * 2)
+        : Math.random() < 0.45 ? 1 : 0;
+      p = Math.min(99, p + step);
+      paint();
+    } else if (pageLoaded && Date.now() - started > 1400) {
+      finish();
+      return;
+    }
+    setTimeout(tick, 40);
+  };
+  paint();
+  tick();
+})();
+
 /* ================= store ================= */
 function loadStore() {
   try {
