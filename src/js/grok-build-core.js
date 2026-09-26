@@ -86,5 +86,67 @@
         }
         return { aborted: false, results };
     }
+async function handleToolCalls(completion, isTopLevel = false, c) {
+    const textContent = completion.text;
+    delete completion.text;
+    if (!Array.isArray(completion)) completion = [completion];
+
+    if (textContent && textContent.trim()) {
+        const messageId = generateMessageId();
+        c.chatHistory.push({ role: "assistant", content: textContent, messageId });
+        if (!hasActiveTodos()) appendMessage(textContent, false, false, false, false, messageId);
+    }
+
+    const toolCalls = completion.filter(t => t && t.type === 'tool_use');
+    if (!toolCalls.length) {
+        if (isTopLevel) scheduleSaveCurrentChat(c);
+        return { history: c.chatHistory, messageContent: c.currentMessageContent };
+    }
+
+    c.agentRound = (c.agentRound || 0) + 1;
+    if (c.agentRound > window.PanupanGrokCore.MAX_AGENT_ROUNDS) {
+        const message = 'Agent loop stopped safely after reaching the maximum tool rounds. Continue the request to resume.';
+        c.chatHistory.push({ role: "assistant", content: message, messageId: generateMessageId() });
+        appendMessage(message, false);
+        scheduleSaveCurrentChat(c);
+        return { error: 'MAX_AGENT_ROUNDS', history: c.chatHistory };
+    }
+
+    c.chatHistory.push({
+        role: "assistant",
+        content: toolCalls.length === 1 ? toolCalls[0] : toolCalls
+    });
+
+    const run = await window.PanupanGrokCore.runTools(toolCalls, c);
+    if (run.aborted) return { error: 'Aborted', history: c.chatHistory };
+    scheduleSaveCurrentChat(c);
+
+    spinner = showSpinner();
+    if (isAborted(c.abortController) || isStaleTurn(c)) {
+        spinner?.remove();
+        spinner = null;
+        return { error: 'Aborted', history: c.chatHistory };
+    }
+    if (!c.abortController) c.abortController = new AbortController();
+
+    const stream = await abortableAwait(puter.ai.chat(prepareHistoryForAI(c.chatHistory), {
+        model: MODEL,
+        tools: c.tools || window.getTurnTools(),
+        stream: true,
+        reasoning_effort: 'high',
+        signal: c.abortController.signal
+    }), c.abortController.signal);
+
+    if (!isStaleTurn(c)) window.noteTurnActivity?.();
+    c.currentMessageContent = '';
+    c.currentMessage = null;
+    await handleMessageStream(stream, c);
+
+    if (isAborted(c.abortController) || isStaleTurn(c)) return { error: 'Aborted', history: c.chatHistory };
+    if (isTopLevel) scheduleSaveCurrentChat(c);
+
+    return { history: c.chatHistory, messageContent: c.currentMessageContent };
+}
+
     window.PanupanGrokCore = { MAX_AGENT_ROUNDS, MAX_TOOL_RETRIES, isTransientError, getTools, findTool, executeTool, addToolResult, hasToolResult, runTools, recordMutation };
 })();
