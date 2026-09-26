@@ -792,6 +792,11 @@ export default defineConfig({
     port: 8080,
     open: true,
   },
+  preview: {
+    host: '0.0.0.0',
+    port: 8080,
+    allowedHosts: ['xboss123.onrender.com'],
+  },
   build: {
     outDir: path.resolve(__dirname, 'dist'),
     emptyOutDir: true,
