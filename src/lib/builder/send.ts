@@ -1,8 +1,7 @@
 import { uid } from "@/lib/utils";
 import { useBuilder } from "./store";
-import { generateCanvasPatches } from "./patch-client";
+import { generateIntent } from "./patch-client";
 import type { AgentActivityStatus, BuilderLifecycleState, CanvasPatch } from "./types";
-import { transition } from "./state-machine";
 
 function activity(label: string, status: AgentActivityStatus, detail?: string) {
   const s = useBuilder.getState();
@@ -12,8 +11,11 @@ function activity(label: string, status: AgentActivityStatus, detail?: string) {
 
 function applyPatch(id: string, patch: CanvasPatch) {
   const store = useBuilder.getState();
-  if (patch.op === "pushRoute") store.pushCanvasRoute(id, patch.pageId);
-  else store.applyCanvasPatch(id, patch);
+  if (patch.op === "pushRoute" || patch.op === "setPage") {
+    store.pushCanvasRoute(id, patch.pageId);
+    return;
+  }
+  store.applyCanvasPatch(id, patch);
 }
 
 export async function sendPrompt(text: string) {
@@ -32,44 +34,59 @@ export async function sendPrompt(text: string) {
   store.pushMessage(id, { id: uid(), role: "user", content: trimmed, createdAt: Date.now() });
   store.setDraft("");
   store.setGenerating(true);
-  store.setGeneratingStatus("กำลังสร้าง Patch");
+  store.setGeneratingStatus("กำลังอ่านความต้องการ");
   store.setMobilePane("chat");
   useBuilder.getState().setLifecycleState("PLANNING" as BuilderLifecycleState);
-  activity("อ่านคำขอ", "working");
+  activity("อ่านคำขอ", "working", trimmed.slice(0, 120));
 
   try {
     const history = project.messages.map((m) => ({ role: m.role, content: m.content }));
-    const patches = await generateCanvasPatches(project.canvas, trimmed, history);
-    if (!patches.length) throw new Error("โมเดลไม่คืน Patch ที่ใช้งานได้");
+    activity("แตก Intent (WHY)", "working", "แก้พฤติกรรม ไม่ใช่แค่ UI");
+    useBuilder.getState().setGeneratingStatus("กำลังแตก Intent");
 
-    activity("ได้รับ JSON Patch", "working", `${patches.length} patch`);
-    for (const patch of patches) applyPatch(id, patch);
+    const intent = await generateIntent(project.canvas, trimmed, history);
 
-    const after = useBuilder.getState().projects.find((p) => p.id === id);
-    if (!after) throw new Error("Project disappeared");
+    if (intent.thought) {
+      activity("Thought", "working", intent.thought.slice(0, 200));
+    }
+    activity("Operations", "working", `${intent.operations.length} ops · ${intent.operations.map((o) => o.op).join(", ")}`);
 
+    for (const patch of intent.operations) {
+      applyPatch(id, patch);
+    }
+
+    if (intent.nextPredict?.preload?.length) {
+      activity("Preload", "working", intent.nextPredict.preload.join(", "));
+      applyPatch(id, { op: "preload", pageIds: intent.nextPredict.preload });
+    }
+
+    const reply = intent.reply || `อัปเดต App แล้ว • ${intent.operations.map((p) => p.op).join(", ")}`;
     store.pushMessage(id, {
       id: uid(),
       role: "assistant",
-      content: `อัปเดต App แล้ว • ${patches.map((p) => p.op).join(", ")}`,
+      content: intent.thought ? `${reply}\n\n_(${intent.thought})_` : reply,
       createdAt: Date.now(),
     });
     useBuilder.getState().setGeneratingStatus("เรียบร้อย");
     useBuilder.getState().setLifecycleState("DONE");
-    activity("Canvas อัปเดตแล้ว", "success", "Store เดียวกันถูกเปลี่ยนโดย Patch");
+    activity("Intent ครบ", "success", "Chat + App = สมองเดียวกัน");
     store.setMobilePane("app");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Patch failed";
+    const message = error instanceof Error ? error.message : "Intent failed";
     useBuilder.getState().setGeneratingStatus("ผิดพลาด");
     useBuilder.getState().setLifecycleState("FAILED");
-    store.pushMessage(id, { id: uid(), role: "assistant", content: `ทำ Patch ไม่สำเร็จ: ${message}`, createdAt: Date.now() });
-    activity("Patch ล้มเหลว", "error", message);
+    store.pushMessage(id, {
+      id: uid(),
+      role: "assistant",
+      content: `ทำ Intent ไม่สำเร็จ: ${message}`,
+      createdAt: Date.now(),
+    });
+    activity("Intent ล้มเหลว", "error", message);
   } finally {
     useBuilder.getState().setGenerating(false);
     useBuilder.getState().setStreamText("");
   }
 }
-
 
 export function openExample(example: { prompt: string }) {
   const store = useBuilder.getState();
