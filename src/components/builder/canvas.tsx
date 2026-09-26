@@ -12,7 +12,10 @@ export function Canvas() {
   const theme = project.canvas?.theme ?? {};
   const bg = theme.background ?? "#fff";
   const fg = theme.text ?? "#111";
-  const primary = theme.primary ?? "#000";
+  const primary = theme.primary ?? "#6d5dfc";
+  const accent = theme.accent ?? "#22c55e";
+  const surface = theme.surface ?? `${fg}08`;
+  const muted = theme.muted ?? `${fg}70`;
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-auto" style={{ background: bg, color: fg }}>
@@ -39,7 +42,7 @@ export function Canvas() {
       </div>
       <div className="mx-auto w-full max-w-5xl p-5">
         {page.components.map((component) => (
-          <CanvasNode key={component.id} node={component} projectId={project.id} primary={primary} fg={fg} />
+          <CanvasNode key={component.id} node={component} projectId={project.id} primary={primary} fg={fg} accent={accent} surface={surface} muted={muted} />
         ))}
       </div>
     </main>
@@ -51,11 +54,17 @@ function CanvasNode({
   projectId,
   primary,
   fg,
+  accent,
+  surface,
+  muted,
 }: {
   node: CanvasComponent;
   projectId: string;
   primary: string;
   fg: string;
+  accent: string;
+  surface: string;
+  muted: string;
 }) {
   const push = useBuilder((s) => s.pushCanvasRoute);
   const props = node.props ?? {};
@@ -66,6 +75,63 @@ function CanvasNode({
       : typeof props.label === "string"
         ? props.label
         : node.type;
+
+  if (node.type === "hero") {
+    return (
+      <section className="mb-6 overflow-hidden rounded-3xl p-7 shadow-sm" style={{ background: surface, border: `1px solid ${fg}12` }}>
+        <span className="mb-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold" style={{ background: `${primary}18`, color: primary }}>
+          {String(props.badge ?? "Featured")}
+        </span>
+        <h1 className="max-w-3xl text-4xl font-bold tracking-tight md:text-5xl">{text}</h1>
+        {typeof props.subtitle === "string" ? <p className="mt-3 max-w-2xl leading-7" style={{ color: muted }}>{props.subtitle}</p> : null}
+        {typeof props.cta === "string" ? <button type="button" className="mt-5 rounded-xl px-5 py-3 text-sm font-semibold text-white" style={{ background: primary }}>{props.cta}</button> : null}
+      </section>
+    );
+  }
+
+  if (node.type === "badge") {
+    return <span className="mr-2 mb-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold" style={{ background: `${accent}18`, color: accent }}>{text}</span>;
+  }
+
+  if (node.type === "metric") {
+    return (
+      <section className="mb-3 inline-flex min-w-40 flex-col rounded-2xl p-4" style={{ background: surface, border: `1px solid ${fg}12` }}>
+        <span className="text-xs" style={{ color: muted }}>{String(props.label ?? "Metric")}</span>
+        <strong className="mt-1 text-2xl">{String(props.value ?? text)}</strong>
+        {typeof props.delta === "string" ? <small className="mt-1 font-medium" style={{ color: accent }}>{props.delta}</small> : null}
+      </section>
+    );
+  }
+
+  if (node.type === "divider") {
+    return <div className="my-5 h-px w-full" style={{ background: `${fg}12` }} />;
+  }
+
+  if (node.type === "image") {
+    const src = typeof props.src === "string" ? props.src : "";
+    return (
+      <div className="mb-4 overflow-hidden rounded-2xl" style={{ background: surface, aspectRatio: String(props.aspectRatio ?? "16/9") }}>
+        {src ? <img src={src} alt={String(props.alt ?? "")} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm" style={{ color: muted }}>Visual placeholder</div>}
+      </div>
+    );
+  }
+
+  if (node.type === "tabs") {
+    return (
+      <div className="mb-4 flex flex-wrap gap-2">
+        {children.map((child, index) => (
+          <button key={child.id} type="button" className="rounded-full px-4 py-2 text-sm font-medium" style={{ background: index === 0 ? primary : surface, color: index === 0 ? "#fff" : fg }}>
+            {typeof child.props?.text === "string" ? child.props.text : child.type}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (node.type === "avatar") {
+    const initials = String(props.initials ?? text).slice(0, 2).toUpperCase();
+    return <div className="mb-3 flex size-10 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: primary }}>{initials}</div>;
+  }
 
   if (node.type === "banner") {
     return (
