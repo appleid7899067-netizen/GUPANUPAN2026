@@ -67,7 +67,8 @@
     "test:click-to-edit-intake": "node scripts/test-click-to-edit-intake.mjs",
     "test:external-fetch": "node scripts/test-external-fetch.mjs",
     "test:friendly-errors": "node scripts/test-friendly-errors.mjs",
-    "test:mcp": "node scripts/test-mcp.mjs"
+    "test:mcp": "node scripts/test-mcp.mjs",
+    "start": "vite preview --host 0.0.0.0 --port $PORT"
   },
   "keywords": [],
   "author": "Nariman Jelveh",
