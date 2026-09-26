@@ -140,10 +140,18 @@ export async function puterCreateProject(opts: { projectId: string; description:
   return project;
 }
 
-// AI chat via Puter — mirrors Grok Build core
-export async function puterChat(messages: any[], opts?: { model?: string; stream?: boolean }): Promise<any> {
+// AI chat via Puter — Bolt Killer: auto-routing 500+ models (เหนือ Bolt ที่ใช้ตัวเดียว)
+export async function puterChat(messages: any[], opts?: { model?: string; stream?: boolean; promptHint?: string }): Promise<any> {
   if (!isPuterAvailable()) throw new Error("Puter not loaded");
-  const model = opts?.model || localStorage.getItem("gupanupan2026.selectedModel") || "x-ai/grok-4.7";
+  // Bolt killer: pick best model per prompt if not explicitly chosen
+  let model = opts?.model;
+  if (!model) {
+    try {
+      const hint = opts?.promptHint || (Array.isArray(messages) ? String(messages[messages.length-1]?.content || "").slice(0,500) : "");
+      const { pickBestModel } = await import("./bolt-killer");
+      model = pickBestModel(hint, localStorage.getItem("gupanupan2026.selectedModel") || "x-ai/grok-4.7");
+    } catch { model = localStorage.getItem("gupanupan2026.selectedModel") || "x-ai/grok-4.7"; }
+  }
   return window.puter.ai.chat(messages, {
     model,
     stream: !!opts?.stream,
