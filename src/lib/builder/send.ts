@@ -45,8 +45,19 @@ export async function sendPrompt(text: string) {
     const result = await runBuilderTurn({
       generate: generateIntent,
       apply: (patch) => applyPatch(id, patch),
-      snapshot: (label) => useBuilder.getState().snapshotCanvas(id, label),
-      getCanvas: () => useBuilder.getState().projects.find((p) => p.id === id)?.canvas ?? project.canvas,
+      let checkpointId: string | null = null;
+    const checkpoint = () => {
+      if (checkpointId) useBuilder.getState().restoreVersion(id, checkpointId);
+    };
+    const snapshot = (label: string) => {
+      checkpointId = useBuilder.getState().snapshotCanvas(id, label);
+      return checkpointId;
+    };
+    const repair = (state: Parameters<typeof generateIntent>[0], prompt: string, history: Parameters<typeof generateIntent>[2], errors: string[]) =>
+      generateIntent(state, prompt + "\n\nVERIFY ERRORS FROM PREVIOUS ATTEMPT:\n" + errors.join("\n") + "\nRepair the Canvas with a new valid PATCH only.", history);
+    const currentCanvas = () => useBuilder.getState().projects.find((p) => p.id === id)?.canvas ?? project.canvas;
+      repair,
+      restore: checkpoint,
       onEvent: ({ phase, message }) => {
         const statusMap: Record<string, string> = {
           WHY: "กำลังวิเคราะห์เป้าหมาย",
