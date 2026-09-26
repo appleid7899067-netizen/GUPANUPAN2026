@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#faf8f4">
+<meta name="description" content="GUPAN Agent — ผู้ช่วย AI สไตล์ Agent Mode: สั่งงานด้วยภาษาไทย ต่อไฟล์และเครื่องมือได้">
+<title>GUPAN Agent — สั่งงาน AI ด้วยภาษาไทย</title>
+<link rel="stylesheet" href="./styles.css">
+<script src="https://js.puter.com/v2/" async></script>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ===== slim icon rail ===== -->
+  <aside class="rail" aria-label="แถบเครื่องมือ">
+    <button class="rail-btn" id="railNew" title="แชทใหม่" aria-label="แชทใหม่">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+    </button>
+    <button class="rail-btn" id="railHistory" title="ประวัติแชท" aria-label="ประวัติแชท">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+    </button>
+    <button class="rail-btn" id="railSearch" title="ค้นหาแชท" aria-label="ค้นหาแชท">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    </button>
+    <span class="rail-spacer"></span>
+    <button class="rail-btn" id="railHelp" title="วิธีใช้" aria-label="วิธีใช้">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9.5 13.5a2.5 2.5 0 1 1 3.4 2.3c-.8.3-.9 1-.9 1.7"/><circle cx="12" cy="19" r=".5" fill="currentColor"/></svg>
+    </button>
+  </aside>
+
+  <!-- ===== main ===== -->
+  <div class="main">
+    <header class="topbar">
+      <div class="mode-wrap">
+        <button class="mode-btn" id="modeBtn" aria-haspopup="true" aria-expanded="false">
+          <span class="spark">✳</span>
+          <span id="modeName">GUPAN Agent</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="mode-menu hidden" id="modeMenu" role="menu">
+          <button role="menuitemradio" aria-checked="true" data-mode="agent">
+            <b>✳ GUPAN Agent</b><small>เอเจนต์อัตโนมัติ วางแผนและทำงานหลายขั้นตอนเอง</small>
+          </button>
+          <button role="menuitemradio" aria-checked="false" data-mode="chat">
+            <b>💬 ถาม–ตอบ</b><small>คุยทั่วไป ตอบไว ไม่วางแผนหลายขั้น</small>
+          </button>
+          <button role="menuitemradio" aria-checked="false" data-mode="plan">
+            <b>🗺 โหมดวางแผน</b><small>ร่างแผนงานก่อน แล้วค่อยให้อนุมัติทีละขั้น</small>
+          </button>
+        </div>
+      </div>
+      <div class="top-right">
+        <button class="login-chip" id="loginChip">เข้าสู่ระบบ Puter</button>
+        <button class="icon-btn" id="folderBtn" title="ประวัติแชท" aria-label="ประวัติแชท">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="stage" id="stage">
+      <!-- hero / empty state -->
+      <section class="hero" id="hero">
+        <h1>วันนี้อยากให้<br>ช่วยทำอะไร?</h1>
+        <div class="suggest" id="suggest">
+          <button data-prompt="ช่วยร่างแผนเปิดร้านกาแฟเล็ก ๆ งบ 200,000 บาท แบบเป็นขั้นตอน"><i>☕</i><span>ร่างแผนเปิดร้านกาแฟ</span></button>
+          <button data-prompt="เขียนอีเมลภาษาอังกฤษขอเลื่อนนัดส่งงาน แบบสุภาพพร้อมคำแปลไทย"><i>✉️</i><span>เขียนอีเมลสุภาพ + แปล</span></button>
+          <button data-prompt="ช่วยออกแบบตารางออกกำลังกาย 4 วันต่อสัปดาห์ สำหรับมือใหม่"><i>🏋️</i><span>ตารางออกกำลังกาย</span></button>
+          <button data-prompt="สรุปข้อดี–ข้อเสียของการยื่นกู้ซื้อคอนโด vs เช่าต่อ ในมุมคนเงินเดือน 35,000"><i>🏠</i><span>คอนโด: ซื้อ vs เช่า</span></button>
+        </div>
+        <div class="connectors">
+          <span class="conn-label">Connectors</span>
+          <span class="conn">GitHub</span>
+          <span class="conn">Drive</span>
+          <span class="conn">Docs</span>
+          <span class="conn">Notion</span>
+          <span class="conn">Gmail</span>
+          <span class="conn">Linear</span>
+          <span class="conn">Cal</span>
+        </div>
+      </section>
+
+      <!-- thread -->
+      <section class="thread hidden" id="thread" aria-live="polite"></section>
+    </main>
+
+    <footer class="composer-zone">
+      <div class="composer">
+        <div class="file-chips hidden" id="fileChips"></div>
+        <textarea id="input" rows="1" placeholder="สั่งงานอะไรก็ได้…" aria-label="พิมพ์คำสั่ง"></textarea>
+        <div class="composer-row">
+          <button class="add-files" id="addFiles">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.5l-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8L13 5a3.7 3.7 0 0 1 5.2 5.2l-8.2 8.2a1.85 1.85 0 0 1-2.6-2.6L14.5 8.7"/></svg>
+            Add files
+          </button>
+          <span class="composer-right">
+            <button class="sq-btn" id="modelBtn" title="เลือกโมเดล" aria-label="เลือกโมเดล">⚙</button>
+            <button class="sq-btn send" id="sendBtn" title="ส่ง" aria-label="ส่งข้อความ">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+            <button class="sq-btn stop hidden" id="stopBtn" title="หยุด" aria-label="หยุด">■</button>
+          </span>
+        </div>
+        <div class="model-menu hidden" id="modelMenu">
+          <button data-model="" aria-checked="true"><b>อัตโนมัติ</b><small>Puter เลือกให้</small></button>
+          <button data-model="gpt-5-mini" aria-checked="false"><b>gpt-5-mini</b><small>สมดุล เร็ว</small></button>
+          <button data-model="claude-sonnet-4-6" aria-checked="false"><b>claude-sonnet</b><small>เขียนดี เนี้ยบ</small></button>
+          <button data-model="google/gemini-3-flash" aria-checked="false"><b>gemini-flash</b><small>เร็ว ประหยัด</small></button>
+        </div>
+      </div>
+      <p class="disclaimer">GUPAN Agent ตอบได้ผิดพลาด ควรตรวจทานงานสำคัญ · <span id="aiState">โหมดเดโม — เข้าสู่ระบบ Puter เพื่อใช้ AI จริง</span></p>
+    </footer>
+  </div>
+</div>
+
+<!-- history drawer -->
+<div class="scrim hidden" id="scrim"></div>
+<aside class="drawer hidden" id="drawer" aria-label="ประวัติแชท">
+  <div class="drawer-head">
+    <b>ประวัติแชท</b>
+    <button class="icon-btn" id="drawerClose" aria-label="ปิด">✕</button>
+  </div>
+  <label class="drawer-search">
+    <input id="drawerQ" type="search" placeholder="ค้นหาแชท…" aria-label="ค้นหาแชท">
+  </label>
+  <div class="drawer-list" id="drawerList"></div>
+  <button class="drawer-new" id="drawerNew">+ แชทใหม่</button>
+</aside>
+
+<!-- help modal -->
+<div class="modal hidden" id="helpModal" role="dialog" aria-modal="true" aria-label="วิธีใช้">
+  <div class="modal-card">
+    <h2>วิธีใช้ GUPAN Agent</h2>
+    <ol>
+      <li>พิมพ์คำสั่งภาษาไทยในช่องด้านล่าง แล้วกดส่ง</li>
+      <li>โหมดเดโมจะจำลองการทำงานของเอเจนต์ให้ดูก่อน</li>
+      <li>กด <b>เข้าสู่ระบบ Puter</b> มุมขวาบนเพื่อใช้ AI จริง (ฟรี ใช้โควตาบัญชีคุณ)</li>
+      <li>แนบไฟล์ได้ด้วยปุ่ม <b>Add files</b> — ไฟล์อยู่แค่ในเครื่องนี้</li>
+      <li>แชททั้งหมดเก็บในเบราว์เซอร์ เปิดดูย้อนหลังได้จากแถบซ้าย</li>
+    </ol>
+    <button class="primary" id="helpClose">เข้าใจแล้ว</button>
+  </div>
+</div>
+
+<input id="fileInput" type="file" multiple hidden>
+<div class="toast hidden" id="toast" role="status"></div>
+
+<script src="./app.js"></script>
+</body>
+</html>
