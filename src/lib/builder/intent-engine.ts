@@ -387,25 +387,6 @@ export function localIntentFromGoal(
     };
   }
 
-  // Generic fallback: every non-empty request must remain actionable.
-  // Do not turn an unrecognized natural-language request into a hard Intent failure.
-  return {
-    thought: "แปลงคำขอเป็น Intent แบบปลอดภัยเพื่อให้ Canvas เดินหน้าต่อได้",
-    operations: [
-      {
-        op: "addComponent",
-        pageId: homeId,
-        component: {
-          id: uid("intent"),
-          type: "text",
-          props: { text: goal.trim().slice(0, 240) },
-        },
-      },
-    ],
-    nextPredict: { preload: Object.keys(state.pages).slice(0, 3) },
-    reply: "รับคำขอแล้ว และส่งต่อเป็น Intent ให้ Canvas เรียบร้อย",
-  };
-
   // Generic improve / จัดให้
   if (/สวย|ดีขึ้น|ปรับ|improve|จัดให้|ทำให้ดี/.test(t)) {
     return {
@@ -439,6 +420,27 @@ export function localIntentFromGoal(
       reply: "จัดโครงหน้าแรก + โทนสีหลักใหม่ให้แล้ว",
     };
   }
+
+
+  // Generic fallback: every non-empty request must remain actionable.
+  // Do not turn an unrecognized natural-language request into a hard Intent failure.
+  return {
+    thought: "แปลงคำขอเป็น Intent แบบปลอดภัยเพื่อให้ Canvas เดินหน้าต่อได้",
+    operations: [
+      {
+        op: "addComponent",
+        pageId: homeId,
+        component: {
+          id: uid("intent"),
+          type: "text",
+          props: { text: goal.trim().slice(0, 240) },
+        },
+      },
+    ],
+    nextPredict: { preload: Object.keys(state.pages).slice(0, 3) },
+    reply: "รับคำขอแล้ว และส่งต่อเป็น Intent ให้ Canvas เรียบร้อย",
+  };
+
 
   return null;
 }
