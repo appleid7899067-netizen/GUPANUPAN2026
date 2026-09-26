@@ -40,6 +40,7 @@ const SCRIPTS = [
   'js/publish-errors.js',
   'js/issues-core.js',
   'js/worker-ownership.js',
+  'js/grok-build-core.js',
   'js/tools.js',
   'js/ui.js',
   'js/mcp-ui.js',
