@@ -5,6 +5,8 @@ import {
   intentSystemPrompt,
   localIntentFromGoal,
   parseIntentResult,
+  analyzeIntentWHY,
+  intentPlanIsUsable,
 } from "./intent-engine";
 
 /**
@@ -43,6 +45,8 @@ export async function generateIntent(
   if (state.selectedComponentId) {
     builderMessage += `\nSELECTED COMPONENT: ${state.selectedComponentId}. If the user's request is an edit, target this component first.`;
   }
+  const why = analyzeIntentWHY(userMessage, state);
+  builderMessage += `\n\nWHY ANALYSIS: ${JSON.stringify(why)}\nCreate PLAN from this WHY, then emit PATCH operations.`;
   const payload = buildIntentUserPayload(state, builderMessage, history);
   const messages = [
     { role: "system" as const, content: intentSystemPrompt() },
@@ -56,7 +60,7 @@ export async function generateIntent(
       const result = await puterFreeChat(messages, { model: "grok-4.5" });
       if (result.ok && result.text.trim()) {
         const parsed = parseIntentResult(result.text);
-        if (parsed?.operations.length) return parsed;
+        if (intentPlanIsUsable(parsed, userMessage)) return parsed;
       }
       if (result.error === "PUTER_SIGN_IN_REQUIRED") {
         throw new Error("กรุณาล็อกอิน Puter (มุมขวาบน) เพื่อใช้โมเดลฟรี");
