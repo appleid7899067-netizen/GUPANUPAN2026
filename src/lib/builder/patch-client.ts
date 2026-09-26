@@ -57,7 +57,9 @@ export async function generateIntent(
   // 1) Prefer Puter / remote model
   if (await puterIsSignedIn()) {
     try {
-      const result = await puterFreeChat(messages, { model: "grok-4.5" });
+      const result = await puterFreeChat(messages, {
+        model: "x-ai/grok-4.7",
+      });
       if (result.ok && result.text.trim()) {
         const parsed = parseIntentResult(result.text);
         if (intentPlanIsUsable(parsed, userMessage)) return parsed;
