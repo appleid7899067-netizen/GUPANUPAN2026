@@ -23,6 +23,7 @@ function check(name, cond, detail) {
 
 const helpers = fs.readFileSync(new URL('../src/js/helpers.js', import.meta.url), 'utf8');
 const tools = fs.readFileSync(new URL('../src/js/tools.js', import.meta.url), 'utf8');
+const core = fs.readFileSync(new URL('../src/js/grok-build-core.js', import.meta.url), 'utf8');
 
 function slice(src, from, to) {
     const a = src.indexOf(from), b = src.indexOf(to, a + from.length);
@@ -34,7 +35,7 @@ const { prepareHistoryForAI, dropDuplicateToolResults } = new Function('window',
     slice(helpers, 'function prepareHistoryForAI(', '/**\n * Sum the AI-reported cost') +
     '\nreturn { prepareHistoryForAI, dropDuplicateToolResults };')(win);
 const hasToolResultFor = new Function('window',
-    slice(tools, 'function hasToolResultFor(', 'async function handleToolCalls(') + '\nreturn hasToolResultFor;')(win);
+    slice(core, 'function hasToolResult(history, id) {', 'function recordMutation(') + '\nreturn hasToolResult;')(win);
 
 const toolUse = (id) => ({ role: 'assistant', content: { type: 'tool_use', id, name: 'write', input: {} } });
 const toolResult = (id, text) => ({ role: 'user', content: { type: 'tool_result', tool_use_id: id, content: text } });
@@ -90,16 +91,14 @@ const assistant = (t) => ({ role: 'assistant', content: t });
 // The tool loop now lives in the Grok Build-inspired core. Keep the regression
 // guard attached to the real execution path rather than the UI wrapper in
 // tools.js, so refactors of handleToolCalls do not silently remove the race fix.
-const core = fs.readFileSync(new URL('../src/js/grok-build-core.js', import.meta.url), 'utf8');
 const runTools = slice(core, 'async function runTools(calls, state) {', '\n    window.PanupanGrokCore =')
 ;
 check('grok-build-core.js: success result is gated on no result existing yet',
     /if \(!hasToolResult\(state\.chatHistory, call\.id\)\) addToolResult\(state\.chatHistory, call\.id, executed\.result/.test(runTools));
 check('grok-build-core.js: error result is gated the same way',
     /if \(!hasToolResult\(state\.chatHistory, call\.id\)\) addToolResult\(state\.chatHistory, call\.id, \{ error: message \}, true/.test(runTools));
-check('tools.js: the compatibility helper delegates to the same guard',
-    tools.indexOf('window.hasToolResultFor = hasToolResultFor;') >= 0 &&
-    tools.indexOf('function hasToolResultFor(') >= 0);
+check('tools.js: the compatibility helper delegates to the Grok core guard',
+    /window\.hasToolResultFor = function\(history, toolUseId\) \{[\s\S]*?return window\.PanupanGrokCore\.hasToolResult\(history, toolUseId\);/.test(tools));
 check('helpers.js: prepareHistoryForAI dedupes before setting the cache breakpoint',
     helpers.indexOf('dropDuplicateToolResults(copy)') < helpers.indexOf("cache_control = { type: \"ephemeral\" }"));
 if (failures) { console.error(`\n${failures} tool-result dedup check(s) failed.`); process.exit(1); }
