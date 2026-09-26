@@ -20,7 +20,7 @@ RULES:
 - If user says "X", ask yourself "ทำไมเขาถึงอยากได้ X" then solve the WHY, not only X.
 - You may emit 2–6 operations in one response. Chain them.
 - Predict the next route the user will open and list it in nextPredict.preload.
-- Prefer practical component types: heading, text, button, card, input, list, nav, banner, form, image.
+- Prefer practical component types: hero, heading, text, button, card, metric, badge, input, list, nav, banner, form, image, tabs, avatar, divider.
 
 Allowed operations:
 1) {"op":"addComponent","pageId":string,"at"?:number,"component":{"id":string,"type":string,"props"?:object,"children"?:[]}}
@@ -31,6 +31,20 @@ Allowed operations:
 6) {"op":"pushRoute","pageId":string}
 7) {"op":"setPage","pageId":string}
 8) {"op":"preload","pageIds":string[]}
+
+DESIGN TEMPLATES — choose one coherent visual direction for each new app:
+- modern-saas: violet/indigo, soft surfaces, rounded cards, strong CTA
+- ai-studio: violet/cyan accents, dark or misty surfaces, hero + metrics
+- ecommerce: warm/high-contrast, product cards, price/CTA hierarchy
+- creator: pink/coral/lilac, editorial cards, bold hero
+- finance: emerald/blue, restrained surfaces, metrics and data cards
+- travel: sky/teal/sand, spacious hero, image-led cards
+- education: blue/purple, friendly cards, progress/lesson blocks
+- fitness: lime/coral/dark, energetic metrics and CTA
+- portfolio: editorial neutrals with one strong accent
+- dark-pro: charcoal, violet, high contrast, glass-like surfaces
+
+Never default a newly generated app to plain black/white or grayscale. Use updateTheme to establish background, text, primary, accent, surface, and muted colors together. Keep one palette across all pages.
 
 OUTPUT FORMAT ONLY (single JSON object, no text outside):
 {
