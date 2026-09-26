@@ -1,4 +1,63 @@
-let MODEL = 'claude-opus-5-5';
+const MODEL_STORAGE_KEY = 'gupanupan2026.selectedModel';
+let MODEL = (() => {
+    try { return localStorage.getItem(MODEL_STORAGE_KEY) || 'claude-opus-5-5'; }
+    catch (e) { return 'claude-opus-5-5'; }
+})();
+let availableAIModels = [];
+
+async function initializeModelSelector() {
+    const select = document.querySelector('.model-selector');
+    if (!select || !window.puter?.ai?.listModels) return;
+    select.disabled = true;
+    select.innerHTML = '<option value="">Loading models…</option>';
+    try {
+        const models = await puter.ai.listModels();
+        availableAIModels = Array.isArray(models) ? models.filter(m => m && m.id) : [];
+        availableAIModels.sort((a, b) => {
+            const provider = String(a.provider || '').localeCompare(String(b.provider || ''));
+            return provider || String(a.name || a.id).localeCompare(String(b.name || b.id));
+        });
+        select.innerHTML = '';
+        const grouped = new Map();
+        for (const model of availableAIModels) {
+            const provider = String(model.provider || 'Other');
+            if (!grouped.has(provider)) grouped.set(provider, []);
+            grouped.get(provider).push(model);
+        }
+        for (const [provider, modelsForProvider] of grouped) {
+            const group = document.createElement('optgroup');
+            group.label = provider;
+            for (const model of modelsForProvider) {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.name ? (model.name + ' · ' + model.id) : model.id;
+                group.appendChild(option);
+            }
+            select.appendChild(group);
+        }
+        const exists = availableAIModels.some(m => m.id === MODEL);
+        if (!exists && availableAIModels.length) MODEL = availableAIModels[0].id;
+        select.value = MODEL;
+        select.disabled = !availableAIModels.length;
+        select.title = availableAIModels.length ? 'Choose the AI model for this builder' : 'No AI models available';
+    } catch (error) {
+        console.warn('Could not load Puter AI models:', error);
+        select.innerHTML = '<option value="claude-opus-5-5">Claude Opus 5.5</option>';
+        select.value = MODEL;
+        select.disabled = false;
+        select.title = 'Choose the AI model';
+    }
+}
+
+function setBuilderModel(modelId) {
+    if (!modelId) return;
+    MODEL = modelId;
+    try { localStorage.setItem(MODEL_STORAGE_KEY, modelId); } catch (e) { /* optional preference */ }
+    const select = document.querySelector('.model-selector');
+    if (select && select.value !== modelId) select.value = modelId;
+    window.track?.('Model Selected', { model: modelId });
+}
+window.setBuilderModel = setBuilderModel;
 let system_prompt
 let chatHistory;
 let currentAppDir;
