@@ -1,6 +1,7 @@
 import { uid } from "@/lib/utils";
 import { useBuilder } from "./store";
 import { generateIntent } from "./patch-client";
+import { runBuilderTurn } from "./builder-core";
 import type { AgentActivityStatus, BuilderLifecycleState, CanvasPatch } from "./types";
 
 function activity(label: string, status: AgentActivityStatus, detail?: string) {
@@ -41,28 +42,32 @@ export async function sendPrompt(text: string) {
 
   try {
     const history = project.messages.map((m) => ({ role: m.role, content: m.content }));
-    activity("แตก Intent (WHY)", "working", "แก้พฤติกรรม ไม่ใช่แค่ UI");
-    useBuilder.getState().setGeneratingStatus("กำลังแตก Intent");
+    const result = await runBuilderTurn({
+      generate: generateIntent,
+      apply: (patch) => applyPatch(id, patch),
+      snapshot: (label) => useBuilder.getState().snapshotCanvas(id, label),
+      getCanvas: () => useBuilder.getState().projects.find((p) => p.id === id)?.canvas ?? project.canvas,
+      onEvent: ({ phase, message }) => {
+        const statusMap: Record<string, string> = {
+          WHY: "กำลังวิเคราะห์เป้าหมาย",
+          PLAN: "กำลังวางแผนแอป",
+          PATCH: "กำลังสร้าง Patch",
+          APPLY: "กำลังอัปเดต Canvas",
+          VERIFY: "กำลังตรวจสอบผลลัพธ์",
+          DONE: "เรียบร้อย",
+          FAILED: "ผิดพลาด",
+        };
+        useBuilder.getState().setGeneratingStatus(statusMap[phase] ?? message);
+        activity(phase, phase === "FAILED" ? "error" : phase === "DONE" ? "success" : "working", message);
+      },
+    }, trimmed, history);
 
-    const intent = await generateIntent(project.canvas, trimmed, history);
+    const intent = result.intent;
+    if (intent.thought) activity("Thought", "working", intent.thought.slice(0, 200));
+    activity("VERIFY", "success", result.verification.pages + " หน้า · " + result.verification.components + " components");
 
-    if (intent.thought) {
-      activity("Thought", "working", intent.thought.slice(0, 200));
-    }
-    activity("Operations", "working", `${intent.operations.length} ops · ${intent.operations.map((o) => o.op).join(", ")}`);
+    const reply = intent.reply || "อัปเดต App แล้ว • " + intent.operations.map((p) => p.op).join(", ");
 
-    useBuilder.getState().snapshotCanvas(id, "Before AI edit");
-
-    for (const patch of intent.operations) {
-      applyPatch(id, patch);
-    }
-
-    if (intent.nextPredict?.preload?.length) {
-      activity("Preload", "working", intent.nextPredict.preload.join(", "));
-      applyPatch(id, { op: "preload", pageIds: intent.nextPredict.preload });
-    }
-
-    const reply = intent.reply || `อัปเดต App แล้ว • ${intent.operations.map((p) => p.op).join(", ")}`;
     store.pushMessage(id, {
       id: uid(),
       role: "assistant",
