@@ -128,8 +128,8 @@ function renderSkeleton() {
         // hero centered in the first viewport while the community feed peeks
         // above the fold below it.
         h += `<div class="home-hero">`;
-        h += `<div class="chat-tagline"><a class="chat-tagline-logo" href="/"><img class="chat-tagline-icon" src="/favicons/app-icon.png" alt="Puter"></a><h1 class="chat-tagline-text">Build Apps and Websites With AI</h1></div>`;
-        h += `<div class="chat-tagline-sub">Describe your idea and Puter will build it for you, no code required!</div>`;
+        h += `<div class="chat-tagline"><a class="chat-tagline-logo" href="/"><span class="chat-tagline-brand" aria-hidden="true">P</span></a><h1 class="chat-tagline-text">Panupan</h1></div>`;
+        h += `<div class="chat-tagline-sub">สร้างแอปและเว็บไซต์ด้วย AI ของ Panupan</div>`;
         h += `<div class="chat-input">`;
             // Icon-only controls carry an accessible name (aria-label / title): a
             // screen reader otherwise announces the composer as an unlabelled
@@ -195,7 +195,7 @@ function renderSkeleton() {
                     }
                 h += `</nav>`;
             }
-            h += `<span class="chat-copyright-text">&copy; 2026 Puter Technologies Inc.</span>`;
+            h += `<span class="chat-copyright-text">&copy; 2026 Panupan</span>`;
         h += `</div>`;
     h += `</main>`;
 
