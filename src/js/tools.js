@@ -62,164 +62,63 @@ function hasToolResultFor(history, toolUseId) {
 window.hasToolResultFor = hasToolResultFor;
 
 async function handleToolCalls(completion, isTopLevel = false, c) {
-    // Extract text content
     const textContent = completion.text;
     delete completion.text;
-    
-    // Normalize completion to array
-    if(!Array.isArray(completion))
-        completion = [completion];
+    if (!Array.isArray(completion)) completion = [completion];
 
-    // Add text content to history if present. Suppress the UI bubble while
-    // the progress checklist has unfinished items, so mid-turn narration that
-    // arrives packaged with a tool_use doesn't clutter the chat. History is
-    // preserved so the model's own context stays intact.
     if (textContent && textContent.trim()) {
         const messageId = generateMessageId();
-        c.chatHistory.push({
-            role: "assistant",
-            content: textContent,
-            messageId: messageId
-        });
-        if (!hasActiveTodos()) {
-            appendMessage(textContent, false, false, false, false, messageId);
-        }
+        c.chatHistory.push({ role: "assistant", content: textContent, messageId });
+        if (!hasActiveTodos()) appendMessage(textContent, false, false, false, false, messageId);
     }
 
-    // Add tool_use to history
+    const toolCalls = completion.filter(t => t && t.type === 'tool_use');
+    if (!toolCalls.length) {
+        if (isTopLevel) scheduleSaveCurrentChat(c);
+        return { history: c.chatHistory, messageContent: c.currentMessageContent };
+    }
+
+    c.agentRound = (c.agentRound || 0) + 1;
+    if (c.agentRound > window.PanupanGrokCore.MAX_AGENT_ROUNDS) {
+        const message = 'Agent loop stopped safely after reaching the maximum tool rounds. Continue the request to resume.';
+        c.chatHistory.push({ role: "assistant", content: message, messageId: generateMessageId() });
+        appendMessage(message, false);
+        scheduleSaveCurrentChat(c);
+        return { error: 'MAX_AGENT_ROUNDS', history: c.chatHistory };
+    }
+
     c.chatHistory.push({
         role: "assistant",
-        content: completion.length === 1 ? completion[0] : completion
+        content: toolCalls.length === 1 ? toolCalls[0] : toolCalls
     });
 
-    // Process tool calls - execute all tools
-    const toolCalls = completion.filter(t => t && t.type === 'tool_use');
-
-    // Execute all tools and collect results
-    for (const toolCall of toolCalls) {
-        // Check for abort (or a chat switch) before each tool execution
-        if (isAborted(c.abortController) || isStaleTurn(c)) {
-            return { error: 'Aborted', history: c.chatHistory };
-        }
-        
-        try {
-            // Execute the tool
-            const toolResponse = await executeFunction(toolCall.name, toolCall.input, c);
-            // The exec may have outlived its turn: the user hit Stop mid-tool
-            // and sent a new message, whose setup already synthesized a result
-            // for this id (repairDanglingToolUses) and appended their prompt.
-            // A second result for the same id, landing after that prompt,
-            // breaks the tool_use/tool_result adjacency the API enforces —
-            // every later request in the chat was rejected, for good.
-            if (!hasToolResultFor(c.chatHistory, toolCall.id)) {
-                addToolResultToHistory(c.chatHistory, toolCall.id, toolResponse,
-                    toolCall.name.startsWith('mcp_') && toolResponse?.isError === true);
-            }
-        } catch (error) {
-            // Extract error message
-            const errorMessage = error.error?.message || error.message || error;
-            // Store error result in history (same guard as above)
-            if (!hasToolResultFor(c.chatHistory, toolCall.id)) {
-                addToolResultToHistory(c.chatHistory, toolCall.id, { error: errorMessage }, true);
-            }
-        } finally {
-            // Track project-file changes so the turn can be snapshotted for
-            // version history. Done in finally because multi-path tools (move,
-            // mkdir) can mutate the filesystem and then throw — the change still
-            // happened. No-op for non-mutating tool names.
-            window.markProjectModified?.(toolCall.name, c.currentChatId);
-            // Record the ACTUAL file paths each tool writes, so the preview can
-            // verify exactly those files have propagated to the live site before
-            // reloading. rename/copy/move land the file at a COMPUTED path (not
-            // the raw input): rename -> dir(path)/new_name, copy/move -> dest/basename.
-            try {
-                const _inp = toolCall.input || {};
-                const _base = s => (typeof s === 'string' ? s.slice(s.lastIndexOf('/') + 1) : '');
-                const _trimEnd = s => (typeof s === 'string' ? s.replace(/\/+$/, '') : '');
-                if (toolCall.name === 'rename' && _inp.path && _inp.new_name) {
-                    window.recordPreviewChange?.(_inp.path.slice(0, _inp.path.lastIndexOf('/') + 1) + _inp.new_name);
-                } else if (toolCall.name === 'copy' && _inp.path && _inp.destination) {
-                    window.recordPreviewChange?.(_trimEnd(_inp.destination) + '/' + _base(_inp.path));
-                } else if (toolCall.name === 'move' && Array.isArray(_inp.paths_array) && _inp.destination) {
-                    _inp.paths_array.forEach(p => window.recordPreviewChange?.(_trimEnd(_inp.destination) + '/' + _base(p)));
-                } else {
-                    if (_inp.path) window.recordPreviewChange?.(_inp.path);
-                    if (Array.isArray(_inp.paths_array)) _inp.paths_array.forEach(p => window.recordPreviewChange?.(p));
-                }
-            } catch (e) { /* recording is best-effort */ }
-        }
-    }
-    
-    // Checkpoint this round's results (the assistant tool_use + every tool_result
-    // just pushed into c.chatHistory) BEFORE the throw-prone next-round
-    // puter.ai.chat below. Coalesced + non-blocking, so it's cheap. This is the
-    // crash-safety net for a long multi-round turn: if the next round throws, or
-    // the user refreshes while the AI is still working, the completed rounds are
-    // already on disk rather than waiting for an end-of-turn save that never runs.
-    if (toolCalls.length > 0) {
-        scheduleSaveCurrentChat(c);
-    }
+    const run = await window.PanupanGrokCore.runTools(toolCalls, c);
+    if (run.aborted) return { error: 'Aborted', history: c.chatHistory };
+    scheduleSaveCurrentChat(c);
 
     spinner = showSpinner();
-
-    // Check for abort/chat-switch after showing spinner (clean it up if so)
     if (isAborted(c.abortController) || isStaleTurn(c)) {
-        if (spinner) {
-            spinner.remove();
-            spinner = null;
-        }
+        spinner?.remove();
+        spinner = null;
         return { error: 'Aborted', history: c.chatHistory };
     }
-    // Only create a new AbortController if one doesn't already exist
-    // (it's created in sendChatMessage for top-level calls, and we don't want to overwrite it)
-    if (!c.abortController) {
-        c.abortController = new AbortController();
-    }
+    if (!c.abortController) c.abortController = new AbortController();
 
-    // Build the next-round request from the TURN's captured history (c.chatHistory),
-    // not the global `chatHistory` — a mid-turn chat switch reassigns the global,
-    // and feeding the wrong conversation to the model here would corrupt the turn.
-    // abortableAwait: the SDK ignores the signal option, so the open must be
-    // raced against the signal locally or an abort can't unstick a dead open.
     const stream = await abortableAwait(puter.ai.chat(prepareHistoryForAI(c.chatHistory), {
         model: MODEL,
-        tools: c.tools || window.tools,
+        tools: c.tools || window.getTurnTools(),
         stream: true,
         reasoning_effort: 'high',
         signal: c.abortController.signal
     }), c.abortController.signal);
-    // Round handoff = liveness for the background-freeze watchdog (see
-    // mobile-lifecycle-keepalive in app.js). Guarded so a stale turn's rounds
-    // can't mask a stall of the chat the user actually has open.
-    if (!isStaleTurn(c)) window.noteTurnActivity?.();
 
-    // Don't remove spinner here - keep it visible during tool calls
-    // It will be removed when we actually get text content
+    if (!isStaleTurn(c)) window.noteTurnActivity?.();
     c.currentMessageContent = '';
     c.currentMessage = null;
+    await handleMessageStream(stream, c);
 
-    // Process stream responses
-    await handleMessageStream(stream, c)
+    if (isAborted(c.abortController) || isStaleTurn(c)) return { error: 'Aborted', history: c.chatHistory };
+    if (isTopLevel) scheduleSaveCurrentChat(c);
 
-    // Check if we were aborted (or the user switched chats) during stream
-    // processing. Use the turn's captured controller/history (c.*), not the
-    // reassignable globals, so a mid-turn chat switch can't make this read the
-    // wrong abort state or return another chat.
-    if (isAborted(c.abortController) || isStaleTurn(c)) {
-        return { error: 'Aborted', history: c.chatHistory };
-    }
-
-    // STEP 5: Otherwise exit - handle remaining text content and final sync
-    // Only modify history here for final text content (top level only)
-    if (isTopLevel) {
-        // Non-blocking + coalesced: mid-turn checkpoints keep crash safety but
-        // no longer stack up serial full-history writes as the recursion unwinds.
-        scheduleSaveCurrentChat(c);
-    }
-    
-    // Return the updated history
-    return {
-        history: c.chatHistory,
-        messageContent: c.currentMessageContent
-    };
+    return { history: c.chatHistory, messageContent: c.currentMessageContent };
 }
