@@ -4,7 +4,7 @@
 ค้นหา คัดกรองหมวดหมู่ กดไลก์ บุ๊กมาร์ก คอมเมนต์ ได้หมด โดยไม่ต้องมีเซิร์ฟเวอร์
 
 ```
-apps/blog/
+public/apps/blog/
 ├── index.html   # โครงหน้า: ฟีด + หน้าอ่าน + หน้าเขียน (สลับด้วย hash route)
 ├── styles.css   # ธีมมืดสไตล์ Bolt, mobile-first, ไม่มีเฟรมเวิร์ก
 └── app.js       # แอปทั้งหมด: store, router, editor, markdown-lite — vanilla JS
@@ -17,7 +17,7 @@ apps/blog/
 **วิธีที่ 2 — static server:**
 
 ```bash
-cd apps/blog
+cd public/apps/blog
 python3 -m http.server 8080 --bind 0.0.0.0
 # เปิด http://localhost:8080
 ```

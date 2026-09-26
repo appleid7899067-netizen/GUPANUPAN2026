@@ -101,6 +101,7 @@ button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
   background: none; border: 0; border-radius: 10px; color: #6f675c; cursor: pointer;
 }
 .icon-btn:hover { background: var(--hover); color: var(--ink); }
+a.icon-btn { text-decoration: none; }
 
 /* ---------- stage / hero ---------- */
 .stage { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }

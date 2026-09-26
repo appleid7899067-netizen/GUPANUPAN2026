@@ -60,6 +60,9 @@
         </div>
       </div>
       <div class="top-right">
+        <a class="icon-btn" href="../landing/" data-sys="landing" title="กลับหน้าโฮม GUPAN" aria-label="กลับหน้าโฮม GUPAN">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/></svg>
+        </a>
         <button class="login-chip" id="loginChip">เข้าสู่ระบบ Puter</button>
         <button class="icon-btn" id="folderBtn" title="ประวัติแชท" aria-label="ประวัติแชท">
           <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
@@ -154,6 +157,10 @@
 <input id="fileInput" type="file" multiple hidden>
 <div class="toast hidden" id="toast" role="status"></div>
 
+<script>
+/* GUPAN system links: absolute under /apps/* (Next.js/Render), relative otherwise (static server or file://). */
+(function(){try{var under=location.pathname.indexOf("/apps/")===0;document.querySelectorAll("[data-sys]").forEach(function(a){var t=a.getAttribute("data-sys");a.href=t==="studio"?"/":(under?"/apps/"+t+"/":"../"+t+"/");});}catch(e){}})();
+</script>
 <script src="./app.js"></script>
 </body>
 </html>

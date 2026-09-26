@@ -27,7 +27,7 @@
     <a href="#core">แกนกลาง</a>
     <a href="#rear">แกนหลัง</a>
   </nav>
-  <a class="cta-small" href="../agent/">เปิด Agent →</a>
+  <a class="cta-small" href="../agent/" data-sys="agent">เปิด Agent →</a>
 </header>
 
 <main id="top">
@@ -36,8 +36,8 @@
     <h1>สร้างเว็บด้วย AI<br><span>สไตล์คุณ ภาษาคุณ</span></h1>
     <p class="sub">รวมแอปตัวอย่างที่สร้างด้วยไฟล์เว็บล้วน ๆ เปิดได้ทันที<br>ไม่มีเฟรมเวิร์ก ไม่มีเซิร์ฟเวอร์ ก็ใช้งานได้จริง</p>
     <div class="cta-row">
-      <a class="cta" href="../agent/">✳ เปิด GUPAN Agent</a>
-      <a class="cta ghost" href="../blog/">📝 อ่าน GUPAN Blog</a>
+      <a class="cta" href="../agent/" data-sys="agent">✳ เปิด GUPAN Agent</a>
+      <a class="cta ghost" href="../blog/" data-sys="blog">📝 อ่าน GUPAN Blog</a>
     </div>
     <div class="chips">
       <span>📱 มือถือก่อน</span><span>🇹🇭 ภาษาไทย</span><span>⚡ โหลดไว</span><span>💾 เก็บในเครื่อง</span>
@@ -49,13 +49,13 @@
     <p class="eyebrow">✦ แกนกลาง — เลือกแอปของคุณ</p>
     <h2>สามแอป หนึ่งสไตล์</h2>
     <div class="cards">
-      <a class="card" href="../agent/">
+      <a class="card" href="../agent/" data-sys="agent">
         <span class="card-icon">✳</span>
         <h3>GUPAN Agent</h3>
         <p>หน้าแชทสไตล์ Agent Mode สั่งงานภาษาไทย มีโหมดเดโม + AI จริงผ่าน Puter</p>
         <span class="card-go">เปิดใช้ →</span>
       </a>
-      <a class="card" href="../blog/">
+      <a class="card" href="../blog/" data-sys="blog">
         <span class="card-icon">📝</span>
         <h3>GUPAN Blog</h3>
         <p>เว็บบล็อกแอปเต็มรูปแบบ อ่าน เขียน คอมเมนต์ สำรองข้อมูลได้</p>
@@ -89,12 +89,16 @@
 <footer class="foot">
   <span class="foot-brand"><span class="brand-mark sm">✦</span> GUPAN · <span id="year"></span></span>
   <nav aria-label="ลิงก์แอป">
-    <a href="../agent/">Agent</a>
-    <a href="../blog/">Blog</a>
+    <a href="../agent/" data-sys="agent">Agent</a>
+    <a href="../blog/" data-sys="blog">Blog</a>
     <a href="#top">↑ กลับขึ้นบน</a>
   </nav>
 </footer>
 
+<script>
+/* GUPAN system links: absolute under /apps/* (Next.js/Render), relative otherwise (static server or file://). */
+(function(){try{var under=location.pathname.indexOf("/apps/")===0;document.querySelectorAll("[data-sys]").forEach(function(a){var t=a.getAttribute("data-sys");a.href=t==="studio"?"/":(under?"/apps/"+t+"/":"../"+t+"/");});}catch(e){}})();
+</script>
 <script src="./app.js"></script>
 </body>
 </html>

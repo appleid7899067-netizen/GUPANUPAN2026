@@ -76,6 +76,13 @@ button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
 }
 .brand i { font-style: normal; color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 3px; }
 .top-actions { display: flex; align-items: center; gap: 8px; }
+.icon-home {
+  width: 40px; height: 40px; display: grid; place-items: center;
+  background: var(--panel); color: #d9d4e6; text-decoration: none;
+  border: 1px solid var(--border); border-radius: 50%;
+  font-size: 18px; flex-shrink: 0;
+}
+.icon-home:hover { border-color: #6d5b8f; }
 .chip-btn {
   display: inline-flex; align-items: center; gap: 6px;
   background: var(--panel); color: #d9d4e6;

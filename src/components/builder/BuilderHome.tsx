@@ -126,6 +126,9 @@ export default function BuilderHome() {
           </span>
           GUPAN<span>studio</span>
         </Link>
+        <a className="apps-link" href="/apps" title="เปิดแอป GUPAN ทั้งหมด">
+          ✳ Apps
+        </a>
         <button
           className={`auth-chip ${auth.status === "signed-in" ? "in" : ""}`}
           onClick={() => setShowAuth((v) => !v)}

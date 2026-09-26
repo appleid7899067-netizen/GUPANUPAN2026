@@ -207,6 +207,26 @@
 .home-header {
   justify-content: space-between;
 }
+.apps-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #d9d4e6;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 40px;
+  margin-left: auto;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.apps-link:hover {
+  border-color: #6d5b8f;
+  color: #fff;
+}
 .auth-chip {
   display: inline-flex;
   align-items: center;

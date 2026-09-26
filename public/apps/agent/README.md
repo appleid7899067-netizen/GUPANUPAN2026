@@ -4,7 +4,7 @@
 หัวข้อกลางจอ serif ช่องพิมพ์การ์ดใหญ่ — แต่ใช้แบรนด์และภาษาไทยของ GUPAN เอง
 
 ```
-apps/agent/
+public/apps/agent/
 ├── index.html   # โครง: rail + topbar + hero/thread + composer + drawer
 ├── styles.css   # ธีมครีมมินิมอล ไม่มีเฟรมเวิร์ก
 └── app.js       # แชท + ประวัติ + โหมด + Puter AI (มีโหมดเดโมถ้ายังไม่ล็อกอิน)
@@ -13,7 +13,7 @@ apps/agent/
 ## เปิดใช้
 
 ```bash
-cd apps/agent
+cd public/apps/agent
 python3 -m http.server 8081 --bind 0.0.0.0
 # เปิด http://localhost:8081
 ```

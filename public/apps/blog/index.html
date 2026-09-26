@@ -26,6 +26,7 @@
     <span>GUPAN<i>blog</i></span>
   </a>
   <div class="top-actions">
+    <a class="icon-home" href="../landing/" data-sys="landing" title="กลับหน้าโฮม GUPAN" aria-label="กลับหน้าโฮม GUPAN">⌂</a>
     <button id="btnSaved" class="chip-btn" aria-pressed="false" title="ดูเฉพาะที่บันทึกไว้">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       <span>ที่บันทึก</span>
@@ -155,6 +156,10 @@
 
 <div class="toast hidden" id="toast" role="status"></div>
 
+<script>
+/* GUPAN system links: absolute under /apps/* (Next.js/Render), relative otherwise (static server or file://). */
+(function(){try{var under=location.pathname.indexOf("/apps/")===0;document.querySelectorAll("[data-sys]").forEach(function(a){var t=a.getAttribute("data-sys");a.href=t==="studio"?"/":(under?"/apps/"+t+"/":"../"+t+"/");});}catch(e){}})();
+</script>
 <script src="./app.js"></script>
 </body>
 </html>
