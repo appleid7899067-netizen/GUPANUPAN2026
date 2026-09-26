@@ -53,11 +53,75 @@ OUTPUT FORMAT ONLY (single JSON object, no text outside):
   "operations": [ /* 4-8 ops for a new app; fewer for a small edit */ ],
   "nextPredict": { "preload": ["pageId", "..."] },
   "reply": "ข้อความสั้นภาษาไทยอธิบายว่าทำอะไรให้แล้ว"
-}`;
+}
+
+INTENT PIPELINE:
+1. WHY: infer goal, action, domain, and desired outcome from the user's natural language.
+2. PLAN: decide the pages, theme, components, navigation, and next route required to achieve that outcome.
+3. PATCH: express the plan only as allowed operations.
+4. VERIFY: for a new app, the plan must include a real theme and enough structure to be an app, not a 2-button wireframe.`;
 
 export function intentSystemPrompt(): string {
   return INTENT_SYSTEM;
 }
+\nexport type IntentWhy = {
+  goal: string;
+  action: "create" | "edit" | "improve" | "navigate" | "unknown";
+  domain: string;
+  outcome: string;
+};
+
+export function analyzeIntentWHY(userMessage: string, state: CanvasState): IntentWhy {
+  const t = userMessage.trim().toLowerCase();
+  const action: IntentWhy["action"] =
+    /สร้าง|ทำใหม่|create|build|make|generate|เริ่ม/.test(t) ? "create" :
+    /เพิ่ม|แก้|เปลี่ยน|ลบ|remove|update|edit|ปรับ/.test(t) ? "edit" :
+    /สวย|ดีขึ้น|ปรับปรุง|improve|optimi/.test(t) ? "improve" :
+    /เปิด|ไปหน้า|กลับ|open|go to|navigate/.test(t) ? "navigate" : "unknown";
+
+  const domain =
+    /ร้าน|อาหาร|เมนู|สินค้า|shop|ขาย|ecommerce/.test(t) ? "ecommerce" :
+    /ฟิต|ออกกำลัง|fitness|gym/.test(t) ? "fitness" :
+    /เรียน|คอร์ส|การศึกษา|course|education/.test(t) ? "education" :
+    /เที่ยว|ท่องเที่ยว|โรงแรม|travel/.test(t) ? "travel" :
+    /เงิน|การเงิน|ลงทุน|finance/.test(t) ? "finance" :
+    /ai|เอไอ|studio/.test(t) ? "ai-studio" :
+    /portfolio|ผลงาน/.test(t) ? "portfolio" : "general";
+
+  const outcome =
+    /ขาย|ซื้อ|ยอดขาย|conversion|ลูกค้า/.test(t)
+      ? "ทำให้ผู้ใช้ตัดสินใจซื้อหรือทำ conversion ได้ง่ายขึ้น"
+      : action === "create"
+        ? "ได้แอปที่มีโครงสร้างและหน้าหลักพร้อมใช้งาน ไม่ใช่ wireframe"
+        : action === "edit"
+          ? "เปลี่ยนพฤติกรรมหรือหน้าตาตามคำขอโดยไม่ทำลายของเดิม"
+          : action === "improve"
+            ? "ปรับคุณภาพของแอปเดิมให้ดีขึ้นอย่างเห็นผล"
+            : "ทำให้คำขอของผู้ใช้เกิดผลบน Canvas";
+
+  return {
+    goal: userMessage.trim(),
+    action,
+    domain,
+    outcome,
+  };
+}
+
+export function intentPlanIsUsable(
+  intent: IntentResult | null,
+  userMessage: string,
+): intent is IntentResult {
+  if (!intent || !intent.operations.length) return false;
+  const t = userMessage.toLowerCase();
+  const isCreate = /สร้าง|ทำใหม่|create|build|make|generate|เริ่ม/.test(t);
+  if (!isCreate) return true;
+
+  const addPages = intent.operations.filter((x) => x.op === "addPage").length;
+  const adds = intent.operations.filter((x) => x.op === "addComponent").length;
+  const hasTheme = intent.operations.some((x) => x.op === "updateTheme");
+  return hasTheme && (adds >= 3 || addPages >= 1);
+}
+
 
 /** Extract first balanced { ... } from mixed model text. */
 export function extractBalancedObject(raw: string): string | null {
