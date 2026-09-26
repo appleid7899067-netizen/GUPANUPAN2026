@@ -189,7 +189,7 @@ type BuilderState = {
   setSuggestions: (id: string, suggestions: Suggestion[]) => void;
   addDocument: (id: string, document: DocumentContext) => void;
   clearDocuments: (id: string) => void;
-  snapshotCanvas: (id: string, label?: string) => void;
+  snapshotCanvas: (id: string, label?: string) => string | null;
   selectCanvasComponent: (id: string, componentId: string | null) => void;
   restoreVersion: (id: string, versionId: string) => void;
   active: () => Project | null;
@@ -302,7 +302,8 @@ export const useBuilder = create<BuilderState>()(
             p.id === id ? { ...p, pages, updatedAt: Date.now() } : p,
           ),
         })),
-      snapshotCanvas: (id, label) =>
+      snapshotCanvas: (id, label) => {
+        const versionId = uid();
         set((s) => ({
           projects: s.projects.map((p) =>
             p.id === id
@@ -311,7 +312,7 @@ export const useBuilder = create<BuilderState>()(
                   versions: [
                     ...p.versions,
                     {
-                      id: uid(),
+                      id: versionId,
                       html: p.html,
                       canvas: structuredClone(p.canvas),
                       label: label || `Before edit ${p.versions.length + 1}`,
@@ -322,7 +323,9 @@ export const useBuilder = create<BuilderState>()(
                 }
               : p,
           ),
-        })),
+        }));
+        return versionId;
+      },
       selectCanvasComponent: (id, componentId) =>
         set((s) => ({
           projects: s.projects.map((p) =>
