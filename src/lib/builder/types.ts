@@ -62,6 +62,7 @@ export type CanvasState = {
   theme: Record<string, string>;
   /** Pages the Intent Engine thinks the user will open next */
   preloaded?: string[];
+  selectedComponentId?: string;
 };
 
 /** Full Intent Graph response from the model (or local engine). */
@@ -95,6 +96,7 @@ export type AppPage = {
 export type Version = {
   id: string;
   html: string;
+  canvas?: CanvasState;
   markdown?: string;
   javascript?: string;
   implementation?: string;
