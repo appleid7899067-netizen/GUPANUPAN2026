@@ -16,7 +16,29 @@ export async function generateIntent(
   userMessage: string,
   history: { role: "user" | "assistant"; content: string }[] = [],
 ): Promise<IntentResult> {
-  const payload = buildIntentUserPayload(state, userMessage, history);
+  let builderMessage = userMessage;
+  const urlMatch = userMessage.match(/https?:\\/\\/[^\\s]+/i);
+  if (urlMatch) {
+    try {
+      const inspect = await fetch("/api/inspect-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: urlMatch[0].replace(/[),.]+$/, "") }),
+      });
+      if (inspect.ok) {
+        const source = await inspect.json();
+        builderMessage = [
+          userMessage,
+          "",
+          "SOURCE WEBSITE ANALYSIS (use as a design/structure reference, rebuild natively with GUPANUPAN components):",
+          JSON.stringify(source),
+        ].join("\n");
+      }
+    } catch (e) {
+      console.warn("[GUPANUPAN] URL inspection failed; continuing without source", e);
+    }
+  }
+  const payload = buildIntentUserPayload(state, builderMessage, history);
   const messages = [
     { role: "system" as const, content: intentSystemPrompt() },
     ...history.slice(-6).map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 2000) })),
@@ -63,7 +85,7 @@ export async function generateIntent(
   }
 
   // 3) Local Intent heuristics (still multi-op — beyond single patch)
-  const local = localIntentFromGoal(userMessage, state);
+  const local = localIntentFromGoal(builderMessage, state);
   if (local) return local;
 
   throw new Error("ยังแปลงความต้องการเป็น Intent ไม่ได้ — ลองบอกเป้าหมายชัดขึ้น เช่น อยากให้คนซื้อเยอะขึ้น");
