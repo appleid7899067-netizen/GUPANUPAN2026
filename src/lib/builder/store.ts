@@ -38,7 +38,7 @@ const defaultCanvas = (): CanvasState => ({
     settings: { id: "settings", title: "Settings", path: "/settings", components: [] },
   },
   stack: [{ id: "home" }],
-  theme: { primary: "#000000", background: "#ffffff", text: "#111111" },
+  theme: { primary: "#6d5dfc", background: "#f7f8fc", text: "#172033" },
   preloaded: [],
 });
 
