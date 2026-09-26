@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sparkles, Plus, Loader2, Trash2, Send, Paperclip, X, ArrowRight, Copy, Upload, Download,
   Search, LayoutGrid, Table as TableIcon, ArrowUpDown, ChevronLeft, ChevronRight,
-  AlertCircle, MoreVertical, AlertTriangle,
+  AlertCircle, MoreVertical, AlertTriangle, Box,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -34,6 +34,7 @@ import { SetupBanners } from "@/components/SetupBanners";
 import { PuterSetupBanner } from "@/components/PuterSetupBanner";
 import { PuterStatusBadge } from "@/components/PuterProvider";
 import { isPuterAvailable, puterListProjects } from "@/lib/puter";
+import { PuterSandboxList } from "@/components/workspace/PuterSandboxPanel";
 import type { VcaasProjectSummary } from "@/lib/vcaas-types";
 
 type ViewMode = "cards" | "table";
@@ -696,6 +697,15 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Sandbox overview — Puter isolated envs (เติมตามคำขอ "มันม่มีแซนบ็อก") */}
+        {configMode === "puter" && (
+          <div className="mt-6 mb-6 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800"><Box className="w-4 h-4"/> Sandboxes — Isolated per project</div>
+            <p className="text-xs text-emerald-700 mt-1">แต่ละโปรเจคแยก FS + hosting subdomain (เหมือน Totalum) — ดูสถานะ Active/Archived ได้ที่นี่หรือใน Workspace → Tab Sandbox</p>
+            <div className="mt-3"><PuterSandboxList /></div>
           </div>
         )}
 

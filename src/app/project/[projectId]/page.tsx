@@ -42,6 +42,7 @@ import { getPublishedHost, getPreviewUrlField } from "@/lib/project-status";
 import { useVisualEditor } from "@/components/workspace/visual-editor/use-visual-editor";
 import { VisualEditorPanel } from "@/components/workspace/visual-editor/VisualEditorPanel";
 import { VisualChangesBar } from "@/components/workspace/visual-editor/VisualChangesBar";
+import { PuterSandboxPanel } from "@/components/workspace/PuterSandboxPanel";
 import { t as translate } from "@/i18n";
 
 // Pick the correct development preview URL following the Totalum API docs:
@@ -313,6 +314,7 @@ export default function WorkspacePage() {
 
   const TABS = [
     { id: "preview", label: "Preview", icon: Eye },
+    { id: "sandbox", label: "Sandbox", icon: Server },
     { id: "database", label: "Database", icon: Database },
     { id: "code", label: "Code", icon: Code2 },
   ];
@@ -1522,6 +1524,7 @@ export default function WorkspacePage() {
             )}
             <div className={`flex-1 overflow-hidden ${activeTab === "preview" ? "rounded-none" : "m-2 sm:m-3 rounded-xl shadow-sm"}`} style={{ background: cardBg }}>
               {activeTab === "preview" && <PreviewPanel key={previewKey} previewUrl={shownPreviewUrl} cached={previewCached} onRefresh={() => { fetchProject(); setPreviewKey((k) => k + 1); }} loading={isBuilding} mobilePreview={mobilePreview} iframePath={iframePath} frameRef={previewFrameRef} /* ⭐ Same-origin ONLY while the editor is open — and for the length of an apply, which outlives the panel: dropping the proxy mid-apply would reload the frame and throw away the preview-only edits the user is watching. */ proxiedSrc={visualEditorOpen || visualLocked ? `/api/preview/${encodeURIComponent(projectId)}` : null} />}
+              {activeTab === "sandbox" && <div className="p-4 overflow-auto h-full"><PuterSandboxPanel projectId={projectId} /></div>}
               {activeTab === "code" && <CodePanel projectId={projectId} darkMode={darkMode} onAskAiEdit={handleAskAiEdit} wake={serverWake} onRebuildStarted={() => operation.begin("rebuild")} onRebuildFinished={() => operation.end("rebuild")} />}
               {activeTab === "database" && <DatabasePanel projectId={projectId} />}
             </div>
@@ -1616,6 +1619,7 @@ export default function WorkspacePage() {
           ) : (
             <div className="h-full overflow-hidden">
               {activeTab === "preview" && <PreviewPanel key={previewKey} previewUrl={shownPreviewUrl} cached={previewCached} onRefresh={() => { fetchProject(); setPreviewKey((k) => k + 1); }} loading={isBuilding} mobilePreview={false} iframePath={iframePath} />}
+              {activeTab === "sandbox" && <div className="p-4 overflow-auto h-full"><PuterSandboxPanel projectId={projectId} /></div>}
               {activeTab === "code" && <CodePanel projectId={projectId} darkMode={darkMode} onAskAiEdit={handleAskAiEdit} wake={serverWake} onRebuildStarted={() => operation.begin("rebuild")} onRebuildFinished={() => operation.end("rebuild")} />}
               {activeTab === "database" && <DatabasePanel projectId={projectId} />}
             </div>
