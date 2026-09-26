@@ -298,9 +298,10 @@ check('wake lock is acquired at turn start and released at teardown',
 const HMS = fs.readFileSync(new URL('../src/js/handleMessageStream.js', import.meta.url), 'utf8');
 check('every streamed chunk stamps liveness (after the abort/stale bail)',
     /isAborted\(context\.abortController\) \|\| isStaleTurn\(context\)[\s\S]*?window\.noteTurnActivity\?\.\(\)/.test(HMS));
-const TOOLS = fs.readFileSync(new URL('../src/js/tools.js', import.meta.url), 'utf8');
+const GROK = fs.readFileSync(new URL('../src/js/grok-build-core.js', import.meta.url), 'utf8');
 check('each agentic round handoff stamps liveness (stale-guarded)',
-    TOOLS.includes('if (!isStaleTurn(c)) window.noteTurnActivity?.()'));
+    GROK.includes('if (!isStaleTurn(c)) window.noteTurnActivity?.()'));
+
 
 // === Abort-aware stream plumbing =============================================
 // puter.ai.chat ignores the `signal` option, so the abort that drives Stop /
@@ -310,7 +311,7 @@ check('each agentic round handoff stamps liveness (stale-guarded)',
 check('handleMessageStream iterates via the abort-aware wrapper',
     HMS.includes('for await (const completion of abortableStream(stream, context.abortController && context.abortController.signal))'));
 check('first-round open is abort-aware (app.js)', SEND.includes('await abortableAwait(puter.ai.chat('));
-check('round-handoff open is abort-aware (tools.js)', TOOLS.includes('await abortableAwait(puter.ai.chat('));
+check('round-handoff open is abort-aware (Grok core)', GROK.includes('await abortableAwait(puter.ai.chat('));
 
 // Functional: evaluate the REAL wrappers sliced out of handleMessageStream.js.
 const abA = HMS.indexOf('// ===== abortable-stream (start) =====');
