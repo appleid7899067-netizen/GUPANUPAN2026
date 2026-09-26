@@ -1,5 +1,19 @@
 # AGENTS.md — ai-app-builder-open
 
+## Local Puter frontend workspace (September 2026)
+
+The default homepage now uses `components/builder/BuilderHome.tsx` when no Totalum key is configured. `components/TotalumDashboard.tsx` preserves the old dashboard for configured Totalum installations. `/build/[projectId]` is the new browser-only static frontend workspace, separate from the copied `/project/[projectId]` Totalum workspace.
+
+- `lib/builder.ts`: typed local project storage, HTML output validation, bounded version history, preview CSP/console bridge.
+- AI requests use the Puter SDK directly, with its default model unless the user specifies an ID. Never auto-submit paid requests on page load.
+- Preview uses `sandbox="allow-scripts"`, never `allow-same-origin`. Do not grant generated code access to Puter or builder storage.
+- Projects in this workspace live only in browser localStorage; ZIP is the backup path. No Node runtime, server terminal, database or cloud-sync claim.
+- `npm test` runs local unit tests without new dependencies. `tests/browser-smoke.cjs` is an optional Playwright test using a mocked Puter SDK, not a live AI verification.
+- Thai fonts are local OFL assets; builds must not require Google Fonts network access.
+
+The Totalum-specific guidance below still applies to the legacy full-stack workspace.
+
+
 Open-source (MIT) AI app builder: a user types a prompt, an AI agent builds a full-stack
 Next.js app, the user previews it live, edits it, and publishes it. **This repo is only the
 UI.** Everything heavy — the coding agent, sandboxes, hosting, database, deploys, custom
@@ -29,7 +43,7 @@ npx tsc --noEmit --noUnusedLocals --noUnusedParameters   # import hygiene (ESLin
 npm run build && npm start       # production build — run this before any PR
 ```
 
-There is no test suite. Verification = typecheck + build + open the changed screen in a
+The copied Totalum workspace has no API test suite. Verification = typecheck + build + open the changed screen in a
 browser with a real key. The key hits real projects and spends real credits: click through
 UI, but do not fire publish / restore / pull / delete unless the task requires it.
 

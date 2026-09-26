@@ -1,12 +1,13 @@
 {
   "name": "ai-app-builder-open",
-  "description": "Open-source AI app builder \u2014 turn a prompt into a full-stack Next.js web app with built-in hosting, sandbox, database, auth, AI integration, github bidirectional, multitenant, custom domain & more. Self-hosted, no-code. A free v0 / Lovable / Bolt / Replit alternative. \u2b50",
+  "description": "Open-source AI app builder — turn a prompt into a full-stack Next.js web app with built-in hosting, sandbox, database, auth, AI integration, github bidirectional, multitenant, custom domain & more. Self-hosted, no-code. A free v0 / Lovable / Bolt / Replit alternative. ⭐",
   "scripts": {
     "dev": "next dev",
     "check-types-errors": "tsc --noEmit --skipLibCheck",
     "start": "next start",
     "build": "next build",
-    "test:serve": "TESTING_MODE=true PORT=3000 next start"
+    "test:serve": "TESTING_MODE=true PORT=3000 next start",
+    "test": "node --test tests/*.test.cjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

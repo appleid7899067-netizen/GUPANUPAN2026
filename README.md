@@ -1,39 +1,85 @@
-<div align="center">
+# GUPAN Studio — AI Web Builder
 
-# 🪄 GUPANUPAN2026 — Hybrid AI App Builder (Next.js + Puter) — เหนือ Bolt ขาดๆ
+เว็บสร้างเว็บจากคำสั่ง พร้อมแชต โค้ด และพรีวิวในหน้าเดียว ได้แรงบันดาลใจจาก workflow ของ Bolt.new **ไม่ได้มี runtime หรือทุกฟีเจอร์เท่ากับ Bolt**
 
-> **ทับตัวเก่าไปเลย แต่ใช้ Puter เหมือนเดิม** — Vite builder เดิม (Puter) ถูกทับด้วย Next.js builder ตัวใหม่จาก `totalumlabs/ai-app-builder-open` แล้วเติม **Puter.js hybrid** ให้รันแบบ keyless ได้เลย
-> Original Vite/Puter source ยังอยู่ใน `.puter-legacy/` และ git history (`e7e2bf2`)
->
-> **🔥 เหนือ Bolt ขาดๆ:** เร็วกว่า 9x, ฟรี unlimited, 500+ models, sandbox isolate — ดูเทียบที่ [`/vs/bolt`](/vs/bolt)
+## เริ่มใช้งาน (Node.js 22+)
 
-# 🪄 Open-Source AI App Builder — Bolt Killer
+```bash
+npm ci
+npm run dev -- --hostname 0.0.0.0
+```
 
-### Type a prompt, get a working full-stack **Next.js** app — hosted, with a database, auth, a visual editor, GitHub sync, Figma and custom domains already built in.
+เปิด `http://localhost:3000` บนเครื่องที่รัน หรือเปิด Live Preview ของสภาพแวดล้อมที่ใช้
 
-**A free, self-hosted, white-label alternative to [v0](https://v0.dev), [Lovable](https://lovable.dev), [Bolt](https://bolt.new) and [Replit](https://replit.com).**
-Run it for yourself, or put an AI app builder inside your own product.
+### โหมดเริ่มต้น: Puter frontend workspace
 
-<br/>
+เมื่อไม่ได้ตั้ง `TOTALUM_VCAAS_API_KEY` หน้าแรกจะเปิด GUPAN Studio:
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
-[![React](https://img.shields.io/badge/React-19-149eca?logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38bdf8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#-license)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#-contributing)
+1. พิมพ์เว็บที่ต้องการ เช่น “สร้างเว็บร้านกาแฟ มีเมนูและตะกร้าทดลอง เป็นภาษาไทย” แล้วกด **เริ่มสร้าง**
+2. กด **เข้าสู่ระบบ Puter** อนุญาต popup ถ้าเบราว์เซอร์ถาม
+3. กด **ส่งคำสั่ง** ด้วยตัวเอง ไม่มีการใช้ AI/เครดิตโดยอัตโนมัติเมื่อเปิดโปรเจกต์
+4. AI ส่ง HTML แบบ streaming → ตรวจเอกสารครบ → บันทึก → อัปเดต **Preview**
+5. สั่งแก้ต่อได้ โดยส่งโค้ดปัจจุบันและข้อความล่าสุดให้ AI เป็นบริบท
+6. **Code**: แก้ `index.html` แล้วกดบันทึกและรัน หรือ Ctrl/⌘+S
+7. **History**: กู้คืนโค้ดก่อนแก้ไขได้ 8 ครั้งล่าสุด
+8. **Export ZIP**: ดาวน์โหลด `index.html`, `project.json`, `README.txt` เพื่อสำรองงาน
+9. ย้ายเว็บไปเครื่องอื่น: แตก ZIP สร้างโปรเจกต์เปล่า แล้ว **นำเข้า HTML** (ไม่ได้นำเข้าประวัติแชต/เวอร์ชัน)
 
-[**🚀 Quick Start**](#-quick-start) · [**🧩 Put it in your product**](#-put-it-inside-your-own-product) · [**☁️ Deploy**](#️-deploy-it) · [**📚 Docs**](https://www.totalum.app/docs) · [**⭐ Star this repo**](https://github.com/totalumlabs/ai-app-builder-open)
+ใช้ AI ผ่าน Puter SDK โดยตรง ใช้ model เริ่มต้นของบริการ หรือระบุ model ID ที่บัญชีคุณใช้ได้ ไม่มี API key ฝั่งผู้ใช้ ค่าใช้จ่าย/โควตาเป็นไปตามบัญชี Puter **ไม่รับรองว่าฟรีไม่จำกัด**
 
-<br/>
+### สิ่งที่มีจริงในโหมด Puter ใหม่นี้
 
-<img src=".github/assets/ai_app_builder_open_demo.gif" alt="Demo: typing a prompt and watching the AI build, preview and deploy a full-stack Next.js app" width="90%" />
+- HTML/CSS/JavaScript แบบเอกสารเดียว ไม่ใช่ React/Next.js runtime สำหรับแอปที่สร้าง
+- พรีวิวมือถือ/เดสก์ท็อปใน `iframe sandbox="allow-scripts"` ไม่มี `allow-same-origin`
+- CSP บล็อก fetch, external scripts, forms; อนุญาต inline CSS/JS และรูป HTTPS/data
+- Console รับ log/warn/error จาก iframe ที่ตรงกันเท่านั้น (ไม่ใช่ shell terminal)
+- ไม่อนุญาตโค้ดพรีวิวเข้าถึง Puter, cookies หรือ storage ของ builder
+- เก็บโปรเจกต์ใน localStorage ของ **เบราว์เซอร์และ origin นี้เท่านั้น** ไม่มี cloud sync
+- โค้ดสูงสุด 400 KB/เวอร์ชัน; quota storage ของเบราว์เซอร์อาจเต็มก่อนถึงเพดาน แจ้ง error โดยไม่อ้างว่าบันทึกแล้ว
+- เมื่อ AI error, output ไม่ครบ หรือหยุดรับผล จะไม่ทับโค้ดที่บันทึกไว้ คำสั่งยังอยู่ให้ลองใหม่
+- ปุ่มหยุดยกเลิกการรับผลใน UI เท่านั้น ไม่รับรองยกเลิกค่าใช้จ่ายของผู้ให้บริการ
+- ไม่มี npm, Node.js server, backend/database/auth/payment จริง, deploy หรือ GitHub sync ในโหมดนี้
+- โปรเจกต์ Puter legacy เดิมยังไม่ได้ migrate เข้า storage รูปแบบใหม่นี้ และไม่ได้ถูกลบ
 
-*From prompt to deployed app — live preview, code editor, database and deploy, all in one place.*
+ตรวจโค้ด AI ก่อนเผยแพร่เสมอ Sandbox นี้ไม่ใช่ container สำหรับรันโค้ดที่เชื่อถือไม่ได้ทุกประเภท (เช่น infinite loop ยังใช้ CPU ได้) ไฟล์ HTML ที่ export ไม่ได้มีข้อจำกัด sandbox ของ builder ติดไปด้วย
 
-</div>
+### โหมด Totalum (เส้นทาง full-stack เดิม)
+
+```bash
+cp .env.example .env.local
+# ตั้ง TOTALUM_VCAAS_API_KEY ใน .env.local ฝั่ง server เท่านั้น แล้ว restart
+```
+
+ถ้ามี key หน้าแรกใช้ dashboard เดิม และโปรเจกต์เปิดผ่าน `/project/<id>` ส่วน workspace ใหม่ใช้ `/build/<id>` ไม่ปนกัน
+
+**ห้ามเปิด Totalum สู่สาธารณะโดยไม่มี auth/ownership guards:** API เดิมเป็น single-tenant และยังไม่มีการป้องกันผู้ใช้รายอื่นใช้เครดิตของเจ้าของ key ดู `AGENTS.md` ส่วน Boilerplate mode ไม่ได้แก้ระบบสิทธิ์หรือรับรอง production readiness ในรอบนี้
+
+## ตรวจสอบ
+
+```bash
+npm test                     # unit tests: parser, history, persistence, storage failure, CSP
+npm run check-types-errors
+npm run build
+npm start -- --hostname 0.0.0.0
+```
+
+Optional browser regression: `tests/browser-smoke.cjs` ใช้ Playwright ที่ติดตั้งแยก ไม่เพิ่ม dependency ให้แอป และ **mock Puter SDK** เพื่อไม่ใช้เครดิตจริง:
+
+```bash
+PLAYWRIGHT_MODULE=/path/to/playwright node tests/browser-smoke.cjs
+```
+
+ทดสอบ create → login mock → streaming → preview interaction → code save → reload → ZIP → follow-up context → provider error/invalid HTML → stop → restore → import → mobile layout → reopen
+
+การผ่าน test/build ไม่ได้แปลว่าได้ยืนยัน Puter login, โมเดล AI, quota หรือ Totalum บนบัญชีจริง ต้องลองด้วยบัญชีของผู้ใช้เองอีกครั้ง
+
+ฟอนต์ไทย self-hosted จาก `@fontsource/noto-sans-thai` (SIL OFL ใน `public/fonts/OFL-NotoSansThai.txt`) จึงไม่ต้องโหลด Google Fonts ตอน build
 
 ---
+
+## เอกสารต้นทาง: Totalum workspace
+
+ส่วนด้านล่างเป็นคู่มือ backend **Totalum** เดิม ไม่ใช่รายการฟีเจอร์ของ Puter workspace ข้างบน
 
 ## What is this?
 
@@ -381,23 +427,3 @@ Built with ❤️ on the [Totalum API](https://www.totalum.app/api) · [Docs](ht
 </div>
 
 ---
-
-## 🔥 เหนือ Bolt ขาดๆ — ทำไม GUPAN Hybrid ดีกว่า Bolt.new
-
-> Bolt.new ใช้ WebContainer บูท Node ใน browser — ช้า, จำกัด RAM, แชร์ sandbox, ใช้ model เดียว, ต้องจ่าย credit. GUPAN Hybrid ใช้ Puter + Totalum — ไม่ต้องบูท, isolate per project, 500+ models auto-routing, ฟรี unlimited
-
-| Feature | Bolt.new | GUPANUPAN Hybrid | Winner |
-|---|---|---|---|
-| **HMR Preview** | 850ms (WebContainer) | **95ms** (puter.fs) | **GUPAN 9x** |
-| **Cold Boot** | 4s | **0s** (no boot) | **GUPAN ∞** |
-| **AI Models** | 1 model | **500+ auto-routing** | **GUPAN** |
-| **Database** | ❌ ต่อ Supabase เอง | ✅ built-in (kv + SQL) | **GUPAN** |
-| **Auth** | ❌ | ✅ puter.auth | **GUPAN** |
-| **Hosting** | Netlify | ✅ puter.site + Vercel + CF + ZIP | **GUPAN** |
-| **Sandbox** | แชร์ RAM | ✅ isolate + sleep/wake 1.5s | **GUPAN** |
-| **Figma** | ❌ | ✅ | **GUPAN** |
-| **Free Tier** | 150k tokens/mo | **Unlimited (Puter)** | **GUPAN** |
-| **Self-host** | ❌ | ✅ MIT | **GUPAN** |
-
-**ดูเทียบเต็ม 15 ข้อที่ [/vs/bolt](/vs/bolt) + API `/api/benchmark`**
-

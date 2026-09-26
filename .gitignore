@@ -56,3 +56,6 @@ playwright-dev-server.log
 
 # Puter legacy backup (original Vite builder)
 .puter-legacy/
+
+# Local UI test artifacts
+.cache/

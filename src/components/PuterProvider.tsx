@@ -10,7 +10,7 @@ export function PuterProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     ensurePuterLoaded().then(ok => {
       if (!cancelled) setReady(ok);
-    });
+    }).catch(() => { if (!cancelled) setReady(false); });
     // also watch for late loads
     const id = setInterval(() => {
       if (isPuterAvailable() && !ready) setReady(true);

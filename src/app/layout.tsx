@@ -2,19 +2,16 @@
 import React from "react";
 import type { Metadata } from "next";
 import Script from "next/script";
-import { DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { GlobalErrorCatcher } from "@/components/GlobalErrorCatcher";
 import { Toaster } from "@/components/ui/sonner";
 import { InsufficientCreditsModal } from "@/components/workspace/InsufficientCreditsModal";
 import { PuterProvider } from "@/components/PuterProvider";
 
-const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "VibeBuild — AI App Builder",
-  description: "Build apps with AI. Describe what you want, preview in real-time, deploy with one click.",
+  title: "GUPAN Studio — AI Web Builder",
+  description: "สร้างเว็บด้วย AI แก้โค้ด ดูพรีวิว และส่งออกโปรเจกต์ของคุณ",
 };
 
 // SUPER IMPORTANT: NOT EDIT THE FOLLOWING 2 LINES TO FORCE NEXT.JS TO RENDER DYNAMICALLY
@@ -23,12 +20,12 @@ export const revalidate = 0;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="th" suppressHydrationWarning>
       <head>
         {/* Puter.js — keyless backend for AI, storage, hosting. Loaded globally so hybrid mode works without any server key. */}
         <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />
       </head>
-      <body className={`${dmSans.variable} ${geistMono.variable} antialiased`}>
+      <body className="antialiased">
         <PuterProvider>
           <GlobalErrorCatcher />
           <Toaster position="top-right" richColors />
