@@ -9,6 +9,37 @@ import { useBuilder } from "@/lib/builder/store";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { useShallow } from "zustand/shallow";
+import type { CanvasComponent, CanvasState } from "@/lib/builder/types";
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => {
+    if (char === "&") return "&amp;";
+    if (char === "<") return "&lt;";
+    if (char === ">") return "&gt;";
+    if (char === '"') return "&quot;";
+    return "&#39;";
+  });
+}
+
+function canvasToHtml(canvas: CanvasState) {
+  const page = canvas.pages[canvas.stack[canvas.stack.length - 1]?.id] ?? canvas.pages.home;
+  if (!page) return "<!doctype html><html><body></body></html>";
+  const theme = canvas.theme;
+  const render = (node: CanvasComponent): string => {
+    const p = node.props ?? {};
+    const text = escapeHtml(typeof p.text === "string" ? p.text : typeof p.label === "string" ? p.label : "");
+    const children = (node.children ?? []).map(render).join("");
+    if (node.type === "heading") return `<h1>${text}</h1>`;
+    if (node.type === "text") return `<p>${text}</p>`;
+    if (node.type === "banner") return `<div class="banner">${text}</div>`;
+    if (node.type === "button" || node.type === "nav") return `<button>${text}</button>`;
+    if (node.type === "input") return `<input placeholder="${escapeHtml(String(p.placeholder ?? ""))}">`;
+    if (node.type === "card" || node.type === "form") return `<section class="card">${text}${children}</section>`;
+    if (node.type === "list") return `<ul>${children}</ul>`;
+    return `<div>${text}${children}</div>`;
+  };
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(page.title)}</title><style>:root{font-family:Inter,system-ui,sans-serif;color:${theme.text ?? "#172033"};background:${theme.background ?? "#f7f8fc"}}body{margin:0;padding:32px;max-width:1000px;margin-inline:auto}h1{font-size:42px}p{line-height:1.7}.banner{padding:16px 20px;border-radius:16px;background:${theme.primary ?? "#6d5dfc"};color:#fff;font-weight:700;margin-bottom:18px}.card{padding:20px;border:1px solid #00000014;border-radius:20px;background:#ffffffcc;margin:14px 0}button{border:0;border-radius:12px;padding:11px 16px;margin:6px;background:${theme.primary ?? "#6d5dfc"};color:#fff;font-weight:700}input{padding:12px;border:1px solid #0002;border-radius:12px;background:transparent;color:inherit}</style></head><body>${page.components.map(render).join("")}</body></html>`;
+}
 
 function PuterSessionButton() {
   const { ready, signedIn, user, loading, signIn, signOut } = usePuterAuth();
@@ -136,7 +167,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
           <button
             type="button"
             onClick={() => setDeployOpen(true)}
-            className="hidden max-w-[72px] truncate rounded-full bg-emerald-500 px-2 py-1 text-[11px] font-semibold text-zinc-950 shadow-sm hover:bg-emerald-400 sm:inline-block sm:max-w-none sm:px-2.5 sm:text-xs"
+            className="max-w-[68px] shrink-0 truncate rounded-full bg-emerald-500 px-2 py-1 text-[11px] font-semibold text-zinc-950 shadow-sm hover:bg-emerald-400 sm:max-w-none sm:px-2.5 sm:text-xs"
           >
             Deploy
           </button>
@@ -166,7 +197,7 @@ export function Toolbar({ inEditor }: { inEditor: boolean }) {
         <DeployModal
           projectId={active.id}
           projectName={active.title}
-          html=""
+          html={active.canvas ? canvasToHtml(active.canvas) : ""}
           isOpen={deployOpen}
           onClose={() => setDeployOpen(false)}
           onSuccess={() => {}}
