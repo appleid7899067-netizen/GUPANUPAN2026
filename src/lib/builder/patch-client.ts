@@ -17,7 +17,7 @@ export async function generateIntent(
   history: { role: "user" | "assistant"; content: string }[] = [],
 ): Promise<IntentResult> {
   let builderMessage = userMessage;
-  const urlMatch = userMessage.match(/https?:\\/\\/[^\\s]+/i);
+  const urlMatch = userMessage.match(/https?:\/\/[^\s]+/i);
   if (urlMatch) {
     try {
       const inspect = await fetch("/api/inspect-url", {
