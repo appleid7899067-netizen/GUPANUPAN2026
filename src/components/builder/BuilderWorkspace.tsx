@@ -6,12 +6,13 @@ import {
   ArrowLeft,
   ArrowUp,
   Check,
+  ChevronDown,
   Code2,
   Download,
   Eye,
   History,
   Loader2,
-  LogIn,
+  MessageSquareText,
   Monitor,
   Play,
   RotateCcw,
@@ -33,23 +34,42 @@ import {
   saveProject,
   type BuildProject,
 } from "@/lib/builder";
-import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
+import {
+  aiErrorText,
+  chunkText,
+  getSavedModel,
+  isSignedIn as puterIsSignedIn,
+  PUTER_MODEL_PRESETS,
+  refreshPuterSession,
+  responseText,
+  saveModel,
+  type PuterAuthState,
+} from "@/lib/puter";
+import PuterAuthPanel from "./PuterAuthPanel";
 import "./builder.css";
 
 type LogLine = { level: string; text: string };
+type WorkTab = "preview" | "code" | "history";
+type MobileView = "chat" | "work";
+
+const CUSTOM_MODEL = "__custom__";
+
 export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<BuildProject | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [tab, setTab] = useState<"preview" | "code" | "history">("preview");
-  const [mobile, setMobile] = useState(false);
+  const [tab, setTab] = useState<WorkTab>("preview");
+  const [mobileView, setMobileView] = useState<MobileView>("chat");
+  const [mobilePreview, setMobilePreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
+  const [streamChars, setStreamChars] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState("");
-  const [ready, setReady] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
+  const [auth, setAuth] = useState<PuterAuthState>({ status: "loading" });
   const [model, setModel] = useState("");
+  const [customModel, setCustomModel] = useState("");
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
@@ -61,6 +81,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const running = useRef(false);
   const cancelWait = useRef<(() => void) | null>(null);
   const dirty = !!project && draft !== project.html;
+  const signedIn = auth.status === "signed-in";
+  const puterReady = auth.status !== "loading" && auth.status !== "unavailable";
+
+  const effectiveModel = useMemo(() => {
+    if (model === CUSTOM_MODEL) return customModel.trim();
+    return model.trim();
+  }, [model, customModel]);
 
   useEffect(() => {
     setChannel(crypto.randomUUID());
@@ -70,26 +97,34 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       setDraft(stored?.html || "");
       setPrompt(sessionStorage.getItem(`gupan:prompt:${projectId}`) || "");
     } catch (e) {
-      setError(String(e));
+      setError(e instanceof Error ? e.message : String(e));
     }
     setLoaded(true);
+    const saved = getSavedModel();
+    if (saved && PUTER_MODEL_PRESETS.some((p) => p.id === saved)) {
+      setModel(saved);
+    } else if (saved) {
+      setModel(CUSTOM_MODEL);
+      setCustomModel(saved);
+    }
     let alive = true;
-    ensurePuterLoaded()
-      .then((ok) => {
-        if (alive) {
-          setReady(ok);
-          setSignedIn(!!window.puter?.auth?.isSignedIn?.());
-        }
-      })
-      .catch(() => {
-        if (alive) setStatus("โหลด Puter ไม่สำเร็จ ยังแก้โค้ดและพรีวิวได้");
+    refreshPuterSession().then((s) => {
+      if (alive) setAuth(s);
+    });
+    // Re-check quietly every 20s so a login in another tab is picked up.
+    const id = setInterval(() => {
+      refreshPuterSession().then((s) => {
+        if (alive) setAuth(s);
       });
+    }, 20000);
     return () => {
       alive = false;
+      clearInterval(id);
       run.current++;
       cancelWait.current?.();
     };
   }, [projectId]);
+
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (
@@ -107,6 +142,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
   }, [channel]);
+
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty || busy) {
@@ -117,21 +153,39 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, busy]);
+
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [project?.messages.length, busy]);
+  }, [project?.messages.length, busy, streamChars]);
+
+  // Elapsed-seconds ticker while streaming.
+  useEffect(() => {
+    if (!busy) {
+      setElapsed(0);
+      return;
+    }
+    const started = Date.now();
+    const id = setInterval(
+      () => setElapsed(Math.floor((Date.now() - started) / 1000)),
+      500,
+    );
+    return () => clearInterval(id);
+  }, [busy]);
+
   const srcDoc = useMemo(
     () => (channel && project ? previewDocument(project.html, channel) : ""),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [project?.html, channel],
   );
 
   function apply(next: BuildProject) {
-    saveProject(next); // Don't claim a successful save or replace the preview on quota failure.
+    saveProject(next); // Don't claim success or replace preview on quota failure.
     setProject(next);
     setDraft(next.html);
     setLogs([]);
     setPreviewKey((k) => k + 1);
   }
+
   function saveCode() {
     if (!project || busy) return;
     try {
@@ -139,48 +193,33 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       setError("");
       setStatus("บันทึกแล้วในเบราว์เซอร์นี้");
     } catch (e) {
-      setError(errorText(e));
+      setError(aiErrorText(e));
     }
   }
-  async function signIn() {
-    try {
-      if (!ready) {
-        setReady(await ensurePuterLoaded());
-        setStatus("กดเข้าสู่ระบบอีกครั้งเพื่อเปิดหน้าต่าง Puter");
-        return;
-      }
-      const ok = await ensurePuterAuth();
-      setSignedIn(ok);
-      if (!ok)
-        setError(
-          "ยังไม่ได้เข้าสู่ระบบ Puter กรุณาอนุญาต popup แล้วลองอีกครั้ง",
-        );
-      else {
-        setError("");
-        setStatus("เชื่อมต่อ Puter แล้ว พร้อมสร้าง");
-      }
-    } catch (e) {
-      setError(errorText(e));
-    }
-  }
+
   async function build() {
     if (!project || !prompt.trim() || running.current) return;
     if (dirty) {
       setError("บันทึกหรือยกเลิกการแก้โค้ดก่อนส่งคำสั่ง AI");
       setTab("code");
+      setMobileView("work");
       return;
     }
-    if (!window.puter?.auth?.isSignedIn?.()) {
-      setSignedIn(false);
+    // Re-verify the live session (the cached chip may be stale).
+    if (!puterIsSignedIn()) {
+      setAuth({ status: "signed-out" });
       setError(
         "กดเข้าสู่ระบบ Puter ก่อนใช้ AI (แก้โค้ดเองได้โดยไม่ต้องเข้าสู่ระบบ)",
       );
+      setMobileView("chat");
       return;
     }
     running.current = true;
     const ticket = ++run.current;
     const request = prompt.trim();
+    const chosenModel = effectiveModel;
     setBusy(true);
+    setStreamChars(0);
     setError("");
     setStatus("กำลังส่งคำสั่งให้ AI…");
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -195,19 +234,24 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               content: `Current index.html:\n${project.html}\n\nRequested change:\n${request}`,
             },
           ],
-          { stream: true, ...(model.trim() ? { model: model.trim() } : {}) },
+          { stream: true, ...(chosenModel ? { model: chosenModel } : {}) },
         );
-        let text = "";
-        for await (const chunk of stream) {
-          if (ticket !== run.current) return "";
-          if (typeof chunk?.text === "string") text += chunk.text;
-          if (text.length > MAX_HTML_SIZE + 1000)
-            throw new Error("คำตอบ AI ใหญ่เกินขีดจำกัด");
-          setStatus(
-            `AI กำลังเขียนโค้ด · ${text.length.toLocaleString()} ตัวอักษร`,
-          );
+        // Streamed responses are async-iterable; tolerate a plain envelope too.
+        if (stream && typeof stream[Symbol.asyncIterator] === "function") {
+          let text = "";
+          for await (const part of stream) {
+            if (ticket !== run.current) return "";
+            text += chunkText(part);
+            if (text.length > MAX_HTML_SIZE + 1000)
+              throw new Error("คำตอบ AI ใหญ่เกินขีดจำกัด");
+            setStreamChars(text.length);
+            setStatus(
+              `AI กำลังเขียนโค้ด · ${text.length.toLocaleString()} ตัวอักษร`,
+            );
+          }
+          return text;
         }
-        return text;
+        return responseText(stream);
       };
       const raw = await Promise.race([
         generate(),
@@ -243,9 +287,18 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       }
       setStatus("สร้างเสร็จแล้ว · บันทึกในเบราว์เซอร์นี้");
       setTab("preview");
+      setMobileView("work");
     } catch (e) {
       if (ticket === run.current) {
-        setError(errorText(e));
+        // A stale login surfaces as an auth error from the provider.
+        if (e && typeof e === "object") {
+          try {
+            if (!puterIsSignedIn()) setAuth({ status: "signed-out" });
+          } catch {
+            /* Keep the previous chip. */
+          }
+        }
+        setError(aiErrorText(e));
         setStatus("สร้างไม่สำเร็จ · โค้ดเดิมยังอยู่");
       }
     } finally {
@@ -258,6 +311,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       }
     }
   }
+
   function stop() {
     run.current++;
     cancelWait.current?.();
@@ -266,6 +320,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     setBusy(false);
     setStatus("หยุดรับผลแล้ว · ผู้ให้บริการอาจยังประมวลผลและคิดโควตาอยู่");
   }
+
   function download() {
     if (!project) return;
     try {
@@ -287,9 +342,10 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
-      setError(errorText(e));
+      setError(aiErrorText(e));
     }
   }
+
   async function importHtml(file?: File) {
     if (!file || !project) return;
     try {
@@ -304,18 +360,21 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       apply(checkpoint(project, html, "ก่อนนำเข้า HTML"));
       setError("");
       setTab("preview");
+      setMobileView("work");
     } catch (e) {
-      setError(errorText(e));
+      setError(aiErrorText(e));
     } finally {
       if (fileInput.current) fileInput.current.value = "";
     }
   }
+
   if (!loaded)
     return (
       <div className="builder workspace-loading">
-        <Loader2 className="spin" /> กำลังเปิดโปรเจกต์…
+        <Loader2 className="spin" size={22} /> กำลังเปิดโปรเจกต์…
       </div>
     );
+
   if (!project)
     return (
       <div className="builder workspace-loading">
@@ -326,11 +385,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         <Link href="/">← กลับหน้าหลัก</Link>
       </div>
     );
+
   return (
-    <div className="builder workspace">
-      <header className="builder-header">
+    <div className="builder workspace" data-mobile-view={mobileView}>
+      <header className="builder-header work-header">
         <Link
           href="/"
+          className="back-btn"
           aria-label="กลับหน้าหลัก"
           onClick={(e) => {
             if (
@@ -340,31 +401,37 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               e.preventDefault();
           }}
         >
-          <ArrowLeft size={19} />
+          <ArrowLeft size={18} />
         </Link>
-        <span className="brand">
-          <Zap size={18} fill="currentColor" /> GUPAN
+        <span className="brand work-brand">
+          <span className="brand-mark">
+            <Zap size={13} fill="currentColor" />
+          </span>
+          GUPAN
         </span>
-        <span className="project-title">{project.name}</span>
-        <span className="saved-status">
+        <span className="project-title" title={project.name}>
+          {project.name}
+        </span>
+        <span className={`saved-status ${dirty ? "dirty" : ""}`}>
           {dirty ? (
             "ยังไม่บันทึก"
           ) : (
             <>
-              <Check size={13} /> Local save
+              <Check size={12} /> Local save
             </>
           )}
         </span>
         <button
-          className="subtle"
+          className="subtle import-btn"
           disabled={busy}
           onClick={() => fileInput.current?.click()}
+          aria-label="นำเข้า HTML"
         >
-          <Upload size={15} />
-          <span>นำเข้า HTML</span>
+          <Upload size={14} />
+          <span>นำเข้า</span>
         </button>
-        <button className="primary" onClick={download}>
-          <Download size={15} /> Export ZIP
+        <button className="primary export-btn" onClick={download}>
+          <Download size={14} /> <span>Export</span>
         </button>
         <input
           ref={fileInput}
@@ -374,21 +441,24 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           onChange={(e) => void importHtml(e.target.files?.[0])}
         />
       </header>
+
       <div className="workspace-body">
-        <aside className="chat-panel">
+        <aside className="chat-panel" aria-label="แชทสร้างเว็บ">
           <div className="chat-heading">
             <span>
-              <Zap size={16} /> Build assistant
+              <MessageSquareText size={15} /> Build assistant
             </span>
-            <span className="mode-pill">Puter AI</span>
+            <span className={`mode-pill ${signedIn ? "on" : ""}`}>
+              <i /> {signedIn ? `Puter · ${auth.status === "signed-in" ? auth.username || "ready" : "ready"}` : "Puter AI"}
+            </span>
           </div>
+
           <div className="chat-messages">
             <div className="assistant-intro">
               <div className="assistant-symbol">✦</div>
               <h2>จากไอเดีย สู่เว็บของคุณ</h2>
               <p>
-                สั่งสร้างเว็บ แล้วแก้ต่อได้เรื่อย ๆ AI
-                จะเห็นโค้ดล่าสุดของคุณทุกครั้ง
+                สั่งสร้างเว็บ แล้วแก้ต่อได้เรื่อย ๆ AI จะเห็นโค้ดล่าสุดของคุณทุกครั้ง
               </p>
               <div className="scope-note">
                 โหมดนี้สร้าง HTML/CSS/JS แบบไฟล์เดียว
@@ -404,11 +474,23 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             ))}
             {busy && (
               <div className="build-progress" role="status">
-                <Loader2 size={17} className="spin" /> {status}
+                <Loader2 size={16} className="spin" />
+                <div>
+                  <b>AI กำลังเขียนโค้ด… {elapsed}s</b>
+                  <small>
+                    {streamChars > 0
+                      ? `รับมาแล้ว ${streamChars.toLocaleString()} ตัวอักษร`
+                      : "กำลังรอผลชิ้นแรก"}
+                  </small>
+                  <span className="progress-bar" aria-hidden>
+                    <i />
+                  </span>
+                </div>
               </div>
             )}
             <div ref={chatEnd} />
           </div>
+
           <div className="composer-area">
             {error && (
               <div className="builder-error" role="alert">
@@ -421,11 +503,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 </button>
               </div>
             )}
-            {!signedIn && (
-              <button className="sign-in" onClick={() => void signIn()}>
-                <LogIn size={15} /> เข้าสู่ระบบ Puter เพื่อใช้ AI
-              </button>
-            )}
+            <PuterAuthPanel auth={auth} onChange={setAuth} />
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -439,6 +517,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 placeholder="อยากสร้างหรือแก้ไขอะไร?"
                 maxLength={6000}
                 disabled={busy}
+                rows={3}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
@@ -447,7 +526,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 }}
               />
               <div className="composer-bottom">
-                <span>Ctrl / ⌘ + Enter</span>
+                <span className="composer-hint">Ctrl/⌘ + Enter</span>
                 {busy ? (
                   <button
                     type="button"
@@ -457,35 +536,73 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                       stop();
                     }}
                   >
-                    <Square size={13} /> หยุดรับผล
+                    <Square size={12} /> หยุดรับผล
                   </button>
                 ) : (
                   <button
                     className="primary"
                     type="submit"
-                    disabled={!prompt.trim() || !ready}
+                    disabled={!prompt.trim() || !puterReady}
+                    title={
+                      !puterReady
+                        ? "กำลังเชื่อมต่อ Puter…"
+                        : !signedIn
+                          ? "ต้องเข้าสู่ระบบ Puter ก่อน"
+                          : "ส่งคำสั่งให้ AI"
+                    }
                   >
-                    <ArrowUp size={17} /> ส่งคำสั่ง
+                    <ArrowUp size={16} /> ส่งคำสั่ง
                   </button>
                 )}
               </div>
             </form>
-            <label className="model-field">
-              Model{" "}
-              <input
-                aria-label="Puter model ID"
-                placeholder="ค่าเริ่มต้นของ Puter"
-                value={model}
-                disabled={busy}
-                onChange={(e) => setModel(e.target.value)}
-              />
-            </label>
+            <div className="model-row">
+              <label className="model-field">
+                <span>Model</span>
+                <span className="model-select-wrap">
+                  <select
+                    aria-label="เลือกโมเดล Puter"
+                    value={model}
+                    disabled={busy}
+                    onChange={(e) => {
+                      setModel(e.target.value);
+                      saveModel(
+                        e.target.value === CUSTOM_MODEL
+                          ? customModel.trim()
+                          : e.target.value,
+                      );
+                    }}
+                  >
+                    {PUTER_MODEL_PRESETS.map((p) => (
+                      <option key={p.id || "auto"} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                    <option value={CUSTOM_MODEL}>ระบุเอง…</option>
+                  </select>
+                  <ChevronDown size={13} />
+                </span>
+              </label>
+              {model === CUSTOM_MODEL && (
+                <input
+                  aria-label="Puter model ID"
+                  placeholder="เช่น gpt-5-mini"
+                  value={customModel}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setCustomModel(e.target.value);
+                    saveModel(e.target.value.trim());
+                  }}
+                />
+              )}
+            </div>
             <small className="billing-note">
               ใช้โควตา/ค่าบริการบัญชี Puter ของคุณ · ไม่ส่งคำสั่งอัตโนมัติ
             </small>
           </div>
         </aside>
-        <section className="work-panel">
+
+        <section className="work-panel" aria-label="พื้นที่ทำงาน">
           <div className="work-tabs">
             <div role="tablist" aria-label="Workspace views">
               {(
@@ -502,7 +619,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   className={tab === id ? "active" : ""}
                   onClick={() => setTab(id)}
                 >
-                  <Icon size={15} />
+                  <Icon size={14} />
                   {label}
                 </button>
               ))}
@@ -511,6 +628,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               <i /> Isolated preview
             </span>
           </div>
+
           {tab === "preview" && (
             <div className="preview-panel">
               <div className="preview-toolbar">
@@ -526,23 +644,23 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 <div className="preview-address">preview / index.html</div>
                 <button
                   aria-label="Desktop preview"
-                  aria-pressed={!mobile}
-                  className={!mobile ? "selected" : ""}
-                  onClick={() => setMobile(false)}
+                  aria-pressed={!mobilePreview}
+                  className={!mobilePreview ? "selected" : ""}
+                  onClick={() => setMobilePreview(false)}
                 >
                   <Monitor size={16} />
                 </button>
                 <button
                   aria-label="Mobile preview"
-                  aria-pressed={mobile}
-                  className={mobile ? "selected" : ""}
-                  onClick={() => setMobile(true)}
+                  aria-pressed={mobilePreview}
+                  className={mobilePreview ? "selected" : ""}
+                  onClick={() => setMobilePreview(true)}
                 >
                   <Smartphone size={16} />
                 </button>
               </div>
               <div
-                className={`preview-stage ${mobile ? "mobile-preview" : ""}`}
+                className={`preview-stage ${mobilePreview ? "mobile-preview" : ""}`}
               >
                 <iframe
                   key={previewKey}
@@ -555,11 +673,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               </div>
             </div>
           )}
+
           {tab === "code" && (
             <div className="code-panel">
               <div className="code-toolbar">
                 <span>
-                  <Code2 size={15} /> index.html
+                  <Code2 size={14} /> index.html
+                  {dirty && <em className="dirty-dot">• แก้ไขแล้ว</em>}
                 </span>
                 <div>
                   <button
@@ -577,7 +697,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                     disabled={!dirty || busy}
                     onClick={saveCode}
                   >
-                    <Save size={14} /> บันทึกและรัน
+                    <Save size={13} /> บันทึกและรัน
                   </button>
                 </div>
               </div>
@@ -596,12 +716,12 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 }}
               />
               <div className="code-footnote">
-                {draft.split("\n").length} lines ·{" "}
-                {(draft.length / 1000).toFixed(1)} KB · Ctrl/⌘ + S
-                เพื่อบันทึกและอัปเดตพรีวิว
+                {draft.split("\n").length} lines · {(draft.length / 1000).toFixed(1)} KB ·
+                Ctrl/⌘ + S เพื่อบันทึกและอัปเดตพรีวิว
               </div>
             </div>
           )}
+
           {tab === "history" && (
             <div className="history-panel">
               <h2>ประวัติโค้ด</h2>
@@ -641,25 +761,26 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                         setTab("preview");
                         setError("");
                       } catch (e) {
-                        setError(errorText(e));
+                        setError(aiErrorText(e));
                       }
                     }}
                   >
-                    <RotateCcw size={14} /> กู้คืน
+                    <RotateCcw size={13} /> กู้คืน
                   </button>
                 </article>
               ))}
             </div>
           )}
+
           <div className="console-section">
             <button
               className="console-toggle"
               onClick={() => setShowLogs(!showLogs)}
               aria-expanded={showLogs}
             >
-              <Terminal size={14} /> Console <span>{logs.length}</span>
+              <Terminal size={13} /> Console <span>{logs.length}</span>
               <span className="console-status">
-                {busy ? "Building…" : status || "พร้อมใช้งาน"}
+                {busy ? `Building… ${elapsed}s` : status || "พร้อมใช้งาน"}
               </span>
             </button>
             {showLogs && (
@@ -682,24 +803,61 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           </div>
         </section>
       </div>
+
+      <nav className="mobile-nav" aria-label="สลับมุมมอง">
+        <button
+          className={mobileView === "chat" ? "active" : ""}
+          onClick={() => setMobileView("chat")}
+          aria-label="มุมมองแชท"
+          aria-pressed={mobileView === "chat"}
+        >
+          <MessageSquareText size={18} />
+          <small>แชท</small>
+        </button>
+        <button
+          className={mobileView === "work" && tab === "preview" ? "active" : ""}
+          onClick={() => {
+            setTab("preview");
+            setMobileView("work");
+          }}
+          aria-label="มุมมองพรีวิว"
+          aria-pressed={mobileView === "work" && tab === "preview"}
+        >
+          <Eye size={18} />
+          <small>พรีวิว</small>
+        </button>
+        <button
+          className={mobileView === "work" && tab === "code" ? "active" : ""}
+          onClick={() => {
+            setTab("code");
+            setMobileView("work");
+          }}
+          aria-label="มุมมองโค้ด"
+          aria-pressed={mobileView === "work" && tab === "code"}
+        >
+          <Code2 size={18} />
+          <small>โค้ด</small>
+        </button>
+        <button
+          className={mobileView === "work" && tab === "history" ? "active" : ""}
+          onClick={() => {
+            setTab("history");
+            setMobileView("work");
+          }}
+          aria-label="มุมมองประวัติ"
+          aria-pressed={mobileView === "work" && tab === "history"}
+        >
+          <History size={18} />
+          <small>ประวัติ</small>
+        </button>
+      </nav>
+
       <footer className="workspace-footer">
         <span>
-          <Play size={11} /> Browser sandbox · ไม่มีสิทธิ์เข้าถึงบัญชี Puter
+          <Play size={10} /> Browser sandbox · ไม่มีสิทธิ์เข้าถึงบัญชี Puter
         </span>
         <span>Local storage · Export เพื่อสำรองงาน</span>
       </footer>
     </div>
   );
-}
-function errorText(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "object" && error !== null) {
-    const e = error as { message?: string; error?: { message?: string } };
-    return (
-      e.message ||
-      e.error?.message ||
-      "Puter ส่งข้อผิดพลาด กรุณาตรวจบัญชี โควตา และ model ID"
-    );
-  }
-  return String(error);
 }

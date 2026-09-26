@@ -65,5 +65,8 @@
   "private": true,
   "overrides": {
     "dompurify": "^3.4.15"
+  },
+  "engines": {
+    "node": ">=20 <23"
   }
 }
