@@ -18,6 +18,42 @@ async function initializeModelSelector() {
             return provider || String(a.name || a.id).localeCompare(String(b.name || b.id));
         });
         select.innerHTML = '';
+
+        // Curated builder favorites. These are still Puter model IDs, so the
+        // selector never bypasses Puter or introduces a second AI gateway.
+        const preferredModels = [
+            'x-ai/grok-4.7',
+            'x-ai/grok-4.6',
+            'openai/gpt-5.6-luna',
+            'openai/gpt-5.6-luna-pro',
+            'openai/gpt-5.6-sol',
+            'openai/gpt-5.4',
+            'anthropic/claude-opus-5.5',
+            'anthropic/claude-sonnet-5',
+            'google/gemini-3.1-pro',
+            'deepseek/deepseek-v4-pro',
+            'qwen/qwen3.8-max',
+            'qwen/qwen3.8-flash',
+            'nex-agi/nex-n2.5-pro:free',
+            'nex-agi/nex-n2.5-mini:free',
+            'inclusionai/ling-3.0-flash-sante:free',
+            'dots-studio/dots-3-note-preview:free',
+        ];
+        const preferredAvailable = preferredModels
+            .map(id => availableAIModels.find(model => model.id === id))
+            .filter(Boolean);
+        if (preferredAvailable.length) {
+            const favorites = document.createElement('optgroup');
+            favorites.label = '⭐ Builder Favorites';
+            for (const model of preferredAvailable) {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.name ? model.name + ' · ' + model.id : model.id;
+                favorites.appendChild(option);
+            }
+            select.appendChild(favorites);
+        }
+
         const grouped = new Map();
         for (const model of availableAIModels) {
             const provider = String(model.provider || 'Other');
