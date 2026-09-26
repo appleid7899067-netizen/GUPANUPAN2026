@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "AI Builder by Puter",
-  "short_name": "AI Builder",
-  "description": "Build apps, websites, and tools with AI — no code required. Describe what you want and Puter's AI builder creates it in your browser.",
+  "name": "Panupan",
+  "short_name": "Panupan",
+  "description": "Build apps, websites, and tools with Panupan AI.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
