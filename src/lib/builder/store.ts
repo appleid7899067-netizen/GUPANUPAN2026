@@ -189,6 +189,8 @@ type BuilderState = {
   setSuggestions: (id: string, suggestions: Suggestion[]) => void;
   addDocument: (id: string, document: DocumentContext) => void;
   clearDocuments: (id: string) => void;
+  snapshotCanvas: (id: string, label?: string) => void;
+  selectCanvasComponent: (id: string, componentId: string | null) => void;
   restoreVersion: (id: string, versionId: string) => void;
   active: () => Project | null;
 };
@@ -298,6 +300,35 @@ export const useBuilder = create<BuilderState>()(
         set((s) => ({
           projects: s.projects.map((p) =>
             p.id === id ? { ...p, pages, updatedAt: Date.now() } : p,
+          ),
+        })),
+      snapshotCanvas: (id, label) =>
+        set((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  versions: [
+                    ...p.versions,
+                    {
+                      id: uid(),
+                      html: p.html,
+                      canvas: structuredClone(p.canvas),
+                      label: label || `Before edit ${p.versions.length + 1}`,
+                      createdAt: Date.now(),
+                    },
+                  ].slice(-MAX_VERSIONS),
+                  updatedAt: Date.now(),
+                }
+              : p,
+          ),
+        })),
+      selectCanvasComponent: (id, componentId) =>
+        set((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id
+              ? { ...p, canvas: { ...p.canvas, selectedComponentId: componentId || undefined }, updatedAt: Date.now() }
+              : p,
           ),
         })),
       applyCanvasPatch: (id, patch) =>
@@ -418,7 +449,7 @@ export const useBuilder = create<BuilderState>()(
             if (p.id !== id) return p;
             const v = p.versions.find((x) => x.id === versionId);
             if (!v) return p;
-            return { ...p, html: v.html, updatedAt: Date.now() };
+            return { ...p, html: v.html, canvas: v.canvas ? structuredClone(v.canvas) : p.canvas, updatedAt: Date.now() };
           }),
         })),
       active: () => {
