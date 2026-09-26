@@ -29,14 +29,48 @@ export type ProjectFile = {
   kind?: "source" | "config" | "style" | "asset" | "test";
 };
 
-export type CanvasComponent = { id: string; type: string; props?: Record<string, unknown>; children?: CanvasComponent[] };
-export type CanvasPage = { id: string; title: string; path: string; components: CanvasComponent[] };
+export type CanvasComponent = {
+  id: string;
+  type: string;
+  props?: Record<string, unknown>;
+  children?: CanvasComponent[];
+};
+
+export type CanvasPage = {
+  id: string;
+  title: string;
+  path: string;
+  components: CanvasComponent[];
+};
+
 export type CanvasStackEntry = { id: string };
+
+/** Intent Graph operations — behavior, not markup. */
 export type CanvasPatch =
-  | { op: "addComponent"; pageId: string; component: CanvasComponent }
+  | { op: "addComponent"; pageId: string; component: CanvasComponent; at?: number }
+  | { op: "updateComponent"; pageId: string; componentId: string; props: Record<string, unknown> }
+  | { op: "removeComponent"; pageId: string; componentId: string }
+  | { op: "addPage"; page: CanvasPage }
   | { op: "updateTheme"; theme: Record<string, string> }
-  | { op: "pushRoute"; pageId: string };
-export type CanvasState = { pages: Record<string, CanvasPage>; stack: CanvasStackEntry[]; theme: Record<string, string> };
+  | { op: "pushRoute"; pageId: string }
+  | { op: "setPage"; pageId: string }
+  | { op: "preload"; pageIds: string[] };
+
+export type CanvasState = {
+  pages: Record<string, CanvasPage>;
+  stack: CanvasStackEntry[];
+  theme: Record<string, string>;
+  /** Pages the Intent Engine thinks the user will open next */
+  preloaded?: string[];
+};
+
+/** Full Intent Graph response from the model (or local engine). */
+export type IntentResult = {
+  thought: string;
+  operations: CanvasPatch[];
+  nextPredict?: { preload?: string[] };
+  reply: string;
+};
 
 export type ProjectSource = {
   files: ProjectFile[];
@@ -90,7 +124,6 @@ export type ThemeChoice = "light" | "dark" | "system";
 export type PreviewDevice = "desktop" | "tablet" | "phone";
 export type EditorTab = "preview" | "code" | "files";
 export type MobilePane = "chat" | "app";
-
 
 export type AgentActivityStatus = "working" | "success" | "error" | "fixing" | "verifying";
 export type BuilderLifecycleState =
