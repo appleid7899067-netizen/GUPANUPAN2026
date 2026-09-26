@@ -6163,3 +6163,24 @@ html[data-theme="dark"] .feed-card:hover .feed-thumb {
     border-color: var(--border-strong);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
+
+/* Panupan brand mark for the builder landing page. */
+.chat-tagline-brand {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    background: #111827;
+    color: #fff;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    box-shadow: 0 8px 24px rgba(17, 24, 39, 0.16);
+}
+[data-theme="dark"] .chat-tagline-brand {
+    background: #f3f4f6;
+    color: #111827;
+}
