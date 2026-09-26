@@ -91,7 +91,8 @@ const assistant = (t) => ({ role: 'assistant', content: t });
 // guard attached to the real execution path rather than the UI wrapper in
 // tools.js, so refactors of handleToolCalls do not silently remove the race fix.
 const core = fs.readFileSync(new URL('../src/js/grok-build-core.js', import.meta.url), 'utf8');
-const runTools = slice(core, 'async function runTools(calls, state) {', '\n    return { aborted: false, results };');
+const runTools = slice(core, 'async function runTools(calls, state) {', '\n    window.PanupanGrokCore =')
+;
 check('grok-build-core.js: success result is gated on no result existing yet',
     /if \(!hasToolResult\(state\.chatHistory, call\.id\)\) addToolResult\(state\.chatHistory, call\.id, executed\.result/.test(runTools));
 check('grok-build-core.js: error result is gated the same way',
