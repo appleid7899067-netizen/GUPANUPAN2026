@@ -49,7 +49,35 @@ export function Canvas() {
   );
 }
 
-function CanvasNode({
+function CanvasNode(props: Parameters<typeof RenderCanvasNode>[0]) {
+  const selectMode = useBuilder((s) => s.selectMode);
+  const selectedId = useBuilder((s) => s.projects.find((p) => p.id === s.activeId)?.canvas?.selectedComponentId);
+  const select = useBuilder((s) => s.selectCanvasComponent);
+  if (!selectMode) return <RenderCanvasNode {...props} />;
+  const selected = selectedId === props.node.id;
+  return (
+    <div
+      onClick={(event) => {
+        event.stopPropagation();
+        select(props.projectId, props.node.id);
+      }}
+      className="relative rounded-xl"
+      style={{
+        outline: selected ? `2px solid ${props.primary}` : "2px solid transparent",
+        outlineOffset: 3,
+      }}
+    >
+      <RenderCanvasNode {...props} />
+      {selected ? (
+        <span className="pointer-events-none absolute right-2 top-2 rounded-md px-2 py-1 text-[10px] font-semibold text-white" style={{ background: props.primary }}>
+          แก้ไข: {props.node.id}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function RenderCanvasNode({
   node,
   projectId,
   primary,
