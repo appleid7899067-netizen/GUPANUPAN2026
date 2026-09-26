@@ -45,17 +45,17 @@ const MODES = {
   const tick = () => {
     if (finished) return;
     if (p < 99) {
-      // fast at first, crawl near 99
-      const step = p < 50 ? 1 + Math.floor(Math.random() * 3)
-        : p < 80 ? 1 + Math.floor(Math.random() * 2)
-        : Math.random() < 0.45 ? 1 : 0;
-      p = Math.min(99, p + step);
+      p += 1; // ทุกเลข 1..99 ห้ามข้าม
       paint();
-    } else if (pageLoaded && Date.now() - started > 1400) {
+      // ชะลอช่วงท้ายให้เห็นเลข 90s ชัด ๆ
+      setTimeout(tick, p < 60 ? 18 : p < 85 ? 34 : 70);
+      return;
+    }
+    if (pageLoaded && Date.now() - started > 1200) {
       finish();
       return;
     }
-    setTimeout(tick, 40);
+    setTimeout(tick, 60);
   };
   paint();
   tick();

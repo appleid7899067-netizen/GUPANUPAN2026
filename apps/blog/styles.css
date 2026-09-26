@@ -36,6 +36,24 @@ body {
     radial-gradient(420px 260px at 8% 32%, #b6a0ff12, transparent 70%),
     radial-gradient(420px 260px at 92% 45%, #5cc8ff0e, transparent 70%);
 }
+/* ---------- preloader 1% → 99% ---------- */
+.loader {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg);
+  display: grid; place-items: center;
+  transition: opacity .45s ease, visibility .45s;
+}
+.loader.done { opacity: 0; visibility: hidden; }
+.loader-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px; }
+.loader-mark { font-size: 30px; color: var(--accent); animation: spinmark 2.4s linear infinite; }
+@keyframes spinmark { to { transform: rotate(360deg); } }
+.loader-pct {
+  font-size: clamp(56px, 14vw, 88px); font-weight: 800;
+  line-height: 1; color: var(--text); font-variant-numeric: tabular-nums;
+}
+.loader-bar { width: min(280px, 64vw); height: 4px; background: var(--soft); border-radius: 4px; overflow: hidden; }
+.loader-bar i { display: block; height: 100%; width: 1%; background: linear-gradient(90deg, #7c5cf0, #c4b0f2); border-radius: 4px; transition: width .1s linear; }
+.loader-tip { font-size: 12px; color: var(--muted); }
 a { color: inherit; }
 button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
 .hidden { display: none !important; }

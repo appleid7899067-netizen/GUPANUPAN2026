@@ -1,6 +1,50 @@
 /* GUPAN Blog — vanilla JS blog app. No framework, no CDN, works offline. */
 "use strict";
 
+/* ================= preloader 1% → 99% ================= */
+(function preloader() {
+  const loader = document.getElementById("loader");
+  const pct = document.getElementById("loaderPct");
+  const bar = document.getElementById("loaderBar");
+  if (!loader || !pct || !bar) return;
+  let p = 1;
+  let pageLoaded = document.readyState === "complete";
+  let finished = false;
+  const started = Date.now();
+  const paint = () => {
+    pct.textContent = p + "%";
+    bar.style.width = p + "%";
+  };
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    p = 100;
+    paint();
+    setTimeout(() => {
+      loader.classList.add("done");
+      setTimeout(() => loader.remove(), 500);
+    }, 250);
+  };
+  window.addEventListener("load", () => { pageLoaded = true; });
+  setTimeout(finish, 6000); // safety: never trap the user
+  const tick = () => {
+    if (finished) return;
+    if (p < 99) {
+      p += 1; // ทุกเลข 1..99 ห้ามข้าม
+      paint();
+      setTimeout(tick, p < 60 ? 18 : p < 85 ? 34 : 70);
+      return;
+    }
+    if (pageLoaded && Date.now() - started > 1200) {
+      finish();
+      return;
+    }
+    setTimeout(tick, 60);
+  };
+  paint();
+  tick();
+})();
+
 /* ================= data ================= */
 const LS_KEY = "gupan:blog:v1";
 const DAY = 86400000;
