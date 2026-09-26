@@ -148,5 +148,5 @@ async function handleToolCalls(completion, isTopLevel = false, c) {
     return { history: c.chatHistory, messageContent: c.currentMessageContent };
 }
 
-    window.PanupanGrokCore = { MAX_AGENT_ROUNDS, MAX_TOOL_RETRIES, isTransientError, getTools, findTool, executeTool, addToolResult, hasToolResult, runTools, recordMutation };
+    window.PanupanGrokCore = { MAX_AGENT_ROUNDS, MAX_TOOL_RETRIES, isTransientError, getTools, findTool, executeTool, addToolResult, hasToolResult, runTools, recordMutation, handleToolCalls };
 })();
