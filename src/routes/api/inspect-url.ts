@@ -23,6 +23,41 @@ export const Route = createFileRoute("/api/inspect-url")({
         try { url = new URL(raw); } catch { return Response.json({ error: "Invalid URL." }, { status: 400 }); }
 
         try {
+          const host = url.hostname.toLowerCase();
+          const isPlayStore = host === "play.google.com" && url.pathname.startsWith("/store/apps");
+          const isGitHub = host === "github.com";
+          if (isGitHub) {
+            const parts = url.pathname.split("/").filter(Boolean);
+            if (parts.length >= 2) {
+              const owner = parts[0];
+              const repo = parts[1].replace(/\\.git$/, "");
+              const api = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, {
+                headers: { Accept: "application/vnd.github+json", "User-Agent": "GUPANUPAN-App-Builder/1.0" },
+              });
+              if (api.ok) {
+                const meta = await api.json() as Record<string, unknown>;
+                const readme = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`, {
+                  headers: { Accept: "application/vnd.github.raw+json", "User-Agent": "GUPANUPAN-App-Builder/1.0" },
+                });
+                const readmeText = readme.ok ? await readme.text() : "";
+                return Response.json({
+                  sourceType: "github",
+                  url: raw,
+                  title: meta.name ?? repo,
+                  description: meta.description ?? "",
+                  language: meta.language ?? null,
+                  topics: meta.topics ?? [],
+                  stars: meta.stargazers_count ?? 0,
+                  forks: meta.forks_count ?? 0,
+                  defaultBranch: meta.default_branch ?? "main",
+                  license: (meta.license as Record<string, unknown> | null)?.spdx_id ?? null,
+                  readme: readmeText.slice(0, 20000),
+                  instruction: "Use this repository as a product/feature/architecture reference. Rebuild the app natively with GUPANUPAN components; do not copy source code unless the user has rights to it.",
+                });
+              }
+            }
+          }
+
           const upstream = await fetch(url, { headers: { "User-Agent": "GUPANUPAN-App-Builder/1.0" }, redirect: "follow" });
           if (!upstream.ok) return Response.json({ error: `Website returned ${upstream.status}.` }, { status: 502 });
           const html = await upstream.text();
@@ -38,6 +73,7 @@ export const Route = createFileRoute("/api/inspect-url")({
           const text = stripHtml(html).slice(0, 12000);
 
           return Response.json({
+            sourceType: isPlayStore ? "play-store" : "website",
             url: upstream.url || raw,
             title,
             description,
