@@ -67,7 +67,8 @@ INTENT PIPELINE:
 export function intentSystemPrompt(): string {
   return INTENT_SYSTEM;
 }
-\nexport type IntentWhy = {
+
+export type IntentWhy = {
   goal: string;
   action: "create" | "edit" | "improve" | "navigate" | "unknown";
   domain: string;
