@@ -112,6 +112,9 @@ export function parseIntentResult(raw: string): IntentResult | null {
   if (fenced?.[1]) candidates.push(fenced[1].trim());
   const balanced = extractBalancedObject(raw);
   if (balanced) candidates.push(balanced);
+  const arrayStart = raw.indexOf("[");
+  const arrayEnd = raw.lastIndexOf("]");
+  if (arrayStart >= 0 && arrayEnd > arrayStart) candidates.push(raw.slice(arrayStart, arrayEnd + 1).trim());
   candidates.push(raw.trim());
 
   for (const c of candidates) {
@@ -383,6 +386,25 @@ export function localIntentFromGoal(
       reply:"สร้างโครงแอปเต็มให้แล้ว: ธีม + navigation + hero + sections + cards + CTA + หน้ารอง",
     };
   }
+
+  // Generic fallback: every non-empty request must remain actionable.
+  // Do not turn an unrecognized natural-language request into a hard Intent failure.
+  return {
+    thought: "แปลงคำขอเป็น Intent แบบปลอดภัยเพื่อให้ Canvas เดินหน้าต่อได้",
+    operations: [
+      {
+        op: "addComponent",
+        pageId: homeId,
+        component: {
+          id: uid("intent"),
+          type: "text",
+          props: { text: goal.trim().slice(0, 240) },
+        },
+      },
+    ],
+    nextPredict: { preload: Object.keys(state.pages).slice(0, 3) },
+    reply: "รับคำขอแล้ว และส่งต่อเป็น Intent ให้ Canvas เรียบร้อย",
+  };
 
   // Generic improve / จัดให้
   if (/สวย|ดีขึ้น|ปรับ|improve|จัดให้|ทำให้ดี/.test(t)) {
