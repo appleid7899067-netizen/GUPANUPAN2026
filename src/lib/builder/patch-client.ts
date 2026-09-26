@@ -30,7 +30,7 @@ export async function generateIntent(
         builderMessage = [
           userMessage,
           "",
-          "SOURCE WEBSITE ANALYSIS (use as a design/structure reference, rebuild natively with GUPANUPAN components):",
+          "SOURCE ANALYSIS (website, Play Store, or GitHub): use it as a product/design/feature reference and rebuild natively with GUPANUPAN components. Do not blindly copy protected source/assets):",
           JSON.stringify(source),
         ].join("\n");
       }
