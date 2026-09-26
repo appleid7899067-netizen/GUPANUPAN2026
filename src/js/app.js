@@ -99,13 +99,37 @@ $(document).on('change', '.model-selector', function () {
     setBuilderModel(this.value);
 });
 
+let modelSelectorInitPromise = null;
+
 function startModelSelector() {
-    if (document.querySelector('.model-selector')) initializeModelSelector();
+    const select = document.querySelector('.model-selector');
+    if (select && window.puter?.ai?.listModels) {
+        if (!modelSelectorInitPromise) {
+            modelSelectorInitPromise = initializeModelSelector().finally(() => {
+                modelSelectorInitPromise = null;
+            });
+        }
+        return true;
+    }
+    return false;
 }
+
+// The composer is rendered dynamically, so DOMContentLoaded alone can run too
+// early. Watch briefly for the selector, then populate it from Puter's live
+// model catalogue as soon as the composer exists.
+function watchForModelSelector() {
+    if (startModelSelector()) return;
+    const observer = new MutationObserver(() => {
+        if (startModelSelector()) observer.disconnect();
+    });
+    if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+    setTimeout(() => observer.disconnect(), 20000);
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startModelSelector, { once: true });
+    document.addEventListener('DOMContentLoaded', watchForModelSelector, { once: true });
 } else {
-    startModelSelector();
+    watchForModelSelector();
 }
 let system_prompt
 let chatHistory;
