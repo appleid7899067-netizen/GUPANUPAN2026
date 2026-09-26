@@ -144,7 +144,7 @@ function renderSkeleton() {
             // Icon-only controls carry an accessible name (aria-label / title): a
             // screen reader otherwise announces the composer as an unlabelled
             // text field and the send/stop button as just "button".
-            h += `<textarea class="chat-input-message" data-gramm="false" placeholder="What can Puter build for you today?" aria-label="Message"></textarea>`;
+            h += `<textarea class="chat-input-message" data-gramm="false" placeholder="Panupan สร้างอะไรให้คุณวันนี้?" aria-label="Message"></textarea>`;
             h += `<div class="chat-input-message-actions">`;
                 h += `<select class="model-selector" aria-label="AI model" title="Choose the AI model for this builder"><option value="claude-opus-5-5">Claude Opus 5.5</option></select>`;
                 h += `<button class="attachment-button" title="Attach files from your computer">${attachment_svg}</button>`;
@@ -156,7 +156,7 @@ function renderSkeleton() {
         // Empty-state starter prompts (populated by renderStarterPrompts after
         // append), with a small lead-in heading. Both hidden once the chat is
         // active via `.chat.active`, like the tagline above them.
-        h += `<div class="chat-starter-heading">Looking for an idea?</div>`;
+        h += `<div class="chat-starter-heading">เริ่มต้นกับ Panupan</div>`;
         h += `<div class="chat-starter-prompts"></div>`;
         h += `</div>`; // /.home-hero
         // "From the community" — the daily-curated feed of featured apps.
