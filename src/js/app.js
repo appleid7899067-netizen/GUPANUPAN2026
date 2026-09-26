@@ -58,6 +58,19 @@ function setBuilderModel(modelId) {
     window.track?.('Model Selected', { model: modelId });
 }
 window.setBuilderModel = setBuilderModel;
+
+$(document).on('change', '.model-selector', function () {
+    setBuilderModel(this.value);
+});
+
+function startModelSelector() {
+    if (document.querySelector('.model-selector')) initializeModelSelector();
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startModelSelector, { once: true });
+} else {
+    startModelSelector();
+}
 let system_prompt
 let chatHistory;
 let currentAppDir;
