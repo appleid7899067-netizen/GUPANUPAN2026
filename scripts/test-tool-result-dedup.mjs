@@ -87,13 +87,19 @@ const assistant = (t) => ({ role: 'assistant', content: t });
 }
 
 // --- wiring ---------------------------------------------------------------------
-const loop = slice(tools, 'for (const toolCall of toolCalls) {', '// Checkpoint this round');
-check('tools.js: the success push is gated on no result existing yet',
-    /if \(!hasToolResultFor\(c\.chatHistory, toolCall\.id\)\) \{\s*addToolResultToHistory\(c\.chatHistory, toolCall\.id, toolResponse(?:,|\))/.test(loop));
-check('tools.js: the error push is gated the same way',
-    /if \(!hasToolResultFor\(c\.chatHistory, toolCall\.id\)\) \{\s*addToolResultToHistory\(c\.chatHistory, toolCall\.id, \{ error: errorMessage \}, true\)/.test(loop));
+// The tool loop now lives in the Grok Build-inspired core. Keep the regression
+// guard attached to the real execution path rather than the UI wrapper in
+// tools.js, so refactors of handleToolCalls do not silently remove the race fix.
+const core = fs.readFileSync(new URL('../src/js/grok-build-core.js', import.meta.url), 'utf8');
+const runTools = slice(core, 'async function runTools(calls, state) {', '\n    return { aborted: false, results };');
+check('grok-build-core.js: success result is gated on no result existing yet',
+    /if \(!hasToolResult\(state\.chatHistory, call\.id\)\) addToolResult\(state\.chatHistory, call\.id, executed\.result/.test(runTools));
+check('grok-build-core.js: error result is gated the same way',
+    /if \(!hasToolResult\(state\.chatHistory, call\.id\)\) addToolResult\(state\.chatHistory, call\.id, \{ error: message \}, true/.test(runTools));
+check('tools.js: the compatibility helper delegates to the same guard',
+    tools.indexOf('window.hasToolResultFor = hasToolResultFor;') >= 0 &&
+    tools.indexOf('function hasToolResultFor(') >= 0);
 check('helpers.js: prepareHistoryForAI dedupes before setting the cache breakpoint',
     helpers.indexOf('dropDuplicateToolResults(copy)') < helpers.indexOf("cache_control = { type: \"ephemeral\" }"));
-
 if (failures) { console.error(`\n${failures} tool-result dedup check(s) failed.`); process.exit(1); }
 console.log('\nAll tool-result dedup checks passed.');
