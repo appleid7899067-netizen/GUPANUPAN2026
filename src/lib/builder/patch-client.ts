@@ -40,6 +40,9 @@ export async function generateIntent(
       console.warn("[GUPANUPAN] URL inspection failed; continuing without source", e);
     }
   }
+  if (state.selectedComponentId) {
+    builderMessage += `\nSELECTED COMPONENT: ${state.selectedComponentId}. If the user's request is an edit, target this component first.`;
+  }
   const payload = buildIntentUserPayload(state, builderMessage, history);
   const messages = [
     { role: "system" as const, content: intentSystemPrompt() },
