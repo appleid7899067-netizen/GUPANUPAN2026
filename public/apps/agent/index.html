@@ -100,6 +100,16 @@
     </main>
 
     <footer class="composer-zone">
+      <div class="skillbar" id="skillBar" aria-label="สกิลข้อมูลสด">
+        <span class="live" title="ข้อมูลดึงสดทุกครั้งที่เรียกใช้"><i></i>LIVE</span>
+        <button data-cmd="/weather ">🌤 อากาศ</button>
+        <button data-cmd="/crypto ">₿ คริปโต</button>
+        <button data-cmd="/fx ">💱 ค่าเงิน</button>
+        <button data-cmd="/wiki ">📖 วิกิ</button>
+        <button data-cmd="/news ">💻 ข่าวเทค</button>
+        <button data-cmd="/calc ">🧮 คำนวณ</button>
+        <button data-cmd="/help ">❓ คำสั่ง</button>
+      </div>
       <div class="composer">
         <div class="file-chips hidden" id="fileChips"></div>
         <textarea id="input" rows="1" placeholder="สั่งงานอะไรก็ได้…" aria-label="พิมพ์คำสั่ง"></textarea>
@@ -204,6 +214,7 @@
 /* GUPAN system links: absolute under /apps/* (Next.js/Render), relative otherwise (static server or file://). */
 (function(){try{var under=location.pathname.indexOf("/apps/")===0;document.querySelectorAll("[data-sys]").forEach(function(a){var t=a.getAttribute("data-sys");a.href=t==="studio"?"/":(under?"/apps/"+t+"/":"../"+t+"/");});}catch(e){}})();
 </script>
+<script src="./skills.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

@@ -9,11 +9,34 @@ const esc = (s) =>
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const uid = () => "c" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
+const SANDBOX_SYS = "When the user asks for a webpage, app, or demo, output ONE complete runnable HTML document in a single ```html code block (inline CSS/JS only, no external URLs) so it can run in the sandbox. For JS-only answers use one ```js block.";
+const skillsOn = () => !!(window.AgentSkills && window.AgentSkills.run && window.AgentSkills.prompt);
+const AGENT_SYS =
+  "You are GUPAN Agent, an autonomous Thai assistant with live-data skills. Answer in Thai. For multi-step tasks, show a short plan first, then work through it clearly. " +
+  SANDBOX_SYS +
+  "\n\n" +
+  (skillsOn() ? window.AgentSkills.prompt() : "");
 const MODES = {
-  agent: { name: "GUPAN Agent", sys: "You are GUPAN Agent, an autonomous AI assistant. Answer in Thai. For multi-step tasks, show a short plan first, then work through it clearly." },
-  chat: { name: "ถาม–ตอบ", sys: "You are a helpful assistant. Answer in Thai, concise and friendly." },
+  agent: { name: "GUPAN Agent", sys: AGENT_SYS },
+  chat: { name: "ถาม–ตอบ", sys: "You are a helpful assistant. Answer in Thai, concise and friendly. " + SANDBOX_SYS },
   plan: { name: "โหมดวางแผน", sys: "You are a planning assistant. Always respond in Thai with a numbered plan first, then ask which step to start with." },
 };
+
+/* Skill-call protocol: <<<skill:name {"arg":"val"}>>> */
+function parseSkillCalls(text) {
+  const out = [];
+  const re = /<<<skill:([a-z_]+)\s*(\{[\s\S]*?\})>>>/g;
+  let m;
+  while ((m = re.exec(text)) && out.length < 3) {
+    let args = {};
+    try { args = JSON.parse(m[2]); } catch { args = {}; }
+    out.push({ name: m[1], args });
+  }
+  return out;
+}
+function stripSkillBlocks(text) {
+  return String(text || "").replace(/<<<skill:[a-z_]+\s*\{[\s\S]*?\}>>>/g, "").replace(/\n{3,}/g, "\n\n").trim();
+}
 
 /* ================= preloader 1% → 99% ================= */
 (function preloader() {
@@ -192,7 +215,9 @@ function renderThread() {
       const label = f.lang || (/^\s*</.test(f.code) ? "html" : "code");
       return `<button class="run-code" data-fence="${idx}">▶ รันโค้ดนี้ <small>${esc(label)}</small></button>`;
     }).join("");
-    return `<div class="msg agent"><span class="who">✳ ${esc(MODES[store.mode].name).toUpperCase()}</span><div class="bubble">${md(m.content)}${btns ? `<div class="run-row">${btns}</div>` : ""}</div><span class="meta">${timeAgo(m.at)}</span></div>`;
+    const body = m.content ? md(m.content) : "";
+    const status = m.live && m.status ? `<p class="live-status">${esc(m.status)}</p>` : "";
+    return `<div class="msg agent"${m.live ? ' id="liveMsg"' : ""}><span class="who">✳ ${esc(MODES[store.mode].name).toUpperCase()}</span><div class="bubble">${renderTrace(m.trace)}${status}<div class="answer">${body}</div>${btns ? `<div class="run-row">${btns}</div>` : ""}</div><span class="meta">${timeAgo(m.at)}</span></div>`;
   }).join("");
   $("stage").scrollTop = $("stage").scrollHeight;
 }
@@ -259,28 +284,231 @@ function paintStreaming(text) {
 }
 
 /* ---------- real AI via Puter ---------- */
-async function puterReply(chat) {
-  const msgs = [
-    { role: "system", content: MODES[store.mode].sys },
+function historyMsgs(chat, sys) {
+  return [
+    { role: "system", content: sys },
     ...chat.msgs.slice(-10).map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content })),
   ];
+}
+
+async function chatComplete(messages) {
   const opts = { stream: true };
   if (store.model) opts.model = store.model;
-  const stream = await window.puter.ai.chat(msgs, opts);
+  const stream = await window.puter.ai.chat(messages, opts);
   let text = "";
   if (stream && typeof stream[Symbol.asyncIterator] === "function") {
     for await (const part of stream) {
       if (stopFlag) break;
       if (typeof part === "string") text += part;
       else if (part && typeof part.text === "string") text += part.text;
-      if (text.length % 40 < 12) paintStreaming(text);
+      if (streamEl && text.length % 40 < 12) paintStreaming(text);
     }
   } else if (typeof stream === "string") {
     text = stream;
   } else if (stream && stream.message && Array.isArray(stream.message.content)) {
     text = stream.message.content.map((b) => b.text || "").join("");
   }
+  return text;
+}
+
+async function puterReply(chat) {
+  const text = await chatComplete(historyMsgs(chat, MODES[store.mode].sys));
   return text.trim() || "_(AI ไม่ส่งคำตอบกลับมา ลองใหม่อีกครั้ง)_";
+}
+
+/* Real agent loop: AI calls skills, we execute, AI answers with fresh data. */
+async function runAgentLoop(chat, onStatus) {
+  const trace = [];
+  let messages = historyMsgs(chat, AGENT_SYS);
+  for (let round = 0; round < 4; round++) {
+    if (stopFlag) break;
+    onStatus(`🔧 เอเจนต์กำลังคิด… (รอบ ${round + 1})`, trace);
+    const kept = streamEl;
+    streamEl = null; // intermediate thinking stays hidden
+    let text = "";
+    try {
+      text = await chatComplete(messages);
+    } finally {
+      streamEl = kept;
+    }
+    if (stopFlag) break;
+    const calls = parseSkillCalls(text);
+    if (!calls.length) return { trace, messages, direct: stripSkillBlocks(text) };
+    for (const call of calls) {
+      if (stopFlag) break;
+      onStatus(`🔧 กำลังดึงข้อมูลสด: ${call.name}…`, trace);
+      const s0 = Date.now();
+      const res = await window.AgentSkills.run(call.name, call.args);
+      trace.push({
+        name: call.name, args: call.args, ok: res.ok,
+        text: res.text.slice(0, 1500), ms: Date.now() - s0, at: Date.now(),
+      });
+      onStatus(`🔧 ดึงข้อมูล ${call.name} ${res.ok ? "สำเร็จ" : "ไม่สำเร็จ"}`, trace);
+    }
+    const results = trace.slice(-3).map((t) =>
+      `[${t.name}] ${t.ok ? "OK" : "FAIL"}: ${t.text}`,
+    ).join("\n\n");
+    messages = [...messages,
+      { role: "assistant", content: stripSkillBlocks(text).slice(0, 2000) || "(เรียกใช้สกิล)" },
+      { role: "user", content: `ผลสกิล:\n${results}\n\nใช้ข้อมูลนี้ตอบคำถามเดิมเป็นภาษาไทย ถ้าข้อมูลพอแล้วให้ตอบเลยไม่ต้องเรียกสกิลเพิ่ม` },
+    ];
+  }
+  return { trace, messages, direct: "" };
+}
+
+function renderTrace(trace) {
+  if (!trace || !trace.length) return "";
+  const last = trace[trace.length - 1];
+  const when = last && last.at
+    ? new Date(last.at).toLocaleTimeString("th-TH", { hour12: false })
+    : "";
+  const steps = trace.map((t) => `
+    <div class="t-step ${t.ok ? "ok" : "fail"}">
+      <div class="t-head"><b>🔧 ${esc(t.name)}</b><code>${esc(JSON.stringify(t.args))}</code><span>${t.ms}ms</span></div>
+      <p>${esc(String(t.text).slice(0, 400))}${String(t.text).length > 400 ? "…" : ""}</p>
+    </div>`).join("");
+  return `<details class="trace" open><summary>เอเจนต์เรียกใช้ ${trace.length} สกิล · ข้อมูลสด ${esc(when)}</summary>${steps}</details>`;
+}
+
+/* ---------- runners: direct / demo / agent-loop / slash ---------- */
+async function liveShell() {
+  const box = $("thread");
+  const wrap = document.createElement("div");
+  wrap.className = "msg agent";
+  wrap.innerHTML = `<span class="who">✳ ${esc(MODES[store.mode].name).toUpperCase()}</span><div class="typing"><i></i><i></i><i></i></div>`;
+  box.appendChild(wrap);
+  $("stage").scrollTop = $("stage").scrollHeight;
+  await sleep(400);
+  if (stopFlag) { wrap.remove(); return null; }
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  const typing = wrap.querySelector(".typing");
+  if (typing) typing.replaceWith(bubble);
+  return bubble;
+}
+
+async function runDirect(chat, text) {
+  const bubble = await liveShell();
+  if (!bubble) return;
+  streamEl = bubble;
+  let reply = "";
+  try {
+    reply = await puterReply(chat);
+  } catch (e) {
+    const msg = e && e.message ? e.message : String(e);
+    reply = `⚠️ เรียก AI ไม่สำเร็จ (${esc(msg)})\n\nขอตอบด้วยโหมดเดโมแทนนะ:\n\n` + await demoReply(text);
+  } finally {
+    streamEl = null;
+  }
+  chat.msgs.push({ role: "assistant", content: reply, at: Date.now() });
+}
+
+async function runDemo(chat, text) {
+  const bubble = await liveShell();
+  if (!bubble) return;
+  streamEl = bubble;
+  let reply = "";
+  try {
+    reply = await demoReply(text);
+  } finally {
+    streamEl = null;
+  }
+  if (!reply.trim()) return;
+  chat.msgs.push({ role: "assistant", content: reply, at: Date.now() });
+}
+
+async function runAgent(chat) {
+  const aMsg = { role: "assistant", content: "", trace: [], at: Date.now(), live: true, status: "🔧 เอเจนต์กำลังคิด…" };
+  chat.msgs.push(aMsg);
+  renderThread();
+  let result;
+  try {
+    result = await runAgentLoop(chat, (s, t) => {
+      aMsg.status = s;
+      aMsg.trace = t.slice();
+      renderThread();
+    });
+  } catch (e) {
+    aMsg.live = false;
+    aMsg.status = "";
+    aMsg.content = `⚠️ เอเจนต์ขัดข้อง: ${e && e.message ? e.message : String(e)}`;
+    return;
+  }
+  aMsg.trace = result.trace;
+  if (result.direct && result.direct.trim()) {
+    aMsg.content = result.direct;
+  } else if (!stopFlag) {
+    aMsg.status = "✍️ กำลังสรุปคำตอบ…";
+    renderThread();
+    streamEl = document.querySelector("#liveMsg .answer");
+    try {
+      const final = await chatComplete([
+        ...result.messages,
+        { role: "user", content: "ตอบคำถามเดิมด้วยข้อมูลที่มี ตอบเป็นภาษาไทยล้วน ห้ามเรียกสกิลเพิ่ม" },
+      ]);
+      aMsg.content = stripSkillBlocks(final) || "_AI ไม่ส่งคำตอบกลับมา ลองใหม่อีกครั้ง_";
+    } finally {
+      streamEl = null;
+    }
+  } else if (!aMsg.content) {
+    aMsg.content = "_หยุดการทำงานตามคำสั่ง_";
+  }
+  aMsg.live = false;
+  aMsg.status = "";
+}
+
+/* Slash commands — skills run directly, no login needed. */
+const SLASH = [
+  { cmd: "/weather", skill: "weather", need: "สถานที่", ex: "ภูเก็ต", map: (r) => ({ place: r }) },
+  { cmd: "/crypto", skill: "crypto", need: "", map: (r) => ({ coins: r || "btc,eth" }) },
+  { cmd: "/fx", skill: "fx", need: "", map: (r) => ({ base: (r || "THB").toUpperCase() }) },
+  { cmd: "/wiki", skill: "wiki", need: "เรื่องที่ค้นหา", ex: "ปัญญาประดิษฐ์", map: (r) => ({ query: r }) },
+  { cmd: "/news", skill: "hn_news", need: "", map: () => ({ limit: 5 }) },
+  { cmd: "/calc", skill: "calc", need: "สูตร", ex: "1200*7/100", map: (r) => ({ expr: r }) },
+  { cmd: "/time", skill: "datetime", need: "", map: () => ({}) },
+  { cmd: "/fetch", skill: "fetch_url", need: "URL", ex: "https://example.com", map: (r) => ({ url: r }) },
+];
+
+async function runSlash(chat, text) {
+  const parts = text.trim().split(/\s+/);
+  const cmd = parts[0].toLowerCase();
+  const rest = parts.slice(1).join(" ").trim();
+  if (cmd === "/help") {
+    chat.msgs.push({
+      role: "assistant", at: Date.now(),
+      content: "**❓ คำสั่งสกิล (ใช้ได้เลย ไม่ต้องล็อกอิน):**\n\n- `/weather ภูเก็ต` — อากาศสด\n- `/crypto btc,eth` — ราคาคริปโตสด\n- `/fx` — ค่าเงินเทียบเงินบาท\n- `/wiki เรื่องที่ค้นหา` — สาระ Wikipedia\n- `/news` — ข่าวเทคยอดนิยม\n- `/calc (1200*7)/100` — คำนวณ\n- `/time` — วันเวลาปัจจุบัน\n- `/fetch https://…` — ดึงเนื้อความเว็บ",
+    });
+    return;
+  }
+  const found = SLASH.find((s) => s.cmd === cmd);
+  if (!found) {
+    chat.msgs.push({ role: "assistant", content: `ไม่รู้จักคำสั่ง \`${cmd}\` — พิมพ์ \`/help\` ดูคำสั่งทั้งหมด`, at: Date.now() });
+    return;
+  }
+  if (!skillsOn()) {
+    chat.msgs.push({ role: "assistant", content: "⚠️ โหลดระบบสกิลไม่สำเร็จ ลองรีเฟรชหน้าแล้วสั่งใหม่", at: Date.now() });
+    return;
+  }
+  if (found.need && !rest) {
+    chat.msgs.push({ role: "assistant", content: `ใช้แบบนี้: \`${found.cmd} <${found.need}>\` เช่น \`${found.cmd} ${found.ex}\``, at: Date.now() });
+    return;
+  }
+  const aMsg = { role: "assistant", content: "", trace: [], at: Date.now(), live: true, status: `🔧 กำลังดึงข้อมูลสด: ${found.skill}…` };
+  chat.msgs.push(aMsg);
+  renderThread();
+  const s0 = Date.now();
+  const args = found.map(rest);
+  const res = await window.AgentSkills.run(found.skill, args);
+  aMsg.live = false;
+  aMsg.status = "";
+  aMsg.trace = [{ name: found.skill, args, ok: res.ok, text: res.text.slice(0, 1500), ms: Date.now() - s0, at: Date.now() }];
+  if (res.ok) {
+    const lines = res.text.split("\n").filter((l) => l.trim());
+    const head = lines.shift() || found.skill;
+    aMsg.content = `**✅ ${head}**\n\n` + lines.map((l) => `- ${l}`).join("\n");
+  } else {
+    aMsg.content = `⚠️ ${res.text}`;
+  }
 }
 
 /* ---------- send ---------- */
@@ -304,35 +532,17 @@ async function send(prefill) {
   persist();
   renderThread();
 
-  // typing indicator
   stopFlag = false;
   setBusy(true);
-  const box = $("thread");
-  const wrap = document.createElement("div");
-  wrap.className = "msg agent";
-  wrap.innerHTML = `<span class="who">✳ ${esc(MODES[store.mode].name).toUpperCase()}</span><div class="typing"><i></i><i></i><i></i></div>`;
-  box.appendChild(wrap);
-  $("stage").scrollTop = $("stage").scrollHeight;
-
   try {
-    await sleep(500);
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-    wrap.querySelector(".typing").replaceWith(bubble);
-    streamEl = bubble;
-    let reply;
-    if (puterReady() && puterSignedIn()) {
-      try {
-        reply = await puterReply(chat);
-      } catch (e) {
-        const msg = e && e.message ? e.message : String(e);
-        reply = `⚠️ เรียก AI ไม่สำเร็จ (${esc(msg)})\n\nขอตอบด้วยโหมดเดโมแทนนะ:\n\n` + await demoReply(text);
-      }
+    if (text.startsWith("/")) {
+      await runSlash(chat, text);
+    } else if (puterReady() && puterSignedIn()) {
+      if (store.mode === "agent" && skillsOn()) await runAgent(chat);
+      else await runDirect(chat, text);
     } else {
-      reply = await demoReply(text);
+      await runDemo(chat, text);
     }
-    streamEl = null;
-    chat.msgs.push({ role: "assistant", content: reply, at: Date.now() });
     chat.updated = Date.now();
     persist();
     renderThread();
@@ -546,6 +756,16 @@ function init() {
 
   document.querySelectorAll("#suggest button").forEach((b) =>
     b.addEventListener("click", () => send(b.dataset.prompt)),
+  );
+
+  // skill chips: insert slash command into composer
+  document.querySelectorAll("#skillBar [data-cmd]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const ta = $("input");
+      ta.value = b.dataset.cmd;
+      ta.focus();
+      autosize();
+    }),
   );
 
   // mode menu
