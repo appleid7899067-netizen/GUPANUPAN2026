@@ -51,6 +51,8 @@ export async function sendPrompt(text: string) {
     }
     activity("Operations", "working", `${intent.operations.length} ops · ${intent.operations.map((o) => o.op).join(", ")}`);
 
+    useBuilder.getState().snapshotCanvas(id, "Before AI edit");
+
     for (const patch of intent.operations) {
       applyPatch(id, patch);
     }
