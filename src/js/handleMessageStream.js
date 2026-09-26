@@ -24,7 +24,7 @@ function saveCurrentMessage(context) {
 // The stream emits a terminal {type:"usage", usage:{ usd_cents, input_tokens,
 // output_tokens, ... }} chunk per model call. Accumulate the reported cost and
 // token counts on the turn's shared context — one accumulator spans every round
-// of the agentic loop, since the nested handleMessageStream/handleToolCalls
+// of the agentic loop, since the nested handleMessageStream/PanupanGrokCore.handleToolCalls
 // calls all share this same `context`. cacheWrite folds the ephemeral
 // (cache-creation) buckets the streamed usage reports.
 function recordUsageChunk(context, completion) {
@@ -292,7 +292,7 @@ async function handleMessageStream(stream, context) {
 
                 // Save before and after a tool call incase the user quits
                 saveCurrentMessage(context);
-                const result = await handleToolCalls(completion, true, context);
+                const result = await window.PanupanGrokCore.handleToolCalls(completion, true, context);
                 saveCurrentMessage(context);
                 if (result.error || shouldStop) {
                     break;
