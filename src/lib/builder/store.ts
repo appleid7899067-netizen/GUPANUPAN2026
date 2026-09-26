@@ -31,14 +31,26 @@ const defaultCanvas = (): CanvasState => ({
       title: "Home",
       path: "/",
       components: [
-        { id: "home-settings", type: "button", props: { text: "Settings", route: "settings" } },
-        { id: "home-chat", type: "button", props: { text: "Chat", route: "chat" } },
+        {
+          id: "home-hero",
+          type: "hero",
+          props: {
+            badge: "AI App Builder",
+            text: "Build your idea into an app",
+            subtitle: "Describe what you want. GUPANUPAN turns the idea into a real visual app you can keep editing.",
+            cta: "Start building",
+          },
+        },
+        { id: "home-m1", type: "metric", props: { label: "Build status", value: "Ready", delta: "Live Canvas" } },
+        { id: "home-m2", type: "metric", props: { label: "Design", value: "Template", delta: "Color system" } },
+        { id: "home-settings", type: "button", props: { text: "Settings", route: "settings", variant: "primary" } },
+        { id: "home-chat", type: "button", props: { text: "Open AI Chat", route: "chat", variant: "primary" } },
       ],
     },
     settings: { id: "settings", title: "Settings", path: "/settings", components: [] },
   },
   stack: [{ id: "home" }],
-  theme: { primary: "#6d5dfc", background: "#f7f8fc", text: "#172033" },
+  theme: { primary: "#6d5dfc", accent: "#22c55e", background: "#f7f8fc", text: "#172033", surface: "#ffffff", muted: "#667085" },
   preloaded: [],
 });
 
