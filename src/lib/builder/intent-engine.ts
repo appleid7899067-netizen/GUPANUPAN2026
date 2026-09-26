@@ -18,7 +18,8 @@ RULES:
 - Never output HTML, CSS, JSX, or markdown fences.
 - Think in Thai about the user's real goal, but output JSON only.
 - If user says "X", ask yourself "ทำไมเขาถึงอยากได้ X" then solve the WHY, not only X.
-- You may emit 2–6 operations in one response. Chain them.
+- For a NEW APP or full app generation, emit 4–8 operations and make each addPage contain a complete, polished component set (hero, nav, sections, cards, CTA, footer where appropriate). Do not stop at 2–3 buttons.
+- For a small edit, emit only the operations needed.
 - Predict the next route the user will open and list it in nextPredict.preload.
 - Prefer practical component types: hero, heading, text, button, card, metric, badge, input, list, nav, banner, form, image, tabs, avatar, divider.
 
@@ -49,7 +50,7 @@ Never default a newly generated app to plain black/white or grayscale. Use updat
 OUTPUT FORMAT ONLY (single JSON object, no text outside):
 {
   "thought": "ผู้ใช้ต้องการ… (ทำไม)",
-  "operations": [ /* 2-6 ops */ ],
+  "operations": [ /* 4-8 ops for a new app; fewer for a small edit */ ],
   "nextPredict": { "preload": ["pageId", "..."] },
   "reply": "ข้อความสั้นภาษาไทยอธิบายว่าทำอะไรให้แล้ว"
 }`;
@@ -330,6 +331,56 @@ export function localIntentFromGoal(
       ],
       nextPredict: { preload: ["contact"] },
       reply: "เพิ่มหน้าติดต่อ + ปุ่มจากหน้าแรก + preload แล้ว",
+    };
+  }
+
+  // Full app creation fallback: never leave a new app as a sparse black/white wireframe.
+  if (/สร้าง(?:แอพ|เว็บ|เว็บไซต์)|ทำ(?:แอพ|เว็บ|เว็บไซต์)|build|create|landing|ร้าน|shop|portfolio|dashboard|ระบบ/.test(t)) {
+    const domain =
+      /ร้าน|shop|ขาย|สินค้า|ecommerce/.test(t) ? "ecommerce" :
+      /ฟิต|fitness|ออกกำลัง/.test(t) ? "fitness" :
+      /เรียน|การศึกษา|course|education/.test(t) ? "education" :
+      /ท่องเที่ยว|travel|โรงแรม|เที่ยว/.test(t) ? "travel" :
+      /การเงิน|finance|ลงทุน/.test(t) ? "finance" :
+      /ai|เอไอ|studio/.test(t) ? "ai-studio" : "modern-saas";
+    const palettes: Record<string, Record<string,string>> = {
+      ecommerce: { background:"#fff7ed", text:"#241a14", primary:"#ea580c", accent:"#f59e0b", surface:"#ffffff", muted:"#78716c" },
+      fitness: { background:"#111827", text:"#f9fafb", primary:"#84cc16", accent:"#fb7185", surface:"#1f2937", muted:"#9ca3af" },
+      education: { background:"#f5f3ff", text:"#1f2340", primary:"#6366f1", accent:"#06b6d4", surface:"#ffffff", muted:"#64748b" },
+      travel: { background:"#f0fdfa", text:"#12313a", primary:"#0d9488", accent:"#f59e0b", surface:"#ffffff", muted:"#64748b" },
+      finance: { background:"#f0fdf4", text:"#10251a", primary:"#059669", accent:"#2563eb", surface:"#ffffff", muted:"#64748b" },
+      "ai-studio": { background:"#0f1020", text:"#f8fafc", primary:"#8b5cf6", accent:"#22d3ee", surface:"#181a2f", muted:"#a5b4fc" },
+      "modern-saas": { background:"#f7f5ff", text:"#1e1b4b", primary:"#6d5dfc", accent:"#06b6d4", surface:"#ffffff", muted:"#667085" },
+    };
+    const theme = palettes[domain];
+    const ids = {
+      features:"features", pricing:"pricing", contact:"contact"
+    };
+    return {
+      thought: "สร้างเป็นแอปเต็มรูปแบบตามโดเมน ไม่ใช่ wireframe: มีธีม, navigation, hero, content sections, cards, CTA และหน้ารอง",
+      operations: [
+        { op:"updateTheme", theme },
+        { op:"addComponent", pageId:homeId, at:0, component:{ id:uid("nav"), type:"nav", props:{ text:"หน้าแรก | คุณสมบัติ | ราคา | ติดต่อ", route:"features" } } },
+        { op:"addComponent", pageId:homeId, component:{ id:uid("hero"), type:"hero", props:{ badge:domain, text: page.title || "สร้างสิ่งที่คนอยากใช้", subtitle:"ประสบการณ์ครบในที่เดียว พร้อมเริ่มใช้งานได้ทันที", cta:"เริ่มใช้งาน", route:"contact" } } },
+        { op:"addComponent", pageId:homeId, component:{ id:uid("features"), type:"card", props:{ title:"ทุกอย่างที่ต้องการ", text:"ฟีเจอร์หลักถูกจัดเป็นระบบ ใช้งานง่าย และต่อยอดได้" } } },
+        { op:"addComponent", pageId:homeId, component:{ id:uid("metrics"), type:"metric", props:{ label:"ผู้ใช้งาน", value:"10K+", delta:"เติบโตต่อเนื่อง" } } },
+        { op:"addComponent", pageId:homeId, component:{ id:uid("cta"), type:"button", props:{ text:"เริ่มต้นตอนนี้", route:"contact", variant:"primary" } } },
+        { op:"addPage", page:{ id:ids.features, title:"คุณสมบัติ", path:"/features", components:[
+          {id:uid("fh"),type:"heading",props:{text:"คุณสมบัติทั้งหมด"}},
+          {id:uid("fc1"),type:"card",props:{title:"เร็วและใช้ง่าย",text:"ออกแบบมาให้เริ่มต้นได้ทันที"}},
+          {id:uid("fc2"),type:"card",props:{title:"สวยและยืดหยุ่น",text:"ปรับแต่งสี เนื้อหา และโครงสร้างได้"}},
+          {id:uid("fc3"),type:"card",props:{title:"พร้อมเติบโต",text:"วางโครงสร้างสำหรับฟีเจอร์ในอนาคต"}}
+        ]}},
+        { op:"addPage", page:{ id:ids.contact, title:"เริ่มต้น", path:"/contact", components:[
+          {id:uid("ch"),type:"heading",props:{text:"เริ่มต้นใช้งาน"}},
+          {id:uid("ct"),type:"text",props:{text:"กรอกข้อมูลเพื่อเริ่มต้นโปรเจกต์ของคุณ"}},
+          {id:uid("ci"),type:"input",props:{placeholder:"อีเมลของคุณ"}},
+          {id:uid("cb"),type:"button",props:{text:"ส่งข้อมูล",route:"home",variant:"primary"}}
+        ]}},
+        { op:"preload", pageIds:[ids.features,ids.contact] }
+      ],
+      nextPredict:{preload:[ids.features,ids.contact]},
+      reply:"สร้างโครงแอปเต็มให้แล้ว: ธีม + navigation + hero + sections + cards + CTA + หน้ารอง",
     };
   }
 
