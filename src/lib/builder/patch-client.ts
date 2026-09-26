@@ -27,7 +27,9 @@ export async function generateIntent(
       });
       if (inspect.ok) {
         const source = await inspect.json();
+        const sourceType = typeof source?.sourceType === "string" ? source.sourceType : "website";
         builderMessage = [
+          `SOURCE TYPE: ${sourceType}`,
           userMessage,
           "",
           "SOURCE ANALYSIS (website, Play Store, or GitHub): use it as a product/design/feature reference and rebuild natively with GUPANUPAN components. Do not blindly copy protected source/assets):",
