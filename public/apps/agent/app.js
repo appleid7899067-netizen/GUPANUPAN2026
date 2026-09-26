@@ -165,15 +165,35 @@ function showThread() {
   $("thread").classList.remove("hidden");
 }
 
+let fenceRegistry = []; // [{lang, code}] — rebuilt on every render
+function fencesOf(text) {
+  const out = [];
+  const re = /```(\w*)\n([\s\S]*?)```/g;
+  let m;
+  while ((m = re.exec(text)) && out.length < 6) {
+    out.push({ lang: (m[1] || "").toLowerCase(), code: m[2] });
+  }
+  return out;
+}
+
 function renderThread() {
   const c = current();
   const box = $("thread");
   if (!c) { showHero(); return; }
   showThread();
-  box.innerHTML = c.msgs.map((m) => m.role === "user"
-    ? `<div class="msg user"><div class="bubble">${esc(m.content)}</div><span class="meta">${timeAgo(m.at)}</span></div>`
-    : `<div class="msg agent"><span class="who">✳ ${esc(MODES[store.mode].name).toUpperCase()}</span><div class="bubble">${md(m.content)}</div><span class="meta">${timeAgo(m.at)}</span></div>`
-  ).join("");
+  fenceRegistry = [];
+  box.innerHTML = c.msgs.map((m) => {
+    if (m.role === "user") {
+      return `<div class="msg user"><div class="bubble">${esc(m.content)}</div><span class="meta">${timeAgo(m.at)}</span></div>`;
+    }
+    const btns = fencesOf(m.content).map((f) => {
+      const idx = fenceRegistry.length;
+      fenceRegistry.push(f);
+      const label = f.lang || (/^\s*</.test(f.code) ? "html" : "code");
+      return `<button class="run-code" data-fence="${idx}">▶ รันโค้ดนี้ <small>${esc(label)}</small></button>`;
+    }).join("");
+    return `<div class="msg agent"><span class="who">✳ ${esc(MODES[store.mode].name).toUpperCase()}</span><div class="bubble">${md(m.content)}${btns ? `<div class="run-row">${btns}</div>` : ""}</div><span class="meta">${timeAgo(m.at)}</span></div>`;
+  }).join("");
   $("stage").scrollTop = $("stage").scrollHeight;
 }
 
@@ -227,6 +247,7 @@ async function demoReply(task) {
   }
   await sleep(400);
   out += `\n### สรุป\n\nนี่คือ**โหมดเดโม** — ผมจำลองขั้นตอนเอเจนต์ให้ดูว่าโฟลว์จะเป็นแบบนี้: รับงาน → วางแผน → ทำทีละขั้น → สรุป\n\n> กด **เข้าสู่ระบบ Puter** มุมขวาบน แล้วสั่งงานเดิมอีกครั้ง ผมจะตอบด้วย AI จริงทันที 🚀`;
+  out += `\n\n### 🎁 ตัวอย่างรันได้\n\nกดปุ่ม **▶ รันโค้ดนี้** ใต้ข้อความ แล้วดูผลใน Sandbox ได้เลย:\n\n\`\`\`html\n<button onclick="this.textContent='คลิกแล้ว! ✅'">กดฉันสิ</button>\n<script>console.log('Sandbox ทำงานแล้ว 🎉')<\/script>\n\`\`\``;
   return out;
 }
 
@@ -374,6 +395,137 @@ function closeDrawer() {
   $("scrim").classList.add("hidden");
 }
 
+/* ================= sandbox: run bot code in an isolated iframe ================= */
+const SB_KEY = "gupan:agent:sandbox:v1";
+let sbChannel = "";
+let sbHasRun = false;
+let sbSaveTimer = null;
+
+const SB_DEFAULT = `<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sandbox Demo</title>
+<style>
+body{font-family:system-ui;margin:0;min-height:100vh;display:grid;place-items:center;background:#faf8f4;color:#2e2a26}
+.card{background:#fff;border:1px solid #e8e2d8;border-radius:16px;padding:28px 34px;text-align:center;box-shadow:0 14px 40px #3d342a14}
+b{font-size:44px;display:block;margin:8px 0}
+button{background:#2e2a26;color:#fff;border:0;border-radius:10px;padding:10px 24px;font-size:15px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="card">🎉 Sandbox พร้อมรันแล้ว<b id="n">0</b><button onclick="go()">กดนับ +1</button></div>
+<script>
+let n = 0;
+function go(){ n++; document.getElementById('n').textContent = n; console.log('กดครั้งที่', n); }
+console.log('ยินดีต้อนรับสู่ Sandbox ✅');
+</script>
+</body>
+</html>`;
+
+const sbFrameEl = () => $("sbFrame");
+
+function sbLog(level, text) {
+  const box = $("sbLogs");
+  const empty = box.querySelector(".empty");
+  if (empty) empty.remove();
+  const div = document.createElement("div");
+  div.className = "ln " + (level === "log" ? "" : level);
+  const t = document.createElement("time");
+  t.textContent = new Date().toLocaleTimeString("th-TH", { hour12: false });
+  div.appendChild(t);
+  div.appendChild(document.createTextNode(String(text).slice(0, 2000)));
+  box.appendChild(div);
+  while (box.children.length > 200) box.firstChild.remove();
+  box.scrollTop = box.scrollHeight;
+  $("sbConsoleCount").textContent = box.querySelectorAll(".ln").length;
+}
+
+function sbClearLogs(silent) {
+  $("sbLogs").innerHTML = silent ? "" : `<p class="empty">ยังไม่มี log — console.log จากโค้ดจะมาโผล่ที่นี่</p>`;
+  $("sbConsoleCount").textContent = "0";
+}
+
+function guessLang(src) {
+  const s = src.trim().toLowerCase();
+  if (/^<!doctype|^<html|^<head|^<body/.test(s)) return "html";
+  if (/^<style[\s>]/.test(s)) return "css";
+  if (/<(div|button|h1|h2|h3|p|span|input|script|style)[\s>]/.test(s)) return "html";
+  return "js";
+}
+
+function sbBuildSrcdoc(code, lang) {
+  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: https:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">`;
+  const bridge = `<script>(()=>{const C=${JSON.stringify(sbChannel)};const send=(l,a)=>{try{parent.postMessage({channel:C,level:l,text:a.map(x=>{try{return typeof x==='string'?x:JSON.stringify(x)}catch(e){return String(x)}}).join(' ').slice(0,2000)},'*')}catch(e){}};['log','warn','error'].forEach(l=>{const o=console[l];console[l]=function(){send(l,[].slice.call(arguments));return o.apply(console,arguments)}});addEventListener('error',e=>send('error',[e.message]));addEventListener('unhandledrejection',e=>send('error',['Unhandled: '+String((e.reason&&e.reason.stack)||e.reason)]));})();<\/script>`;
+  const l = (lang || "").toLowerCase();
+  let body;
+  if (l === "js" || l === "javascript") {
+    body = `<div style="font-family:system-ui;display:grid;place-items:center;min-height:90vh;color:#8a8378;text-align:center"><p>⚙️ รัน JavaScript แล้ว<br>ดูผลใน tab <b>Console</b></p></div><script>${code.replace(/<\/script/gi, "<\\/script")}<\/script>`;
+  } else if (l === "css") {
+    body = `<style>${code.replace(/<\/style/gi, "<\\/style>")}</style><div style="font-family:system-ui;padding:32px"><h1>หัวข้อทดสอบ</h1><p>ย่อหน้าทดสอบสำหรับ CSS ของคุณ</p><button>ปุ่มทดสอบ</button><div class="card">.card ทดสอบ</div></div>`;
+  } else {
+    body = code.replace(/<!doctype[^>]*>/i, "");
+  }
+  return `<!doctype html><html><head><meta charset="UTF-8">${csp}${bridge}</head><body>${body}</body></html>`;
+}
+
+function persistSb() {
+  try { localStorage.setItem(SB_KEY, $("sbCode").value.slice(0, 100000)); } catch { /* keep in memory */ }
+}
+
+function restoreSb() {
+  try {
+    $("sbCode").value = localStorage.getItem(SB_KEY) || SB_DEFAULT;
+  } catch {
+    $("sbCode").value = SB_DEFAULT;
+  }
+}
+
+function sbRun(code, lang) {
+  if (typeof code === "string") $("sbCode").value = code;
+  const src = $("sbCode").value;
+  if (!src.trim()) { toast("⚠️ ยังไม่มีโค้ดให้รัน"); return; }
+  sbChannel = uid();
+  sbClearLogs(true);
+  persistSb();
+  const status = $("sbStatus");
+  status.textContent = "กำลังรัน…";
+  status.classList.add("busy");
+  sbFrameEl().srcdoc = sbBuildSrcdoc(src, lang || guessLang(src));
+  sbHasRun = true;
+  sbSwitchTab("preview");
+  setTimeout(() => {
+    status.textContent = "รันแล้ว ✓";
+    status.classList.remove("busy");
+  }, 900);
+}
+
+function sbOpen() {
+  $("sandbox").classList.remove("hidden");
+  $("sbToggle").setAttribute("aria-pressed", "true");
+  if (!sbHasRun) sbRun();
+}
+
+function sbClose() {
+  $("sandbox").classList.add("hidden");
+  $("sbToggle").setAttribute("aria-pressed", "false");
+}
+
+function sbToggle() {
+  if ($("sandbox").classList.contains("hidden")) sbOpen();
+  else sbClose();
+}
+
+function sbSwitchTab(name) {
+  document.querySelectorAll("[data-sbtab]").forEach((b) =>
+    b.setAttribute("aria-selected", String(b.dataset.sbtab === name)),
+  );
+  $("sbPreviewPane").classList.toggle("hidden", name !== "preview");
+  $("sbCodePane").classList.toggle("hidden", name !== "code");
+  $("sbConsolePane").classList.toggle("hidden", name !== "console");
+}
+
 /* ================= wire up ================= */
 function init() {
   // restore mode + model UI
@@ -482,11 +634,67 @@ function init() {
     if (++ticks > 40) clearInterval(id);
   }, 1000);
 
-  window.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeDrawer(); $("helpModal").classList.add("hidden"); } });
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeDrawer(); $("helpModal").classList.add("hidden"); sbClose(); } });
+
+  // sandbox: console bridge (only accept messages from our own iframe + channel)
+  window.addEventListener("message", (e) => {
+    if (e.source !== sbFrameEl().contentWindow) return;
+    const d = e.data || {};
+    if (d.channel !== sbChannel) return;
+    if (!["log", "warn", "error"].includes(d.level) || typeof d.text !== "string") return;
+    sbLog(d.level, d.text);
+  });
+
+  // sandbox: run-code buttons under bot messages
+  $("thread").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-fence]");
+    if (!btn) return;
+    const f = fenceRegistry[Number(btn.dataset.fence)];
+    if (!f) return;
+    sbOpen();
+    sbRun(f.code, f.lang);
+    toast("▶ รันโค้ดใน Sandbox แล้ว");
+  });
+
+  // sandbox: panel controls
+  $("sbToggle").addEventListener("click", sbToggle);
+  $("sbClose").addEventListener("click", sbClose);
+  document.querySelectorAll("[data-sbtab]").forEach((b) =>
+    b.addEventListener("click", () => sbSwitchTab(b.dataset.sbtab)),
+  );
+  $("sbRun").addEventListener("click", () => sbRun());
+  $("sbReload").addEventListener("click", () => sbRun());
+  $("sbNarrow").addEventListener("click", () => {
+    const narrow = !$("sbStage").classList.contains("narrow");
+    $("sbStage").classList.toggle("narrow", narrow);
+    $("sbNarrow").setAttribute("aria-pressed", String(narrow));
+  });
+  $("sbCopy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("sbCode").value);
+      toast("⧉ คัดลอกโค้ดแล้ว");
+    } catch {
+      toast("คัดลอกไม่ได้ — เลือกข้อความเองนะ");
+    }
+  });
+  $("sbClearCode").addEventListener("click", () => {
+    if (!$("sbCode").value.trim()) return;
+    if (confirm("ล้างโค้ดใน Sandbox?")) {
+      $("sbCode").value = "";
+      persistSb();
+    }
+  });
+  $("sbClearLogs").addEventListener("click", () => sbClearLogs(false));
+  $("sbCode").addEventListener("input", () => {
+    clearTimeout(sbSaveTimer);
+    sbSaveTimer = setTimeout(persistSb, 500);
+  });
 
   newChat();
   refreshLogin();
   autosize();
+  restoreSb();
+  sbClearLogs(false);
 }
 
 document.addEventListener("DOMContentLoaded", init);

@@ -60,6 +60,9 @@
         </div>
       </div>
       <div class="top-right">
+        <button class="icon-btn" id="sbToggle" title="เปิด/ปิด Sandbox รันโค้ด" aria-label="เปิดหรือปิด Sandbox" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 9l-2.5 3L9 15M15 9l2.5 3L15 15"/></svg>
+        </button>
         <a class="icon-btn" href="../landing/" data-sys="landing" title="กลับหน้าโฮม GUPAN" aria-label="กลับหน้าโฮม GUPAN">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/></svg>
         </a>
@@ -123,6 +126,46 @@
       <p class="disclaimer">GUPAN Agent ตอบได้ผิดพลาด ควรตรวจทานงานสำคัญ · <span id="aiState">โหมดเดโม — เข้าสู่ระบบ Puter เพื่อใช้ AI จริง</span></p>
     </footer>
   </div>
+
+  <!-- ===== sandbox: run bot code safely ===== -->
+  <aside class="sandbox hidden" id="sandbox" aria-label="Sandbox รันโค้ด">
+    <div class="sb-head">
+      <b>⛶ Sandbox</b>
+      <span class="sb-status" id="sbStatus">พร้อมรัน</span>
+      <button class="icon-btn" id="sbClose" aria-label="ปิด Sandbox">✕</button>
+    </div>
+    <div class="sb-tabs" role="tablist" aria-label="มุมมอง Sandbox">
+      <button role="tab" aria-selected="true" data-sbtab="preview">Preview</button>
+      <button role="tab" aria-selected="false" data-sbtab="code">Code</button>
+      <button role="tab" aria-selected="false" data-sbtab="console">Console <em id="sbConsoleCount">0</em></button>
+    </div>
+    <div class="sb-body">
+      <div class="sb-pane" id="sbPreviewPane">
+        <div class="sb-toolbar">
+          <button id="sbReload" title="รันใหม่อีกครั้ง" aria-label="รันใหม่อีกครั้ง">↻ รันใหม่</button>
+          <button id="sbNarrow" title="สลับจอกว้าง/จอมือถือ" aria-label="สลับจอกว้างหรือจอมือถือ" aria-pressed="false">📱</button>
+          <span class="sb-note">แยกจากหน้าเว็บอย่างปลอดภัย</span>
+        </div>
+        <div class="sb-stage" id="sbStage">
+          <iframe id="sbFrame" title="Sandbox preview" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
+        </div>
+      </div>
+      <div class="sb-pane hidden" id="sbCodePane">
+        <textarea id="sbCode" spellcheck="false" placeholder="วางโค้ด HTML / JS / CSS ตรงนี้…" aria-label="โค้ดใน Sandbox"></textarea>
+        <div class="sb-codebar">
+          <button class="sb-run" id="sbRun">▶ รัน</button>
+          <button id="sbCopy">⧉ คัดลอก</button>
+          <button id="sbClearCode">🗑 ล้าง</button>
+        </div>
+      </div>
+      <div class="sb-pane hidden" id="sbConsolePane">
+        <div class="sb-logs" id="sbLogs" role="log" aria-label="Console ของ Sandbox"></div>
+        <div class="sb-codebar">
+          <button id="sbClearLogs">🗑 ล้าง log</button>
+        </div>
+      </div>
+    </div>
+  </aside>
 </div>
 
 <!-- history drawer -->

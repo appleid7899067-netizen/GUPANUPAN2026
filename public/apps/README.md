@@ -6,7 +6,7 @@
 | แอป | โฟลเดอร์ | URL บนเว็บจริง |
 |---|---|---|
 | Landing (โฮม 3 แกน) | `public/apps/landing/` | `/apps` |
-| GUPAN Agent | `public/apps/agent/` | `/apps/agent` |
+| GUPAN Agent (มี Sandbox รันโค้ด) | `public/apps/agent/` | `/apps/agent` |
 | GUPAN Blog | `public/apps/blog/` | `/apps/blog` |
 | GUPAN Studio | `src/` (Next.js) | `/` (มีปุ่ม ✳ Apps กลับมาที่นี่) |
 
