@@ -26,14 +26,20 @@ const MAX_VERSIONS = 12;
 
 const defaultCanvas = (): CanvasState => ({
   pages: {
-    home: { id: "home", title: "Home", path: "/", components: [
-      { id: "home-settings", type: "button", props: { text: "Settings", route: "settings" } },
-      { id: "home-chat", type: "button", props: { text: "Chat", route: "chat" } },
-    ] },
+    home: {
+      id: "home",
+      title: "Home",
+      path: "/",
+      components: [
+        { id: "home-settings", type: "button", props: { text: "Settings", route: "settings" } },
+        { id: "home-chat", type: "button", props: { text: "Chat", route: "chat" } },
+      ],
+    },
     settings: { id: "settings", title: "Settings", path: "/settings", components: [] },
   },
   stack: [{ id: "home" }],
   theme: { primary: "#000000", background: "#ffffff", text: "#111111" },
+  preloaded: [],
 });
 
 function emptyProject(partial?: Partial<Project>): Project {
@@ -51,6 +57,77 @@ function emptyProject(partial?: Partial<Project>): Project {
     updatedAt: now,
     ...partial,
   };
+}
+
+function applyOnePatch(canvas: CanvasState, patch: CanvasPatch): CanvasState {
+  if (patch.op === "addComponent") {
+    const page = canvas.pages[patch.pageId];
+    if (!page) return canvas;
+    const list = [...page.components];
+    const at = typeof patch.at === "number" ? Math.max(0, Math.min(patch.at, list.length)) : list.length;
+    list.splice(at, 0, patch.component);
+    return {
+      ...canvas,
+      pages: { ...canvas.pages, [patch.pageId]: { ...page, components: list } },
+    };
+  }
+  if (patch.op === "updateComponent") {
+    const page = canvas.pages[patch.pageId];
+    if (!page) return canvas;
+    return {
+      ...canvas,
+      pages: {
+        ...canvas.pages,
+        [patch.pageId]: {
+          ...page,
+          components: page.components.map((c) =>
+            c.id === patch.componentId
+              ? { ...c, props: { ...(c.props ?? {}), ...patch.props } }
+              : c,
+          ),
+        },
+      },
+    };
+  }
+  if (patch.op === "removeComponent") {
+    const page = canvas.pages[patch.pageId];
+    if (!page) return canvas;
+    return {
+      ...canvas,
+      pages: {
+        ...canvas.pages,
+        [patch.pageId]: {
+          ...page,
+          components: page.components.filter((c) => c.id !== patch.componentId),
+        },
+      },
+    };
+  }
+  if (patch.op === "addPage") {
+    return {
+      ...canvas,
+      pages: { ...canvas.pages, [patch.page.id]: patch.page },
+    };
+  }
+  if (patch.op === "updateTheme") {
+    return { ...canvas, theme: { ...canvas.theme, ...patch.theme } };
+  }
+  if (patch.op === "pushRoute") {
+    if (!canvas.pages[patch.pageId]) return canvas;
+    return { ...canvas, stack: [...canvas.stack, { id: patch.pageId }] };
+  }
+  if (patch.op === "setPage") {
+    if (!canvas.pages[patch.pageId]) return canvas;
+    return { ...canvas, stack: [{ id: patch.pageId }] };
+  }
+  if (patch.op === "preload") {
+    const ids = patch.pageIds.filter((id) => Boolean(canvas.pages[id]));
+    return {
+      ...canvas,
+      preloaded: [...new Set([...(canvas.preloaded ?? []), ...ids])],
+    };
+  }
+  return canvas;
 }
 
 type BuilderState = {
@@ -215,16 +292,8 @@ export const useBuilder = create<BuilderState>()(
         set((s) => ({
           projects: s.projects.map((p) => {
             if (p.id !== id) return p;
-            const canvas = p.canvas ?? defaultCanvas();
-            if (patch.op === "addComponent") {
-              const page = canvas.pages[patch.pageId];
-              if (!page) return p;
-              return { ...p, canvas: { ...canvas, pages: { ...canvas.pages, [patch.pageId]: { ...page, components: [...page.components, patch.component] } } }, updatedAt: Date.now() };
-            }
-            if (patch.op === "updateTheme") return { ...p, canvas: { ...canvas, theme: { ...canvas.theme, ...patch.theme } }, updatedAt: Date.now() };
-            const page = canvas.pages[patch.pageId];
-            if (!page) return p;
-            return { ...p, canvas: { ...canvas, stack: [...canvas.stack, { id: patch.pageId }] }, updatedAt: Date.now() };
+            const canvas = applyOnePatch(p.canvas ?? defaultCanvas(), patch);
+            return { ...p, canvas, updatedAt: Date.now() };
           }),
         })),
       pushCanvasRoute: (id, pageId) => {
@@ -233,39 +302,65 @@ export const useBuilder = create<BuilderState>()(
           return;
         }
         get().applyCanvasPatch(id, { op: "pushRoute", pageId });
+        set({ mobilePane: "app" });
       },
       popCanvasRoute: (id) =>
         set((s) => ({
           projects: s.projects.map((p) => {
             if (p.id !== id || !p.canvas || p.canvas.stack.length <= 1) return p;
-            return { ...p, canvas: { ...p.canvas, stack: p.canvas.stack.slice(0, -1) }, updatedAt: Date.now() };
+            return {
+              ...p,
+              canvas: { ...p.canvas, stack: p.canvas.stack.slice(0, -1) },
+              updatedAt: Date.now(),
+            };
           }),
         })),
       setSource: (id, source) =>
         set((s) => ({
           projects: s.projects.map((p) =>
-            p.id === id ? { ...p, source: { ...source, updatedAt: Date.now() }, updatedAt: Date.now() } : p,
+            p.id === id
+              ? { ...p, source: { ...source, updatedAt: Date.now() }, updatedAt: Date.now() }
+              : p,
           ),
         })),
       upsertFile: (id, file) =>
         set((s) => ({
           projects: s.projects.map((p) => {
             if (p.id !== id) return p;
-            const current = p.source ?? { files: [], entryFile: "src/App.tsx", framework: "react-vite" as const, packageManager: "npm" as const, updatedAt: Date.now() };
+            const current =
+              p.source ?? {
+                files: [],
+                entryFile: "src/App.tsx",
+                framework: "react-vite" as const,
+                packageManager: "npm" as const,
+                updatedAt: Date.now(),
+              };
             const files = current.files.some((f) => f.path === file.path)
               ? current.files.map((f) => (f.path === file.path ? file : f))
               : [...current.files, file];
-            return { ...p, source: { ...current, files, updatedAt: Date.now() }, updatedAt: Date.now() };
+            return {
+              ...p,
+              source: { ...current, files, updatedAt: Date.now() },
+              updatedAt: Date.now(),
+            };
           }),
         })),
       removeFile: (id, path) =>
         set((s) => ({
           projects: s.projects.map((p) => {
             if (p.id !== id || !p.source) return p;
-            return { ...p, source: { ...p.source, files: p.source.files.filter((f) => f.path !== path), updatedAt: Date.now() }, updatedAt: Date.now() };
+            return {
+              ...p,
+              source: {
+                ...p.source,
+                files: p.source.files.filter((f) => f.path !== path),
+                updatedAt: Date.now(),
+              },
+              updatedAt: Date.now(),
+            };
           }),
         })),
-  setHtml: (id, html, versionLabel) =>
+      setHtml: (id, html, versionLabel) =>
         set((s) => ({
           projects: s.projects.map((p) => {
             if (p.id !== id) return p;
@@ -284,9 +379,23 @@ export const useBuilder = create<BuilderState>()(
           }),
         })),
       addDocument: (id, document) =>
-        set((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, documents: [...(p.documents ?? []), document].slice(-8), updatedAt: Date.now() } : p) })),
+        set((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  documents: [...(p.documents ?? []), document].slice(-8),
+                  updatedAt: Date.now(),
+                }
+              : p,
+          ),
+        })),
       clearDocuments: (id) =>
-        set((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, documents: [], updatedAt: Date.now() } : p) })),
+        set((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id ? { ...p, documents: [], updatedAt: Date.now() } : p,
+          ),
+        })),
       setSuggestions: (id, suggestions) =>
         set((s) => ({
           projects: s.projects.map((p) => (p.id === id ? { ...p, suggestions } : p)),
