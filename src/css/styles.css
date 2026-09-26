@@ -728,6 +728,33 @@ select:focus-visible,
     background-color: #f8f8f8;
 }
 
+.model-selector {
+    max-width: min(46vw, 280px);
+    height: 30px;
+    padding: 0 28px 0 9px;
+    border: 1px solid #dedede;
+    border-radius: 7px;
+    background: transparent;
+    color: #444;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+}
+.model-selector:hover:not(:disabled),
+.model-selector:focus {
+    border-color: #aaa;
+}
+.model-selector:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+.model-selector option,
+.model-selector optgroup {
+    color: #222;
+    background: #fff;
+}
+
 .send {
     padding: 7px 10px;
     background-color: #484d51;
