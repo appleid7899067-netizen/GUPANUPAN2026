@@ -1,0 +1,20 @@
+# Render blueprint for xboss123.onrender.com (GUPAN Studio — Puter mode).
+# No API key needed: the Puter workspace runs fully client-side.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: xboss123
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start -- --hostname 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://xboss123.onrender.com
+      # Leave empty for Puter (keyless) mode. Set to enable the Totalum dashboard.
+      - key: TOTALUM_VCAAS_API_KEY
+        sync: false

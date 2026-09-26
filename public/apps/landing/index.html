@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#faf8f4">
+<meta name="description" content="GUPAN — รวมแอปเว็บไฟล์ HTML/CSS/JS ล้วน: Agent, Blog และ Studio">
+<title>GUPAN — สร้างเว็บด้วย AI</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<!-- ===== preloader 1% → 99% ===== -->
+<div class="loader" id="loader" role="status" aria-label="กำลังโหลด">
+  <div class="loader-inner">
+    <span class="loader-mark">✦</span>
+    <span class="loader-pct" id="loaderPct">1%</span>
+    <div class="loader-bar"><i id="loaderBar"></i></div>
+    <span class="loader-tip">กำลังเตรียม GUPAN…</span>
+  </div>
+</div>
+
+<!-- ================= แกนนำ: แถบบน + ฮีโร่ ================= -->
+<header class="topbar">
+  <a class="brand" href="#top"><span class="brand-mark">✦</span><span>GUPAN</span></a>
+  <nav class="nav" aria-label="เมนูหลัก">
+    <a href="#lead">แกนนำ</a>
+    <a href="#core">แกนกลาง</a>
+    <a href="#rear">แกนหลัง</a>
+  </nav>
+  <a class="cta-small" href="../agent/" data-sys="agent">เปิด Agent →</a>
+</header>
+
+<main id="top">
+  <section class="lead" id="lead">
+    <p class="eyebrow">✦ HTML · CSS · JS ล้วน — ไม่ต้อง build</p>
+    <h1>สร้างเว็บด้วย AI<br><span>สไตล์คุณ ภาษาคุณ</span></h1>
+    <p class="sub">รวมแอปตัวอย่างที่สร้างด้วยไฟล์เว็บล้วน ๆ เปิดได้ทันที<br>ไม่มีเฟรมเวิร์ก ไม่มีเซิร์ฟเวอร์ ก็ใช้งานได้จริง</p>
+    <div class="cta-row">
+      <a class="cta" href="../agent/" data-sys="agent">✳ เปิด GUPAN Agent</a>
+      <a class="cta ghost" href="../blog/" data-sys="blog">📝 อ่าน GUPAN Blog</a>
+    </div>
+    <div class="chips">
+      <span>📱 มือถือก่อน</span><span>🇹🇭 ภาษาไทย</span><span>⚡ โหลดไว</span><span>💾 เก็บในเครื่อง</span>
+    </div>
+  </section>
+
+  <!-- ================= แกนกลาง: เนื้อหาหลัก ================= -->
+  <section class="core" id="core">
+    <p class="eyebrow">✦ แกนกลาง — เลือกแอปของคุณ</p>
+    <h2>สามแอป หนึ่งสไตล์</h2>
+    <div class="cards">
+      <a class="card" href="../agent/" data-sys="agent">
+        <span class="card-icon">✳</span>
+        <h3>GUPAN Agent</h3>
+        <p>หน้าแชทสไตล์ Agent Mode สั่งงานภาษาไทย มีโหมดเดโม + AI จริงผ่าน Puter</p>
+        <span class="card-go">เปิดใช้ →</span>
+      </a>
+      <a class="card" href="../blog/" data-sys="blog">
+        <span class="card-icon">📝</span>
+        <h3>GUPAN Blog</h3>
+        <p>เว็บบล็อกแอปเต็มรูปแบบ อ่าน เขียน คอมเมนต์ สำรองข้อมูลได้</p>
+        <span class="card-go">เปิดใช้ →</span>
+      </a>
+      <div class="card static">
+        <span class="card-icon">📦</span>
+        <h3>ไฟล์ล้วน 100%</h3>
+        <p>ทุกแอปคือไฟล์ .html/.css/.js ธรรมดา ก็อปไปวางที่ไหนก็รัน</p>
+        <ul>
+          <li>✅ ดับเบิลคลิกเปิดได้เลย</li>
+          <li>✅ อัปโหลดโฮสต์ฟรีได้ทันที</li>
+          <li>✅ แก้ด้วย text editor ใดก็ได้</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= แกนหลัง: สถิติ + ส่วนท้าย ================= -->
+  <section class="rear" id="rear">
+    <p class="eyebrow light">✦ แกนหลัง — ตัวเลขยืนยัน</p>
+    <div class="stats">
+      <div><b><span data-count="3">0</span></b><span>แอปพร้อมใช้</span></div>
+      <div><b><span data-count="99">0</span>%</b><span>จอโหลดวิ่งครบทุกเลข</span></div>
+      <div><b><span data-count="0">0</span></b><span>เฟรมเวิร์กที่ต้องลง</span></div>
+      <div><b>100%</b><span>ไฟล์ static ล้วน</span></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span class="foot-brand"><span class="brand-mark sm">✦</span> GUPAN · <span id="year"></span></span>
+  <nav aria-label="ลิงก์แอป">
+    <a href="../agent/" data-sys="agent">Agent</a>
+    <a href="../blog/" data-sys="blog">Blog</a>
+    <a href="#top">↑ กลับขึ้นบน</a>
+  </nav>
+</footer>
+
+<script>
+/* GUPAN system links: absolute under /apps/* (Next.js/Render), relative otherwise (static server or file://). */
+(function(){try{var under=location.pathname.indexOf("/apps/")===0;document.querySelectorAll("[data-sys]").forEach(function(a){var t=a.getAttribute("data-sys");a.href=t==="studio"?"/":(under?"/apps/"+t+"/":"../"+t+"/");});}catch(e){}})();
+</script>
+<script src="./app.js"></script>
+</body>
+</html>

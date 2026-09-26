@@ -1,6 +1,6 @@
 // src/app/layout.tsx — hybrid Puter + Totalum
 import React from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { GlobalErrorCatcher } from "@/components/GlobalErrorCatcher";
@@ -8,10 +8,17 @@ import { Toaster } from "@/components/ui/sonner";
 import { InsufficientCreditsModal } from "@/components/workspace/InsufficientCreditsModal";
 import { PuterProvider } from "@/components/PuterProvider";
 
-
 export const metadata: Metadata = {
   title: "GUPAN Studio — AI Web Builder",
   description: "สร้างเว็บด้วย AI แก้โค้ด ดูพรีวิว และส่งออกโปรเจกต์ของคุณ",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#09090d",
 };
 
 // SUPER IMPORTANT: NOT EDIT THE FOLLOWING 2 LINES TO FORCE NEXT.JS TO RENDER DYNAMICALLY
