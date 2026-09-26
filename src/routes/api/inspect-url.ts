@@ -62,7 +62,7 @@ export const Route = createFileRoute("/api/inspect-url")({
           if (!upstream.ok) return Response.json({ error: `Website returned ${upstream.status}.` }, { status: 502 });
           const html = await upstream.text();
           const headings = matches(html, /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi).map(stripHtml).filter(Boolean);
-          const sections = [...html.matchAll(/<(header|nav|main|section|article|aside|footer)[^>]*>([\s\S]*?)<\/\\1>/gi)]
+          const sections = [...html.matchAll(/<(header|nav|main|section|article|aside|footer)[^>]*>([\s\S]*?)<\/\1>/gi)]
             .map((m) => ({ type: m[1].toLowerCase(), text: stripHtml(m[2]).slice(0, 500) }))
             .filter((x) => x.text);
           const buttons = [
