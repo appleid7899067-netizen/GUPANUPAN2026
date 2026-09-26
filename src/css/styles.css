@@ -6164,6 +6164,124 @@ html[data-theme="dark"] .feed-card:hover .feed-thumb {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
+/* ===================== Panupan visual identity =====================
+   Full branded landing treatment: a compact visual system rather than a
+   generic template. The graphic is CSS-only so it stays crisp, fast and
+   works offline with the existing app bundle. */
+.panupan-hero-graphic {
+    position: relative;
+    width: 148px;
+    height: 148px;
+    margin: 0 auto 18px;
+    display: grid;
+    place-items: center;
+    isolation: isolate;
+}
+.panupan-glow {
+    position: absolute;
+    inset: 27px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124, 92, 255, .24), rgba(124, 92, 255, 0) 70%);
+    filter: blur(3px);
+    z-index: -1;
+}
+.panupan-mark {
+    width: 66px;
+    height: 66px;
+    display: grid;
+    place-items: center;
+    border-radius: 21px;
+    background: linear-gradient(145deg, #111827 5%, #5b4bdb 52%, #9b5cff 100%);
+    color: #fff;
+    font-size: 34px;
+    font-weight: 850;
+    letter-spacing: -.07em;
+    box-shadow: 0 18px 42px rgba(91, 75, 219, .28), inset 0 1px 0 rgba(255,255,255,.3);
+    animation: panupan-mark-float 4.5s ease-in-out infinite;
+}
+.panupan-orbit {
+    position: absolute;
+    inset: 7px;
+    border: 1px solid rgba(91, 75, 219, .16);
+    border-radius: 50%;
+    transform: rotate(-18deg);
+}
+.panupan-orbit-a { animation: panupan-spin 12s linear infinite; }
+.panupan-orbit-b {
+    inset: 19px 1px;
+    transform: rotate(58deg);
+    border-color: rgba(155, 92, 255, .12);
+    animation: panupan-spin-reverse 15s linear infinite;
+}
+.panupan-orbit-c {
+    inset: 1px 20px;
+    transform: rotate(102deg);
+    border-color: rgba(17, 24, 39, .10);
+    animation: panupan-spin 18s linear infinite;
+}
+.panupan-orbit::after {
+    content: "";
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    top: 9px;
+    left: 50%;
+    border-radius: 50%;
+    background: #8b5cf6;
+    box-shadow: 0 0 12px rgba(139, 92, 246, .7);
+}
+.panupan-spark {
+    position: absolute;
+    color: #7657e8;
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: 0 0 12px rgba(118, 87, 232, .35);
+}
+.panupan-spark-1 { top: 4px; right: 28px; font-size: 13px; animation: panupan-twinkle 2.8s ease-in-out infinite; }
+.panupan-spark-2 { bottom: 18px; left: 18px; font-size: 18px; animation: panupan-twinkle 3.6s .5s ease-in-out infinite; }
+.panupan-spark-3 { top: 52px; right: 5px; font-size: 24px; animation: panupan-twinkle 2.2s .8s ease-in-out infinite; }
+.chat-tagline {
+    gap: 11px;
+}
+.chat-tagline-brand {
+    background: linear-gradient(145deg, #111827, #5b4bdb 58%, #9b5cff);
+    box-shadow: 0 8px 24px rgba(91, 75, 219, .22);
+}
+.chat-tagline-text {
+    background: linear-gradient(90deg, #111827, #5b4bdb 55%, #8b5cf6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+@keyframes panupan-mark-float {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-5px) rotate(1deg); }
+}
+@keyframes panupan-spin { to { transform: rotate(342deg); } }
+@keyframes panupan-spin-reverse { to { transform: rotate(-302deg); } }
+@keyframes panupan-twinkle {
+    0%, 100% { opacity: .28; transform: scale(.85); }
+    50% { opacity: 1; transform: scale(1.12); }
+}
+@media (max-width: 600px) {
+    .panupan-hero-graphic {
+        width: 116px;
+        height: 116px;
+        margin-bottom: 12px;
+    }
+    .panupan-mark {
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+        font-size: 29px;
+    }
+    .chat-tagline-text { font-size: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .panupan-hero-graphic *,
+    .panupan-hero-graphic { animation: none !important; }
+}
+
 /* Panupan brand mark for the builder landing page. */
 .chat-tagline-brand {
     width: 42px;
