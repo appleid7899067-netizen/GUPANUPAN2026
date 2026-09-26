@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#09090d">
+<meta name="description" content="GUPAN Blog — เว็บบล็อกแอป อ่าน เขียน บันทึก ได้ในไฟล์เดียว ไม่ต้องมีเซิร์ฟเวอร์">
+<title>GUPAN Blog — เว็บบล็อกแอป</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="brand" href="#/" aria-label="กลับหน้าแรก">
+    <span class="brand-mark">✦</span>
+    <span>GUPAN<i>blog</i></span>
+  </a>
+  <div class="top-actions">
+    <button id="btnSaved" class="chip-btn" aria-pressed="false" title="ดูเฉพาะที่บันทึกไว้">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      <span>ที่บันทึก</span>
+      <b id="savedCount">0</b>
+    </button>
+    <a class="write-btn" href="#/new"><span>+</span><em>เขียนบทความ</em></a>
+  </div>
+</header>
+
+<main id="app">
+  <!-- ============ HOME ============ -->
+  <section id="view-home" class="view">
+    <div class="hero">
+      <p class="eyebrow">✦ BLOG APP · ไฟล์ HTML/CSS/JS ล้วน</p>
+      <h1>อ่าน เขียน<br><span>เล่าเรื่องของคุณ</span></h1>
+      <p class="hero-sub">เว็บบล็อกที่ทำงานได้จริงในเบราว์เซอร์ — ไม่ต้องมีเซิร์ฟเวอร์ ไม่ต้องสมัครสมาชิก</p>
+    </div>
+
+    <div class="toolbar">
+      <label class="search">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="q" type="search" placeholder="ค้นหาบทความ…" autocomplete="off" aria-label="ค้นหาบทความ">
+      </label>
+      <label class="sort-wrap">
+        <span>เรียง</span>
+        <select id="sort" aria-label="เรียงลำดับ">
+          <option value="new">ใหม่สุด</option>
+          <option value="old">เก่าสุด</option>
+          <option value="top">ยอดนิยม</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="cats" id="cats" role="tablist" aria-label="หมวดหมู่"></div>
+    <p class="stats" id="stats"></p>
+    <div class="feed" id="feed"></div>
+    <div class="empty hidden" id="feedEmpty">
+      <div class="empty-mark">📭</div>
+      <p>ไม่พบบทความที่ค้นหา</p>
+      <span>ลองเปลี่ยนคำค้น หรือเขียนบทความแรกของคุณเอง</span>
+      <a class="write-btn" href="#/new"><span>+</span><em>เขียนบทความใหม่</em></a>
+    </div>
+  </section>
+
+  <!-- ============ READER ============ -->
+  <section id="view-reader" class="view hidden">
+    <a class="back-link" href="#/">← กลับหน้าฟีด</a>
+    <article class="article">
+      <div class="article-cover" id="rCover"></div>
+      <p class="article-cat" id="rCat"></p>
+      <h1 id="rTitle"></h1>
+      <p class="meta" id="rMeta"></p>
+      <div class="article-actions">
+        <button id="rLike" class="act" aria-pressed="false">♥ <b>0</b></button>
+        <button id="rSave" class="act" aria-pressed="false">🔖 <b>บันทึก</b></button>
+        <button id="rShare" class="act">🔗 <b>คัดลอกลิงก์</b></button>
+        <span class="mine-actions hidden" id="rMine">
+          <a id="rEdit" class="act" href="#">✎ แก้ไข</a>
+          <button id="rDelete" class="act danger">🗑 ลบ</button>
+        </span>
+      </div>
+      <div class="prose" id="rBody"></div>
+    </article>
+    <section class="comments">
+      <h2>💬 ความคิดเห็น <small id="cCount"></small></h2>
+      <form id="cForm" class="c-form">
+        <input id="cName" maxlength="40" placeholder="ชื่อของคุณ (ไม่บังคับ)" aria-label="ชื่อผู้แสดงความคิดเห็น">
+        <textarea id="cText" rows="2" maxlength="2000" required placeholder="ร่วมแสดงความคิดเห็น…" aria-label="ข้อความความคิดเห็น"></textarea>
+        <button type="submit" class="primary">ส่งความคิดเห็น</button>
+      </form>
+      <div id="cList" class="c-list"></div>
+    </section>
+  </section>
+
+  <!-- ============ EDITOR ============ -->
+  <section id="view-editor" class="view hidden">
+    <a class="back-link" href="#/">← ยกเลิก</a>
+    <h1 class="ed-title" id="edHeading">✍️ เขียนบทความใหม่</h1>
+    <form id="edForm" class="editor">
+      <label>หัวข้อ
+        <input id="edTitle" required maxlength="120" placeholder="ตั้งชื่อบทความให้น่าคลิก…" aria-label="หัวข้อบทความ">
+      </label>
+      <div class="ed-row">
+        <label>หมวดหมู่
+          <select id="edCat" aria-label="หมวดหมู่"></select>
+        </label>
+        <div class="ed-cover-pick">
+          <span id="edCoverLabel">ปก</span>
+          <div class="emoji-pick" id="edEmoji" role="radiogroup" aria-label="รูปปก"></div>
+        </div>
+      </div>
+      <label>คำโปรยสั้น ๆ
+        <input id="edExcerpt" maxlength="160" placeholder="สรุป 1 บรรทัด (ปล่อยว่างได้ — เดี๋ยวสร้างให้เอง)">
+      </label>
+      <div class="ed-body-head">
+        <span>เนื้อหา <small>(รองรับ ## หัวข้อ · **หนา** · - รายการ · ```โค้ด``` · [ลิงก์](url))</small></span>
+        <button type="button" id="edPreviewBtn" class="ghost" aria-pressed="false">👁 ตัวอย่าง</button>
+      </div>
+      <div class="ed-tools" role="toolbar" aria-label="เครื่องมือจัดรูปแบบ">
+        <button type="button" data-ins="## " title="หัวข้อ">H</button>
+        <button type="button" data-ins="**ข้อความ**" title="ตัวหนา"><b>B</b></button>
+        <button type="button" data-ins="- รายการ" title="รายการ bullet">•≡</button>
+        <button type="button" data-ins="```js&#10;โค้ดของคุณ&#10;```" title="บล็อกโค้ด">&lt;/&gt;</button>
+        <button type="button" data-ins="[ข้อความ](https://)" title="ลิงก์">🔗</button>
+      </div>
+      <textarea id="edBody" rows="14" placeholder="เล่าเรื่องของคุณตรงนี้…" aria-label="เนื้อหาบทความ"></textarea>
+      <div class="prose ed-preview hidden" id="edPreview"></div>
+      <div class="ed-foot">
+        <button type="submit" class="primary big">💾 เผยแพร่บทความ</button>
+        <p class="ed-note">บันทึกอัตโนมัติลงเบราว์เซอร์เครื่องนี้ · <span id="edCount">0 ตัวอักษร</span></p>
+      </div>
+    </form>
+  </section>
+</main>
+
+<a class="fab" href="#/new" aria-label="เขียนบทความใหม่">+</a>
+
+<footer class="foot">
+  <span>✦ GUPAN Blog · ข้อมูลอยู่ในเบราว์เซอร์ของคุณ</span>
+  <span class="foot-btns">
+    <button id="btnExport" title="สำรองบทความทั้งหมดเป็นไฟล์ JSON">⬇ สำรอง</button>
+    <button id="btnImport" title="นำไฟล์สำรองกลับมา">⬆ นำเข้า</button>
+    <button id="btnReset" title="ล้างทั้งหมดกลับเป็นบทความตัวอย่าง">↺ รีเซ็ต</button>
+  </span>
+  <input id="fileInput" type="file" accept="application/json,.json" hidden>
+</footer>
+
+<div class="toast hidden" id="toast" role="status"></div>
+
+<script src="./app.js"></script>
+</body>
+</html>
