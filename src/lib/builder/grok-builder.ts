@@ -60,7 +60,7 @@ function extractJson(text: string): unknown {
       const c=cleaned[i];
       if (escape) { escape=false; continue; }
       if (c==="\\") { escape=true; continue; }
-      if (c===""" && !escape) { quote=!quote; continue; }
+      if (c==='"' && !escape) { quote=!quote; continue; }
       if (quote) continue;
       if (c==="{" || c==="[") depth++;
       if (c==="}" || c==="]") { depth--; if (depth===0) { try { return JSON.parse(cleaned.slice(start,i+1)); } catch {} break; } }
