@@ -321,8 +321,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const files = project?.files;
   const origin = project?.origin;
   const previewTicket = useRef(0);
+  const previewWatchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const ticket = ++previewTicket.current;
+    if (previewWatchdog.current !== null) {
+      clearTimeout(previewWatchdog.current);
+      previewWatchdog.current = null;
+    }
     if (!channel || !files) {
       setSrcDoc("");
       setPreviewBusy(false);
@@ -341,8 +346,22 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     setPreviewNote("");
     // ให้ iframe แสดงสถานะกำลังคอมไพล์ของตัวเอง ระหว่างโหลด Babel/คอมไพล์
     setSrcDoc(previewPlaceholderDocument());
+    // กันพรีวิวค้างที่หน้า "กำลังโหลด" ตลอดไป (เช่น ดึงตัวคอมไพล์จาก CDN ไม่สำเร็จ)
+    previewWatchdog.current = setTimeout(() => {
+      if (ticket !== previewTicket.current) return;
+      const message =
+        "โหลดตัวคอมไพล์ไม่สำเร็จหรือใช้เวลานานเกิน 40 วินาที — ตรวจอินเทอร์เน็ตแล้วกดรีเฟรชพรีวิวอีกครั้ง";
+      reportToServer("preview-timeout", `engine=${engine}`);
+      setSrcDoc(previewFailureDocument(message, "พรีวิวใช้เวลานานเกินไป"));
+      setPreviewBusy(false);
+      setPreviewNote(message);
+    }, 40000);
     buildPreviewDocument(files, page, channel, { engine, origin }, previewDocument)
       .then((result) => {
+        if (previewWatchdog.current !== null) {
+          clearTimeout(previewWatchdog.current);
+          previewWatchdog.current = null;
+        }
         if (ticket !== previewTicket.current) return; // มีการแก้โค้ดใหม่ระหว่างคอมไพล์
         setSrcDoc(result.doc);
         setPreviewBusy(false);
@@ -369,6 +388,10 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         );
       })
       .catch((e) => {
+        if (previewWatchdog.current !== null) {
+          clearTimeout(previewWatchdog.current);
+          previewWatchdog.current = null;
+        }
         if (ticket !== previewTicket.current) return;
         // ไม่ fallback ไปเป็น HTML เปล่า (ผู้ใช้จะเห็นจอขาว) — แสดงสาเหตุในพรีวิวเลย
         const message = errorText(e);
