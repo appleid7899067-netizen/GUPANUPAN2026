@@ -5,8 +5,12 @@
 The default homepage now uses `components/builder/BuilderHome.tsx` when no Totalum key is configured. `components/TotalumDashboard.tsx` preserves the old dashboard for configured Totalum installations. `/build/[projectId]` is the new browser-only static frontend workspace, separate from the copied `/project/[projectId]` Totalum workspace.
 
 - `lib/builder.ts`: typed local project storage, HTML output validation, bounded version history, preview CSP/console bridge.
+- `lib/build-modes.ts`: build-mode presets (system-prompt addenda) inspired by docker-agent agent personas. `systemPromptFor(mode)` is the only supported way to build the system prompt in the workspace.
+- `lib/sandbox.ts`: the run-and-inspect sandbox. `sandboxDocument()` adds `'unsafe-eval'` (for the REPL) on top of the preview CSP, still with `connect-src 'none'` and no same-origin. `collectSnapshot()` runs inside the iframe (embedded via `Function.prototype.toString`), `analyzeSnapshot()` is pure and unit-tested.
+- `lib/agent-export.ts`: exports `agent.yaml` + README for docker-agent with the Puter provider. Any user text embedded in the YAML must go through `sanitizeForYaml`/`yamlString`.
 - AI requests use the Puter SDK directly, with its default model unless the user specifies an ID. Never auto-submit paid requests on page load.
-- Preview uses `sandbox="allow-scripts"`, never `allow-same-origin`. Do not grant generated code access to Puter or builder storage.
+- Preview uses `sandbox="allow-scripts"`, never `allow-same-origin`. Do not grant generated code access to Puter or builder storage. The Sandbox tab follows the same rule — it only adds `'unsafe-eval'` to the *sandboxed* document's CSP, never same-origin.
+- `public/agent-kit/` ships the Puter login helper that the Agent-kit export attaches (fetched at export time via `/agent-kit/...`). Keep it in sync with `integrations/docker-agent-puter/`.
 - Projects in this workspace live only in browser localStorage; ZIP is the backup path. No Node runtime, server terminal, database or cloud-sync claim.
 - `npm test` runs local unit tests without new dependencies. `tests/browser-smoke.cjs` is an optional Playwright test using a mocked Puter SDK, not a live AI verification.
 - Thai fonts are local OFL assets; builds must not require Google Fonts network access.
