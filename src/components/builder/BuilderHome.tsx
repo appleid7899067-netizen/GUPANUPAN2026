@@ -20,13 +20,56 @@ import {
   saveProject,
   type BuildProject,
 } from "@/lib/builder";
+import PuterAccountButton from "./PuterAccountButton";
 import "./builder.css";
+
+/**
+ * ═══ หน้า 1 จาก 2 หน้าของบิลเดอร์ (รูปแบบเดียวกับ bolt.new) ══════════════
+ *
+ * bolt.new มีอยู่ 2 หน้า: หน้าแรกที่มีช่องพรอมป์ใหญ่กลางจอ + รายการโปรเจกต์
+ * และหน้าเวิร์กสเปซ `/build/[id]` ที่มีแชตอยู่ซ้าย พรีวิว/โค้ดอยู่ขวา
+ * ไฟล์นี้คือหน้าแรก ส่วน `BuilderWorkspace.tsx` คือหน้าที่สอง
+ *
+ * หน้าแรกทำหน้าที่เดียว: รับไอเดีย → สร้างโปรเจกต์ในเบราว์เซอร์ → พาไปหน้า 2
+ * ⚠️ ห้ามเรียก AI จากหน้านี้เด็ดขาด ทุกคำขอที่เสียโควตาต้องเกิดจากผู้ใช้กด
+ * ในหน้าเวิร์กสเปซเท่านั้น (ตรงกับกฎ "Never auto-submit paid requests")
+ */
+
+/** ไอเดียตัวอย่าง — กดเพื่อเติมข้อความลงช่องพรอมป์ ไม่ได้ส่งคำสั่งเอง */
+const STARTER_IDEAS = [
+  "เว็บร้านกาแฟสไตล์มินิมอล",
+  "แดชบอร์ดรายรับรายจ่ายแบบทดลอง",
+  "พอร์ตโฟลิโอช่างภาพ",
+  "แอปจัดการงานพร้อมตัวกรอง",
+] as const;
+
+/**
+ * เวลาแบบสั้นสไตล์ Bolt ("3 ชั่วโมงที่แล้ว") — ภาษาไทยเสมอ ไม่ขึ้นกับ locale
+ * ของเครื่อง รายการโปรเจกต์เรนเดอร์หลัง mount เท่านั้น จึงไม่มีปัญหา SSR ไม่ตรงกัน
+ */
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const minutes = Math.round((Date.now() - then) / 60_000);
+  if (minutes < 1) return "เมื่อสักครู่";
+  if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} ชั่วโมงที่แล้ว`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return days === 1 ? "เมื่อวาน" : `${days} วันที่แล้ว`;
+  return new Date(iso).toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function BuilderHome() {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [projects, setProjects] = useState<BuildProject[]>([]);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   useEffect(() => {
     try {
       setProjects(listProjects());
@@ -36,6 +79,7 @@ export default function BuilderHome() {
       );
     }
   }, []);
+  /** สร้างโปรเจกต์ใน localStorage แล้วพาไปหน้าเวิร์กสเปซ (หน้าที่ 2) */
   function start(text: string) {
     try {
       const project = createProject(text);
@@ -49,28 +93,54 @@ export default function BuilderHome() {
       );
     }
   }
+  function remove(project: BuildProject) {
+    if (!confirm(`ลบ “${project.name}” จากเบราว์เซอร์นี้? ย้อนกลับไม่ได้`))
+      return;
+    try {
+      localStorage.removeItem(PROJECT_PREFIX + project.id);
+      setProjects(listProjects());
+    } catch {
+      setError("ลบไม่สำเร็จ");
+    }
+  }
   return (
     <div className="builder home">
+      {/* ── แถบบนแบบ Bolt: โลโก้ซ้าย · สถานะโหมด + บัญชี Puter ขวา ───────── */}
       <header className="builder-header">
-        <Link href="/" className="brand">
+        <Link href="/" className="brand" aria-label="GUPAN Studio หน้าหลัก">
           <Zap size={21} fill="currentColor" /> GUPAN<span>studio</span>
         </Link>
-        <span className="mode-pill">
-          <i /> Puter · Frontend builder
-        </span>
-      </header>
-      <main className="home-main">
-        <div className="eyebrow">
-          <Sparkles size={14} /> FROM IDEA TO INTERACTIVE
+        <div className="header-actions">
+          <span className="mode-pill">
+            <i /> Puter · Frontend builder
+          </span>
+          <PuterAccountButton
+            onStatus={(message) => {
+              setError("");
+              setNotice(message);
+            }}
+            onError={(message) => {
+              setNotice("");
+              setError(message);
+            }}
+          />
         </div>
-        <h1>
-          อยากสร้างอะไร
-          <br />
-          <span>เริ่มจากไอเดียของคุณ</span>
-        </h1>
-        <p className="hero-description">
-          บอกสิ่งที่อยากได้ ให้ AI ช่วยเขียนโค้ด แล้วดูเว็บจริงข้าง ๆ
-        </p>
+      </header>
+
+      <main className="home-main">
+        <div className="home-hero">
+          <div className="home-logo" aria-hidden="true">
+            <Zap size={24} fill="currentColor" />
+          </div>
+          <div className="eyebrow">
+            <Sparkles size={14} /> FROM IDEA TO INTERACTIVE
+          </div>
+          <h1>อยากสร้างอะไร?</h1>
+          <p className="hero-description">
+            พิมพ์ไอเดียของคุณ แล้ว AI จะเขียนโค้ดให้ ดูเว็บจริงข้าง ๆ ได้ทันที
+          </p>
+        </div>
+
         <form
           className="prompt-card"
           onSubmit={(e) => {
@@ -86,21 +156,23 @@ export default function BuilderHome() {
             maxLength={6000}
           />
           <div className="prompt-footer">
-            <span>
+            <span className="prompt-pill">
               <Code2 size={15} /> HTML · CSS · JavaScript
             </span>
-            <button className="primary" disabled={!prompt.trim()} type="submit">
-              เริ่มสร้าง <ArrowUp size={17} />
+            <button
+              className="send-button"
+              type="submit"
+              disabled={!prompt.trim()}
+              aria-label="เริ่มสร้าง"
+              title="เริ่มสร้าง"
+            >
+              <ArrowUp size={17} />
             </button>
           </div>
         </form>
+
         <div className="suggestions">
-          {[
-            "เว็บร้านกาแฟสไตล์มินิมอล",
-            "แดชบอร์ดรายรับรายจ่ายแบบทดลอง",
-            "พอร์ตโฟลิโอช่างภาพ",
-            "แอปจัดการงานพร้อมตัวกรอง",
-          ].map((text) => (
+          {STARTER_IDEAS.map((text) => (
             <button
               key={text}
               onClick={() =>
@@ -111,17 +183,26 @@ export default function BuilderHome() {
             </button>
           ))}
         </div>
+
         {error && (
           <div className="builder-error" role="alert">
             {error}
           </div>
         )}
+        {notice && !error && (
+          <div className="builder-notice" role="status">
+            {notice}
+          </div>
+        )}
+
         <p className="honest-note">
           AI ต้องใช้บัญชี Puter และอยู่ภายใต้โควตา/ค่าบริการของผู้ให้บริการ
           <br />
           โปรเจกต์เก็บในเบราว์เซอร์นี้ · พรีวิวเว็บฝั่งหน้า ไม่ใช่ Node.js
           server หรือฐานข้อมูล
         </p>
+
+        {/* ── Your projects: รายการแบบแถวเหมือน bolt.new ──────────────────── */}
         <section className="projects">
           <div className="section-heading">
             <h2>
@@ -129,7 +210,7 @@ export default function BuilderHome() {
               <small>{projects.length}</small>
             </h2>
             <button className="subtle" onClick={() => start("")}>
-              <Plus size={15} /> โปรเจกต์เปล่า
+              <Plus size={15} /> โปรเจกต์ใหม่
             </button>
           </div>
           {!projects.length ? (
@@ -141,33 +222,30 @@ export default function BuilderHome() {
               </span>
             </div>
           ) : (
-            <div className="project-grid">
+            <div className="project-list">
               {projects.map((project) => (
-                <article key={project.id} className="project-card">
+                <article key={project.id} className="project-row">
                   <Link href={`/build/${project.id}`}>
-                    <div className="project-art">
-                      <Code2 size={30} />
-                    </div>
-                    <h3>{project.name}</h3>
-                    <p>{new Date(project.updatedAt).toLocaleString("th-TH")}</p>
+                    <span className="project-thumb" aria-hidden="true">
+                      <Code2 size={16} />
+                    </span>
+                    <span className="project-meta">
+                      <strong>{project.name}</strong>
+                      <small>
+                        {timeAgo(project.updatedAt)} ·{" "}
+                        {project.messages.length
+                          ? `${project.messages.length} ข้อความ`
+                          : "ยังไม่เคยสั่ง AI"}
+                      </small>
+                    </span>
+                    <span className="project-go" aria-hidden="true">
+                      <ArrowUpRight size={15} />
+                    </span>
                   </Link>
                   <button
                     className="delete-project"
                     aria-label={`ลบ ${project.name}`}
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `ลบ “${project.name}” จากเบราว์เซอร์นี้? ย้อนกลับไม่ได้`,
-                        )
-                      ) {
-                        try {
-                          localStorage.removeItem(PROJECT_PREFIX + project.id);
-                          setProjects(listProjects());
-                        } catch {
-                          setError("ลบไม่สำเร็จ");
-                        }
-                      }
-                    }}
+                    onClick={() => remove(project)}
                   >
                     <Trash2 size={15} />
                   </button>
@@ -177,6 +255,7 @@ export default function BuilderHome() {
           )}
         </section>
       </main>
+
       <footer className="home-footer">
         GUPAN Studio <span>สร้าง · ทดลอง · ปรับปรุง</span>
         <span>ต้องการ full-stack? ตั้งค่า Totalum บนเซิร์ฟเวอร์</span>

@@ -57,6 +57,12 @@ const fs = require("node:fs");
     await page.getByRole("button", { name: "เริ่มสร้าง" }).click();
     await page.waitForURL("**/build/**");
     await page.getByRole("textbox", { name: "คำสั่ง AI" }).waitFor();
+    // รูปแบบ 2 หน้าเหมือน bolt.new: ด้านขวามีแท็บหลัก Preview กับ Code เท่านั้น
+    // ส่วน Sandbox กับ History เปิดเป็นแผงลอยจากปุ่มย่อยในแถบแท็บ
+    assert.deepEqual(await page.getByRole("tab").allInnerTexts(), [
+      "Preview",
+      "Code",
+    ]);
     assert.equal(
       await page.getByRole("textbox", { name: "คำสั่ง AI" }).inputValue(),
       "สร้างเว็บร้านกาแฟ",
@@ -147,8 +153,9 @@ const fs = require("node:fs");
       .frameLocator("iframe")
       .getByRole("heading", { name: "Manual edit" })
       .waitFor();
-    await page.getByRole("tab", { name: "History", exact: true }).click();
+    await page.getByRole("button", { name: "เปิดประวัติโค้ด" }).click();
     await page
+      .getByRole("dialog", { name: "ประวัติโค้ด" })
       .getByRole("button", { name: "กู้คืน", exact: true })
       .first()
       .click();

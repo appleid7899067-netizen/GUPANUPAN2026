@@ -13,14 +13,17 @@ import {
   Loader2,
   LogIn,
   Monitor,
+  MoreHorizontal,
   Package,
   Play,
   RotateCcw,
   Save,
   Smartphone,
   Square,
+  Tablet,
   Terminal,
   Upload,
+  X,
   Zap,
 } from "lucide-react";
 import { zipSync, strToU8 } from "fflate";
@@ -46,15 +49,30 @@ import PuterAccountButton from "./PuterAccountButton";
 import SandboxPanel from "./SandboxPanel";
 import "./builder.css";
 
+/**
+ * ═══ หน้า 2 จาก 2 หน้าของบิลเดอร์ (รูปแบบเดียวกับ bolt.new) ═══════════════
+ *
+ * bolt.new มี 2 หน้า: หน้าแรกใส่พรอมป์ (`BuilderHome.tsx`) และหน้านี้ —
+ * แชตอยู่ซ้าย มุมมองงานอยู่ขวา ด้านขวาจึงเหลือแท็บหลัก 2 แท็บเหมือน Bolt คือ
+ * Preview กับ Code ส่วน Sandbox (REPL/ตัวตรวจ DOM) และ History ไม่หายไปไหน
+ * แต่เปิดเป็น "แผงลอย" ทับพื้นที่ขวา จากปุ่มย่อยในแถบแท็บหรือเมนู ⋯ บนหัวเพจ
+ */
 type LogLine = { level: string; text: string };
+type WorkTab = "preview" | "code";
+type WorkOverlay = "sandbox" | "history";
+/** ขนาดพรีวิว — Bolt ให้เลือก desktop / tablet / mobile */
+type Device = "desktop" | "tablet" | "mobile";
+
 export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<BuildProject | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [tab, setTab] = useState<"preview" | "code" | "sandbox" | "history">("preview");
+  const [tab, setTab] = useState<WorkTab>("preview");
+  const [overlay, setOverlay] = useState<WorkOverlay | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [mode, setMode] = useState<string>(DEFAULT_MODE_ID);
-  const [mobile, setMobile] = useState(false);
+  const [device, setDevice] = useState<Device>("desktop");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -67,6 +85,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [channel, setChannel] = useState("");
   const frame = useRef<HTMLIFrameElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const menuBox = useRef<HTMLDivElement>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
   const run = useRef(0);
   const running = useRef(false);
@@ -133,11 +152,35 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [project?.messages.length, busy]);
+  // เมนูย่อย/แผงลอยปิดได้ด้วย Escape และคลิกนอกกรอบ — พฤติกรรมเดียวกับ popover ของ Bolt
+  useEffect(() => {
+    if (!overlay && !menuOpen) return;
+    const away = (event: MouseEvent) => {
+      if (menuOpen && !menuBox.current?.contains(event.target as Node))
+        setMenuOpen(false);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (menuOpen) setMenuOpen(false);
+      else setOverlay(null);
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", key);
+    };
+  }, [overlay, menuOpen]);
   const srcDoc = useMemo(
     () => (channel && project ? previewDocument(project.html, channel) : ""),
     [project?.html, channel],
   );
 
+  /** สลับมุมมองหลัก Preview/Code และปิดแผงลอยที่ทับอยู่ */
+  function showTab(next: WorkTab) {
+    setOverlay(null);
+    setTab(next);
+  }
   function apply(next: BuildProject) {
     saveProject(next); // Don't claim a successful save or replace the preview on quota failure.
     setProject(next);
@@ -180,7 +223,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     if (!project || !prompt.trim() || running.current) return;
     if (dirty) {
       setError("บันทึกหรือยกเลิกการแก้โค้ดก่อนส่งคำสั่ง AI");
-      setTab("code");
+      showTab("code");
       return;
     }
     if (!window.puter?.auth?.isSignedIn?.()) {
@@ -255,7 +298,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         /* Project is already saved. */
       }
       setStatus("สร้างเสร็จแล้ว · บันทึกในเบราว์เซอร์นี้");
-      setTab("preview");
+      showTab("preview");
     } catch (e) {
       if (ticket === run.current) {
         setError(errorText(e));
@@ -365,7 +408,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         return;
       apply(checkpoint(project, html, "ก่อนนำเข้า HTML"));
       setError("");
-      setTab("preview");
+      showTab("preview");
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -390,9 +433,11 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     );
   return (
     <div className="builder workspace">
+      {/* ── แถบบนแบบ Bolt: กลับ · โลโก้ · ชื่อโปรเจกต์ ‖ บัญชี · Export · เมนู ⋯ ── */}
       <header className="builder-header">
         <Link
           href="/"
+          className="icon-button"
           aria-label="กลับหน้าหลัก"
           onClick={(e) => {
             if (
@@ -402,10 +447,10 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               e.preventDefault();
           }}
         >
-          <ArrowLeft size={19} />
+          <ArrowLeft size={18} />
         </Link>
         <span className="brand">
-          <Zap size={18} fill="currentColor" /> GUPAN
+          <Zap size={18} fill="currentColor" /> GUPAN<span>studio</span>
         </span>
         <span className="project-title">{project.name}</span>
         <span className="saved-status">
@@ -417,32 +462,76 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             </>
           )}
         </span>
-        <PuterAccountButton
-          onStatus={(message) => {
-            setError("");
-            setStatus(message);
-          }}
-          onError={(message) => setError(message)}
-        />
-        <button
-          className="subtle"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-        >
-          <Upload size={15} />
-          <span>นำเข้า HTML</span>
-        </button>
-        <button className="primary" onClick={download}>
-          <Download size={15} /> Export ZIP
-        </button>
-        <button
-          className="subtle"
-          disabled={busy}
-          title="ชุดไฟล์สำหรับทำงานต่อด้วย docker-agent โดยใช้บัญชี Puter"
-          onClick={() => void downloadAgentKit()}
-        >
-          <Package size={15} /> <span>Agent kit</span>
-        </button>
+        <div className="header-actions">
+          <PuterAccountButton
+            onStatus={(message) => {
+              setError("");
+              setStatus(message);
+            }}
+            onError={(message) => setError(message)}
+          />
+          <button className="primary" onClick={download}>
+            <Download size={15} /> Export ZIP
+          </button>
+          {/* เมนู ⋯ : เครื่องมือรองที่ไม่ใช่แท็บหลัก (นำเข้า · ส่งออก · แซนด์บ็อกซ์ · ประวัติ) */}
+          <div className="menu-anchor" ref={menuBox}>
+            <button
+              className="icon-button"
+              aria-label="เครื่องมือเพิ่มเติม"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <MoreHorizontal size={18} />
+            </button>
+            {menuOpen && (
+              <div className="menu-pop" role="menu" aria-label="เครื่องมือเพิ่มเติม">
+                <button
+                  role="menuitem"
+                  disabled={busy}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    fileInput.current?.click();
+                  }}
+                >
+                  <Upload size={15} /> นำเข้า HTML
+                </button>
+                <button
+                  role="menuitem"
+                  disabled={busy}
+                  title="ชุดไฟล์สำหรับทำงานต่อด้วย docker-agent โดยใช้บัญชี Puter"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void downloadAgentKit();
+                  }}
+                >
+                  <Package size={15} /> ส่งออก Agent kit
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setOverlay("sandbox");
+                  }}
+                >
+                  <Terminal size={15} /> Sandbox · REPL
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setOverlay("history");
+                  }}
+                >
+                  <History size={15} /> ประวัติโค้ด
+                  {!!project.versions.length && (
+                    <span className="menu-count">{project.versions.length}</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
         <input
           ref={fileInput}
           type="file"
@@ -587,14 +676,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           </div>
         </aside>
         <section className="work-panel">
+          {/* แท็บหลัก 2 แท็บเหมือน Bolt: Preview | Code — เครื่องมือรองอยู่ขวามือ */}
           <div className="work-tabs">
             <div role="tablist" aria-label="Workspace views">
               {(
                 [
                   { id: "preview", icon: Eye, label: "Preview" },
-                  { id: "sandbox", icon: Terminal, label: "Sandbox" },
                   { id: "code", icon: Code2, label: "Code" },
-                  { id: "history", icon: History, label: "History" },
                 ] as const
               ).map(({ id, icon: Icon, label }) => (
                 <button
@@ -609,9 +697,40 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 </button>
               ))}
             </div>
-            <span className="sandbox-label">
-              <i /> Isolated preview
-            </span>
+            <div className="tab-side">
+              <span className="sandbox-label">
+                <i /> Isolated preview
+              </span>
+              <button
+                className="icon-button"
+                aria-label="เปิด Sandbox และ REPL"
+                title="Sandbox · REPL"
+                aria-pressed={overlay === "sandbox"}
+                onClick={() =>
+                  setOverlay((current) =>
+                    current === "sandbox" ? null : "sandbox",
+                  )
+                }
+              >
+                <Terminal size={16} />
+              </button>
+              <button
+                className="icon-button"
+                aria-label="เปิดประวัติโค้ด"
+                title="ประวัติโค้ด"
+                aria-pressed={overlay === "history"}
+                onClick={() =>
+                  setOverlay((current) =>
+                    current === "history" ? null : "history",
+                  )
+                }
+              >
+                <History size={16} />
+                {!!project.versions.length && (
+                  <span className="menu-count">{project.versions.length}</span>
+                )}
+              </button>
+            </div>
           </div>
           {tab === "preview" && (
             <div className="preview-panel">
@@ -626,25 +745,39 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   <RotateCcw size={15} />
                 </button>
                 <div className="preview-address">preview / index.html</div>
-                <button
-                  aria-label="Desktop preview"
-                  aria-pressed={!mobile}
-                  className={!mobile ? "selected" : ""}
-                  onClick={() => setMobile(false)}
+                <div
+                  className="device-group"
+                  role="group"
+                  aria-label="ขนาดพรีวิว"
                 >
-                  <Monitor size={16} />
-                </button>
-                <button
-                  aria-label="Mobile preview"
-                  aria-pressed={mobile}
-                  className={mobile ? "selected" : ""}
-                  onClick={() => setMobile(true)}
-                >
-                  <Smartphone size={16} />
-                </button>
+                  {(
+                    [
+                      { id: "desktop", icon: Monitor, label: "Desktop preview" },
+                      { id: "tablet", icon: Tablet, label: "Tablet preview" },
+                      { id: "mobile", icon: Smartphone, label: "Mobile preview" },
+                    ] as const
+                  ).map(({ id, icon: Icon, label }) => (
+                    <button
+                      key={id}
+                      aria-label={label}
+                      title={label}
+                      aria-pressed={device === id}
+                      className={device === id ? "selected" : ""}
+                      onClick={() => setDevice(id)}
+                    >
+                      <Icon size={16} />
+                    </button>
+                  ))}
+                </div>
               </div>
               <div
-                className={`preview-stage ${mobile ? "mobile-preview" : ""}`}
+                className={`preview-stage ${
+                  device === "mobile"
+                    ? "mobile-preview"
+                    : device === "tablet"
+                      ? "tablet-preview"
+                      : ""
+                }`}
               >
                 <iframe
                   key={previewKey}
@@ -657,7 +790,6 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               </div>
             </div>
           )}
-          {tab === "sandbox" && <SandboxPanel html={project.html} />}
           {tab === "code" && (
             <div className="code-panel">
               <div className="code-toolbar">
@@ -705,53 +837,86 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               </div>
             </div>
           )}
-          {tab === "history" && (
-            <div className="history-panel">
-              <h2>ประวัติโค้ด</h2>
-              <p>เก็บโค้ดก่อนแก้ไข 8 ครั้งล่าสุดในเบราว์เซอร์นี้</p>
-              {!project.versions.length && (
-                <div className="empty-projects">
-                  <History size={26} />
-                  <p>เมื่อบันทึกหรือให้ AI แก้โค้ด ประวัติจะปรากฏที่นี่</p>
-                </div>
-              )}
-              {project.versions.map((version) => (
-                <article key={version.id}>
-                  <div>
-                    <h3>{version.label}</h3>
-                    <small>
-                      {new Date(version.createdAt).toLocaleString("th-TH")}
-                    </small>
+          {/* ── แผงลอยทับพื้นที่ขวา: Sandbox กับ History ยังอยู่ครบ แต่ไม่แย่งแท็บหลัก ── */}
+          {overlay && (
+            <div
+              className="overlay-panel"
+              role="dialog"
+              aria-label={overlay === "sandbox" ? "Sandbox และ REPL" : "ประวัติโค้ด"}
+            >
+              <div className="overlay-head">
+                <span>
+                  {overlay === "sandbox" ? (
+                    <>
+                      <Terminal size={15} /> Sandbox · รันและทดลองโค้ด
+                    </>
+                  ) : (
+                    <>
+                      <History size={15} /> ประวัติโค้ด{" "}
+                      <small>{project.versions.length}/8</small>
+                    </>
+                  )}
+                </span>
+                <button
+                  className="icon-button"
+                  aria-label="ปิดแผง"
+                  onClick={() => setOverlay(null)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="overlay-body">
+                {overlay === "sandbox" ? (
+                  <SandboxPanel html={project.html} />
+                ) : (
+                  <div className="history-panel">
+                    <p>เก็บโค้ดก่อนแก้ไข 8 ครั้งล่าสุดในเบราว์เซอร์นี้</p>
+                    {!project.versions.length && (
+                      <div className="empty-projects">
+                        <History size={26} />
+                        <p>เมื่อบันทึกหรือให้ AI แก้โค้ด ประวัติจะปรากฏที่นี่</p>
+                      </div>
+                    )}
+                    {project.versions.map((version) => (
+                      <article key={version.id}>
+                        <div>
+                          <h3>{version.label}</h3>
+                          <small>
+                            {new Date(version.createdAt).toLocaleString("th-TH")}
+                          </small>
+                        </div>
+                        <button
+                          className="subtle"
+                          disabled={busy}
+                          onClick={() => {
+                            if (
+                              !confirm(
+                                "กู้คืนเวอร์ชันนี้? การแก้ไขที่ยังไม่บันทึกจะหายไป",
+                              )
+                            )
+                              return;
+                            try {
+                              apply(
+                                checkpoint(
+                                  project,
+                                  version.html,
+                                  "ก่อนกู้คืนเวอร์ชัน",
+                                ),
+                              );
+                              showTab("preview");
+                              setError("");
+                            } catch (e) {
+                              setError(errorText(e));
+                            }
+                          }}
+                        >
+                          <RotateCcw size={14} /> กู้คืน
+                        </button>
+                      </article>
+                    ))}
                   </div>
-                  <button
-                    className="subtle"
-                    disabled={busy}
-                    onClick={() => {
-                      if (
-                        !confirm(
-                          "กู้คืนเวอร์ชันนี้? การแก้ไขที่ยังไม่บันทึกจะหายไป",
-                        )
-                      )
-                        return;
-                      try {
-                        apply(
-                          checkpoint(
-                            project,
-                            version.html,
-                            "ก่อนกู้คืนเวอร์ชัน",
-                          ),
-                        );
-                        setTab("preview");
-                        setError("");
-                      } catch (e) {
-                        setError(errorText(e));
-                      }
-                    }}
-                  >
-                    <RotateCcw size={14} /> กู้คืน
-                  </button>
-                </article>
-              ))}
+                )}
+              </div>
             </div>
           )}
           <div className="console-section">
