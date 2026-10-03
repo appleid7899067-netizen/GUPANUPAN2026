@@ -4986,7 +4986,7 @@ async function generateVersionLabel(context) {
                 { role: 'system', content: VERSION_LABEL_SYSTEM_PROMPT },
                 { role: 'user', content: `${parts.join('\n\n')}\n\nLabel this change.` },
             ],
-            { model: SUGGESTION_MODEL }
+            bossAIOptions()
         );
         // sanitizeProjectName strips wrapping quotes/markdown, collapses
         // whitespace, and caps the length — exactly the cleanup a label needs.
