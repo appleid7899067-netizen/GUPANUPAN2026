@@ -77,6 +77,20 @@ PLAYWRIGHT_MODULE=/path/to/playwright node tests/browser-smoke.cjs
 
 ---
 
+### ใช้บัญชี Puter เป็นโมเดลให้ docker-agent (ออปชันเสริม)
+
+อยากได้ agent ฝั่งเทอร์มินัลที่ใช้โมเดลของ Puter (ไม่ต้องมี API key ของ OpenAI/Anthropic) ดูที่
+[`integrations/docker-agent-puter/`](integrations/docker-agent-puter/README.md) — มีสคริปต์ล็อกอิน Puter
+ผ่านเบราว์เซอร์แล้วป้อน token ให้ [`docker-agent`](https://github.com/docker/docker-agent) อัตโนมัติ
+
+```bash
+cd integrations/docker-agent-puter && npm install && npm run login && ./run-agent.sh "สวัสดี"
+```
+
+ไม่กระทบการทำงานของบิลเดอร์ในโปรเจกต์นี้ — เป็นโฟลเดอร์แยก มี `package.json` ของตัวเอง
+
+---
+
 ## เอกสารต้นทาง: Totalum workspace
 
 ส่วนด้านล่างเป็นคู่มือ backend **Totalum** เดิม ไม่ใช่รายการฟีเจอร์ของ Puter workspace ข้างบน
