@@ -236,7 +236,50 @@ docker-agent run --env-from-file .env.puter --model root=puter/claude-sonnet-5 a
 | การโหลด `@heyputer/puter.js` (`init`, `getAuthToken`) และการจัดการ error รูปแบบ XHR ของ SDK | ✅ ทดสอบในเครื่อง |
 | ยิงคำขอจริงไปที่ `api.puter.com` | ❌ ยังไม่ได้ — สภาพแวดล้อมที่เขียนโค้ดนี้บล็อกโดเมนนั้น ให้คุณยืนยันด้วย `npm run verify:ping` |
 
-## 11) อ้างอิง
+## 11) เอาไปทับรีโพ docker-agent ของคุณเอง (แพตช์พร้อมใช้)
+
+ในโฟลเดอร์นี้มีไฟล์ `upstream-docker-agent-puter.patch` — เป็นแพตช์เดียวที่รวมทุกอย่างของส่วนขยายนี้
+(`examples/puter.yaml`, `puter/`, หน้า docs ของ provider Puter) ตรวจแล้วว่า **apply กับ docker-agent
+ต้นทางสะอาด** (`git apply --check` ผ่านบน commit `5517a59`)
+
+```bash
+git clone https://github.com/docker/docker-agent.git my-docker-agent
+cd my-docker-agent
+git checkout -b puter-provider
+
+PATCH=/path/to/GUPANUPAN2026/integrations/docker-agent-puter/upstream-docker-agent-puter.patch
+git apply --stat  "$PATCH"   # ดูรายการไฟล์ก่อน
+git apply --check "$PATCH"   # ตรวจว่าเข้าได้กับเวอร์ชันนี้
+git apply         "$PATCH"   # ลงจริง
+
+git add -A && git commit -m "feat: Puter provider — sign in with a Puter account, no vendor API keys"
+```
+
+จากนั้นสร้าง fork ของคุณเองบน GitHub (ปุ่ม Fork ในหน้าเว็บ) แล้ว push:
+
+```bash
+git remote add mine https://github.com/<ชื่อบัญชีคุณ>/docker-agent.git
+git push -u mine puter-provider:main
+```
+
+> **หมายเหตุ:** ในสภาพแวดล้อมที่เขียนโค้ดนี้ คำสั่ง `gh repo fork` ถูกปฏิเสธ
+> (`403 Resource not accessible by integration`) เพราะ token ไม่มีสิทธิ์สร้าง repo
+> จึงเตรียมเป็นไฟล์แพตช์ให้แทน — พอพี่กด Fork บนเว็บเองแล้ว push ตามด้านบนได้เลย
+
+### ใช้ token จากบิลเดอร์ GUPANUPAN2026 (ไม่ต้องล็อกอินซ้ำ)
+
+ถ้าพี่ล็อกอิน Puter ในหน้า `/build/<projectId>` ของบิลเดอร์แล้ว จะมีปุ่มบัญชี (มุมขวาบน)
+→ **“คัดลอก token สำหรับเทอร์มินัล”** แล้วนำมาวาง:
+
+```bash
+node puter/puter-login.mjs --set-token <วาง token ที่คัดลอกมา>
+./puter/run-agent.sh "ช่วยปรับ index.html ให้…"
+```
+
+หรือจะแนบ ZIP จากปุ่ม **Agent kit** ในบิลเดอร์ (มี `agent.yaml` + `README.md` + `index.html` + สคริปต์
+`puter/` ให้แล้ว) แล้วรัน `--set-token` ในโฟลเดอร์ที่แตกออกมาได้ทันที
+
+## 12) อ้างอิง
 
 - Puter — OpenAI-compatible endpoint: <https://developer.puter.com/tutorials/use-openai-sdk-with-puter/>
 - Puter — Node.js + การล็อกอินด้วย `getAuthToken()`: <https://developer.puter.com/tutorials/puter-js-node-js/>

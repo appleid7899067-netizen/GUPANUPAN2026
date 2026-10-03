@@ -42,6 +42,7 @@ import {
   DEFAULT_AGENT_MODEL,
 } from "@/lib/agent-export";
 import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
+import PuterAccountButton from "./PuterAccountButton";
 import SandboxPanel from "./SandboxPanel";
 import "./builder.css";
 
@@ -416,6 +417,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             </>
           )}
         </span>
+        <PuterAccountButton
+          onStatus={(message) => {
+            setError("");
+            setStatus(message);
+          }}
+          onError={(message) => setError(message)}
+        />
         <button
           className="subtle"
           disabled={busy}

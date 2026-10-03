@@ -162,6 +162,67 @@ export function getPuterUser() {
   try { return window.puter?.auth?.user || null; } catch { return null; }
 }
 
+/* ------------------------------------------------------------------ */
+/* สะพาน token: ล็อกอินในเบราว์เซอร์ → ใช้ต่อในเทอร์มินัล (docker-agent) */
+/* ------------------------------------------------------------------ */
+
+/**
+ * อ่าน token ที่ Puter SDK เก็บไว้ — อ่านเท่านั้น ไม่บันทึกที่อื่น ไม่ส่งไปไหน
+ *
+ * แยกเป็นฟังก์ชันบริสุทธิ์เพื่อทดสอบได้โดยไม่ต้องมีเบราว์เซอร์:
+ * @param sources.authToken ค่าของ window.puter.authToken ถ้ามี
+ * @param sources.storage   localStorage ที่ SDK อาจเก็บ "puter.auth.token"
+ */
+export function readPuterToken(sources: {
+  authToken?: unknown;
+  storage?: { getItem: (key: string) => string | null } | null;
+}): string | null {
+  const direct = sources.authToken;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  try {
+    const stored = sources.storage?.getItem("puter.auth.token");
+    if (typeof stored === "string" && stored.trim()) return stored.trim();
+  } catch {
+    /* โหมดส่วนตัว/ปิด storage — ไม่กระทบการใช้งานบิลเดอร์ */
+  }
+  return null;
+}
+
+/** token ปัจจุบันในเบราว์เซอร์นี้ (null = ยังไม่ล็อกอิน) */
+export function getPuterAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  let storage: { getItem: (key: string) => string | null } | null = null;
+  try {
+    storage = window.localStorage;
+  } catch {
+    storage = null;
+  }
+  return readPuterToken({ authToken: (window as any).puter?.authToken, storage });
+}
+
+/** ออกจากระบบ Puter ในเบราว์เซอร์นี้ */
+export async function puterSignOut(): Promise<boolean> {
+  if (!isPuterAvailable()) return false;
+  try {
+    await window.puter.auth.signOut();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** มาสก์ token ก่อนแสดงบนจอ (เห็นพอจำได้ ไม่ให้ทั้งก้อน) */
+export function maskToken(token: string): string {
+  const clean = token.trim();
+  if (clean.length <= 12) return "***";
+  return `${clean.slice(0, 6)}…${clean.slice(-4)}`;
+}
+
+/** คำสั่งที่ผู้ใช้ต้องรันในเทอร์มินัล หลังคัดลอก token ไปแล้ว */
+export function terminalTokenCommand(): string {
+  return "node puter/puter-login.mjs --set-token PUTER_AUTH_TOKEN_ที่คัดลอกมา";
+}
+
 export function getPuterModeFlag(): boolean {
   if (typeof window === "undefined") return false;
   // explicit localStorage override

@@ -1,0 +1,1635 @@
+diff --git a/docs/providers/overview/index.md b/docs/providers/overview/index.md
+index 7771c60..2a523c4 100644
+--- a/docs/providers/overview/index.md
++++ b/docs/providers/overview/index.md
+@@ -19,6 +19,7 @@ _Docker Agent supports multiple AI model providers. Choose the right one for you
+ - [**AWS Bedrock**](../bedrock/index.md) — access Claude, Nova, Llama, and more through AWS infrastructure.
+ - [**Docker Model Runner**](../dmr/index.md) — run models locally with Docker. No API keys, no costs.
+ - [**Local Models**](../local/index.md) — run Ollama, vLLM, or LocalAI locally. No API key required.
++- [**Puter**](../puter/index.md) — sign in with a Puter account, then use GPT, Claude, Gemini, Grok and more through Puter's OpenAI-compatible endpoint. No vendor API keys.
+ - [**Provider Definitions**](../custom/index.md) — define reusable provider configurations with shared defaults for any provider type.
+ 
+ ## Quick Comparison
+@@ -44,6 +45,7 @@ Use this table to find a built-in provider's config key and authentication metho
+ | [AWS Bedrock](../bedrock/index.md) | `amazon-bedrock` | `AWS_BEARER_TOKEN_BEDROCK` or the standard AWS credentials chain |
+ | [Docker Model Runner](../dmr/index.md) | `dmr` | None (local) |
+ | ChatGPT (OpenAI account) | [`chatgpt`](../chatgpt/index.md) | None (sign in via `docker agent setup`) |
++| [Puter](../puter/index.md) | `puter` (via `providers:`) | `PUTER_AUTH_TOKEN` (sign in with `puter/puter-login.mjs`, or copy a token from puter.com/dashboard) |
+ | OpenCode Zen   | `opencode-zen`   | `OPENCODE_API_KEY`                  |
+ | OpenCode Go    | `opencode-go`    | `OPENCODE_API_KEY`                  |
+ | Mistral        | `mistral`        | `MISTRAL_API_KEY`                   |
+diff --git a/docs/providers/puter/index.md b/docs/providers/puter/index.md
+new file mode 100644
+index 0000000..488e1da
+--- /dev/null
++++ b/docs/providers/puter/index.md
+@@ -0,0 +1,87 @@
++---
++title: "Puter"
++description: "Use Puter models with Docker Agent by signing in with a Puter account instead of buying provider API keys."
++keywords: docker agent, ai agents, model providers, llm, puter, openai-compatible, sign in
++linkTitle: "Puter"
++weight: 285
++---
++
++_Use Puter models with Docker Agent by signing in with a Puter account instead of buying provider API keys._
++
++## Overview
++
++[Puter](https://puter.com) exposes an **OpenAI-compatible endpoint** that serves models from many vendors
++(GPT, Claude, Gemini, Grok, DeepSeek, Qwen, GLM, Kimi, …) authenticated with a **Puter account token**
++instead of per-vendor API keys.
++
++Docker Agent connects to it as a normal OpenAI-compatible provider, so you only need:
++
++1. A Puter account (free tier available; usage is billed to your own Puter account — the
++   ["user-pays" model](https://docs.puter.com/user-pays-model/)).
++2. A Puter auth token — either from <https://puter.com/dashboard> or by signing in with the helper in
++   [`puter/`](https://github.com/docker/docker-agent/tree/main/puter).
++
++## Configuration
++
++```yaml
++providers:
++  puter:
++    provider: openai
++    api_type: openai_chatcompletions # required, see note below
++    base_url: https://api.puter.com/puterai/openai/v1/
++    token_key: PUTER_AUTH_TOKEN
++
++models:
++  puter_fast:
++    provider: puter
++    model: gpt-5.4-nano
++    max_tokens: 8192
++
++agents:
++  root:
++    model: puter_fast
++    instruction: You are a helpful assistant.
++```
++
++```sh
++export PUTER_AUTH_TOKEN=...        # or use --env-from-file
++docker agent run examples/puter.yaml
++```
++
++> [!IMPORTANT]
++> **Always set `api_type: openai_chatcompletions`**
++>
++> Puter only serves the legacy Chat Completions API. Without an explicit `api_type`, Docker Agent picks
++> the API from the model name (e.g. `gpt-5.x`, o-series and Codex default to `openai_responses`),
++> which Puter rejects.
++
++## Signing in with the helper
++
++The [`puter/`](https://github.com/docker/docker-agent/tree/main/puter) directory in this repository contains
++a small Node helper that performs a browser sign-in, stores the token in `puter/.env.puter` (mode `600`) and
++can verify the account:
++
++```sh
++npm install --prefix puter
++node puter/puter-login.mjs          # browser sign-in → puter/.env.puter
++node puter/puter-login.mjs --verify # check the token and show the account
++./puter/run-agent.sh "hello"        # run Docker Agent with the stored token
++```
++
++On machines without a browser (SSH, containers) copy the printed login URL to your own browser, or create a
++token on the Puter dashboard and store it with `node puter/puter-login.mjs --set-token <token>`.
++
++## Notes
++
++- **Tool calling** requires a model that supports function calling — use the GPT/Claude/Gemini families for
++  agentic work.
++- **Quota** is yours: `docker agent` calls are billed to the Puter account behind the token. Check usage with
++  `node puter/puter-login.mjs --verify` or on the Puter dashboard.
++- **Model names** are Puter's: `gpt-5.4-nano`, `claude-sonnet-5`, `gemini-3.1-flash-lite`, `grok-4-1-fast`,
++  `openai/gpt-oss-120b`, `deepseek/deepseek-v4-flash`, …
++
++## Reference
++
++- Puter — OpenAI-compatible endpoint: <https://developer.puter.com/tutorials/use-openai-sdk-with-puter/>
++- Puter — Node.js sign-in: <https://developer.puter.com/tutorials/puter-js-node-js/>
++- Example config: [`examples/puter.yaml`](https://github.com/docker/docker-agent/blob/main/examples/puter.yaml)
+diff --git a/examples/puter.yaml b/examples/puter.yaml
+new file mode 100644
+index 0000000..9aa1996
+--- /dev/null
++++ b/examples/puter.yaml
+@@ -0,0 +1,120 @@
++# ---------------------------------------------------------------------------
++# docker-agent + Puter
++#
++# ใช้บัญชี Puter เป็น "เจ้าของโมเดล" แทนการซื้อ API key ของ OpenAI/Anthropic/Google
++# โดยล็อกอิน Puter แล้วส่ง auth token เป็น Bearer ไปที่ endpoint ที่เข้ากันได้กับ
++# OpenAI ของ Puter:  https://api.puter.com/puterai/openai/v1/
++#
++# วิธีใช้:
++#   # 1) ล็อกอิน Puter ครั้งเดียว (สร้างไฟล์ puter/.env.puter ให้)
++#   node puter/puter-login.mjs
++#   # 2) รันด้วยสคริปต์ช่วย (แนบ token ให้อัตโนมัติ)
++#   ./puter/run-agent.sh "ช่วยสรุปโครงสร้างโปรเจกต์นี้ให้หน่อย"
++#   # หรือรันตรงด้วย docker agent
++#   docker agent run --env-from-file puter/.env.puter examples/puter.yaml
++#
++# ดูรายละเอียดทั้งหมดที่ puter/README.md
++# ---------------------------------------------------------------------------
++
++providers:
++  # provider พิเศษของเรา: เป็น OpenAI-compatible endpoint ของ Puter
++  puter:
++    provider: openai
++    # ⚠️ ต้องระบุเป็น openai_chatcompletions เสมอ
++    # ถ้าไม่ระบุ docker-agent จะเดาจากชื่อโมเดล เช่น gpt-5.x → openai_responses
++    # ซึ่ง Puter ไม่รองรับ → ได้ error 404/400
++    api_type: openai_chatcompletions
++    base_url: https://api.puter.com/puterai/openai/v1/
++    # ชื่อ "ตัวแปรสภาพแวดล้อม" ที่เก็บ token (ไม่ใช่ตัว token เอง)
++    # สคริปต์ run-agent.sh / `npm run login` จะสร้างไฟล์ .env.puter ให้
++    token_key: PUTER_AUTH_TOKEN
++
++models:
++  # โมเดลเร็ว/ถูก — เหมาะกับงานทั่วไปและ title/compaction
++  puter-fast:
++    provider: puter
++    model: gpt-5.4-nano
++    temperature: 0.3
++    max_tokens: 8192
++    provider_opts:
++      context_size: 128000
++
++  # โมเดลฉลาด — สั่งงานซับซ้อน/วิเคราะห์
++  puter-smart:
++    provider: puter
++    model: claude-sonnet-5
++    max_tokens: 16384
++    provider_opts:
++      context_size: 200000
++
++  # โมเดลบริบทใหญ่ + เร็ว — อ่านไฟล์ยาว
++  puter-gemini:
++    provider: puter
++    model: gemini-3.1-flash-lite
++    max_tokens: 8192
++    provider_opts:
++      context_size: 1000000
++
++  # โมเดลเขียนโค้ด
++  puter-code:
++    provider: puter
++    model: openai/gpt-5.3-codex
++    max_tokens: 16384
++    provider_opts:
++      context_size: 200000
++
++  # โมเดล open weights (ไม่ต้องใช้เครดิตพรีเมียม)
++  puter-oss:
++    provider: puter
++    model: openai/gpt-oss-120b
++    max_tokens: 8192
++    provider_opts:
++      context_size: 131072
++
++agents:
++  root:
++    model: puter-fast
++    description: ผู้ช่วยหลักที่ใช้โมเดลของ Puter ผ่านการล็อกอินบัญชี Puter
++    instruction: |
++      คุณคือผู้ช่วย AI ที่ตอบเป็นภาษาไทยเป็นหลัก (ยกเว้นผู้ใช้ขอเป็นภาษาอื่น)
++
++      หน้าที่ของคุณ:
++      - ตอบคำถามและช่วยงานทั่วไปอย่างกระชับ ตรงประเด็น
++      - ถ้างานต้องอ่าน/แก้ไฟล์ หรือรันคำสั่งในเครื่อง ให้ส่งงานต่อ (transfer_task)
++        ไปยัง sub-agent ชื่อ coder พร้อมอธิบายงานให้ชัดเจน
++      - ถ้างานต้องค้นข้อมูลจากเว็บ ให้ส่งงานต่อไปยัง sub-agent ชื่อ researcher
++      - ใช้เครื่องมือ think เพื่อวางแผนก่อนงานยาว และใช้ todo เพื่อติดตามงานหลายขั้นตอน
++      - ห้ามกุข้อมูล: ถ้าไม่รู้หรือไม่มีเครื่องมือ ให้บอกผู้ใช้ตามตรงว่าข้อมูลไม่พอ
++    toolsets:
++      - type: think
++      - type: todo
++    sub_agents: [coder, researcher]
++
++  coder:
++    model: puter-code
++    description: ผู้ช่วยเขียนโค้ด อ่าน/แก้ไฟล์ในเครื่อง และรันคำสั่ง shell
++    instruction: |
++      คุณคือวิศวกรซอฟต์แวร์ที่ทำงานกับไฟล์จริงในเครื่องของผู้ใช้
++
++      กฎ:
++      - อ่านไฟล์ก่อนแก้เสมอ และอธิบายสั้น ๆ ว่าจะแก้อะไร
++      - แก้แบบ diff เล็ก ๆ ทีละจุด อย่าเขียนทับทั้งไฟล์ถ้าไม่จำเป็น
++      - รันคำสั่งตรวจสอบ (เช่น npm test, tsc) หลังแก้ ถ้าผู้ใช้อนุญาต
++      - สรุปเป็นภาษาไทยว่าทำอะไรไปแล้ว และเหลืออะไร
++    toolsets:
++      - type: filesystem
++      - type: shell
++      - type: think
++
++  researcher:
++    model: puter-gemini
++    description: ผู้ช่วยค้นและสรุปข้อมูลจากเว็บ
++    instruction: |
++      คุณคือนักวิจัยที่ค้นข้อมูลจากเว็บแล้วสรุปเป็นภาษาไทย
++
++      กฎ:
++      - อ้างอิง URL ที่มาเสมอ
++      - แยกให้ชัดว่าอันไหนคือข้อเท็จจริงจากแหล่งข้อมูล อันไหนคือความเห็นของคุณ
++    toolsets:
++      - type: fetch
++      - type: think
+diff --git a/puter/.gitignore b/puter/.gitignore
+new file mode 100644
+index 0000000..7749b9f
+--- /dev/null
++++ b/puter/.gitignore
+@@ -0,0 +1,6 @@
++# token ส่วนตัว — ห้าม commit
++node_modules/
++.env.puter
++.env.puter.*
++!.env.puter.example
++*.log
+diff --git a/puter/README.md b/puter/README.md
+new file mode 100644
+index 0000000..5b1c0e4
+--- /dev/null
++++ b/puter/README.md
+@@ -0,0 +1,252 @@
++# Puter × docker-agent — ใช้บัญชี Puter เป็นโมเดล (ไม่ต้องมี API key)
++
++โฟลเดอร์นี้อยู่ใน **fork ของ `docker/docker-agent`** และเพิ่มความสามารถให้ docker-agent
++เรียกโมเดลผ่าน **บัญชี Puter** แทนการซื้อ API key ของ OpenAI / Anthropic / Google / xAI
++โดยอาศัยข้อเท็จจริงว่า Puter เปิด **endpoint ที่เข้ากันได้กับ OpenAI** ไว้ที่:
++
++```
++https://api.puter.com/puterai/openai/v1/
++Authorization: Bearer <PUTER_AUTH_TOKEN>
++```
++
++docker-agent รับ token ผ่านตัวแปรสภาพแวดล้อม (`token_key`) อยู่แล้ว จึงต่อกันได้ตรง ๆ —
++สคริปต์ในโฟลเดอร์นี้ช่วย **ล็อกอิน Puter** แล้วเก็บ token ให้เอง
++
++```
++   ┌──────────────┐   ล็อกอิน (popup)   ┌───────────────┐
++   │  เบราว์เซอร์  │ ─────────────────▶ │  puter.com    │
++   └──────┬───────┘                    └───────┬───────┘
++          │ token (localhost callback)         │
++          ▼                                    │
++   ┌──────────────────┐                        │
++   │ puter/.env.puter │  PUTER_AUTH_TOKEN=…    │
++   └──────┬───────────┘                        │
++          │ --env-from-file                    │
++          ▼                                    ▼
++   ┌──────────────────┐  Bearer token  ┌─────────────────────────────────┐
++   │  docker-agent    │ ─────────────▶ │ api.puter.com/puterai/openai/v1 │
++   │  (TUI / CLI)     │ ◀───────────── │ GPT · Claude · Gemini · Grok ·  │
++   └──────────────────┘   streaming    │ DeepSeek · Qwen · GLM · Kimi …  │
++                                      └─────────────────────────────────┘
++```
++
++## 1) ไฟล์ที่เพิ่มเข้ามาในรีโพนี้
++
++| ไฟล์ | หน้าที่ |
++| --- | --- |
++| `examples/puter.yaml` | ตัวอย่าง config: `providers: puter` + 5 โมเดล + ทีม agent (root / coder / researcher) |
++| `puter/puter-login.mjs` | ล็อกอิน Puter ผ่านเบราว์เซอร์ → `puter/.env.puter` (`--print`, `--verify`, `--ping`, `--set-token`) |
++| `puter/run-agent.sh` | รัน `docker agent run --env-from-file puter/.env.puter examples/puter.yaml` ให้อัตโนมัติ |
++| `puter/tests/login-flow.test.mjs` | ทดสอบ (จำลอง Puter + docker-agent) — `npm test --prefix puter` |
++| `docs/providers/puter/index.md` | หน้าเอกสาร provider Puter สำหรับเว็บ docs |
++
++## 2) สิ่งที่ต้องมี
++
++| สิ่งที่ต้องมี | เวอร์ชัน / หมายเหตุ |
++| --- | --- |
++| docker-agent | มาจาก Docker Desktop 4.63+ (`docker agent`), Homebrew (`brew install docker-agent`), หรือ binary จาก [Releases](https://github.com/docker/docker-agent/releases) |
++| Node.js | 20 ขึ้นไป (ใช้เฉพาะขั้นตอนล็อกอิน/ดึง token) |
++| บัญชี Puter | สมัครฟรีที่ <https://puter.com> |
++
++> ถ้าไม่มี Docker Desktop / docker-agent บนเครื่องนั้น ยังใช้ `puter-login.mjs` ดึง token ไปตั้งให้เครื่องอื่นได้
++
++## 3) เริ่มใช้ใน 3 คำสั่ง
++
++```bash
++npm install --prefix puter               # ติดตั้ง @heyputer/puter.js (ใช้ล็อกอิน + ตรวจ token)
++npm run login --prefix puter             # เปิดเบราว์เซอร์ → ล็อกอิน Puter → เขียน puter/.env.puter
++./puter/run-agent.sh "สวัสดี แนะนำตัวหน่อย"
++```
++
++`run-agent.sh` จะตรวจว่ามี token หรือยัง ถ้าไม่มีจะเรียกขั้นตอนล็อกอินให้อัตโนมัติ
++แล้วจึงรัน:
++
++```bash
++docker agent run --env-from-file puter/.env.puter examples/puter.yaml
++```
++
++## 4) สองวิธีได้ token
++
++### วิธี A — ล็อกอินผ่านเบราว์เซอร์ (ค่าเริ่มต้น, แนะนำ)
++
++```bash
++npm run login --prefix puter        # ล็อกอิน; ถ้ามี token เดิมที่ยังใช้ได้ จะใช้ต่อ ไม่ล็อกอินซ้ำ
++npm run login:force --prefix puter  # ล็อกอินบัญชีใหม่ทับของเดิม
++npm run verify --prefix puter       # ตรวจ token ปัจจุบัน + แสดงบัญชี/โควตา
++npm run verify:ping --prefix puter  # ตรวจ + ยิงแชตทดสอบจริง 1 ครั้งที่ endpoint
++```
++
++- เบราว์เซอร์จะเปิดไปที่ `puter.com` ให้ล็อกอิน/กดอนุญาต แล้วส่ง token กลับมาที่ `http://localhost:<สุ่มพอร์ต>`
++- สคริปต์ **พิมพ์ URL ล็อกอินออกจอเสมอ** — ถ้าอยู่บนเครื่องรีโมต/ไม่มีจอ (SSH, container, WSL ที่เปิดเบราว์เซอร์ไม่ได้)
++  ให้ก๊อป URL นั้นไปเปิดในเบราว์เซอร์ของเครื่องตัวเอง แล้วรอจนขึ้นหน้า “ล็อกอินสำเร็จ”
++- callback รับ token ผ่าน `http://127.0.0.1` เท่านั้น (ไม่เปิดรับจากเครือข่าย)
++- token ถูกเขียนลง `.env.puter` สิทธิ์ `600` และสคริปต์จะไม่พิมพ์ token เต็ม (ปิดบังไว้ ยกเว้นใช้ `--print`)
++- ถ้าอยากใช้วิธีล็อกอินของ SDK เอง (เหมือน tutorial ของ Puter) ใช้ `npm run login --prefix puter -- --sdk-login`
++
++**ทดสอบสคริปต์เองโดยไม่ต้องมีบัญชีจริง** — มีชุดทดสอบย่อยที่จำลองหน้าเว็บ Puter ไว้:
++
++```bash
++npm test --prefix puter   # 4 เทสต์: ล็อกอินผ่าน callback, --help, --verify, การส่ง argument ให้ docker-agent
++```
++
++### วิธี B — สร้าง token เองจาก dashboard (ใช้ได้บนเซิร์ฟเวอร์/CI)
++
++1. เข้า <https://puter.com/dashboard> → กด **Create token** / **Copy** auth token
++2. บันทึกด้วยสคริปต์ หรือวางมือก็ได้
++
++```bash
++npm run set-token --prefix puter -- PASTE_TOKEN_HERE
++# หรือ
++printf 'PUTER_AUTH_TOKEN=%s\n' 'PASTE_TOKEN_HERE' > puter/.env.puter && chmod 600 puter/.env.puter
++```
++
++### ใช้ token ร่วมกับทุกโปรเจกต์ (ไม่ต้องมี `.env.puter` ทุกโฟลเดอร์)
++
++docker-agent โหลดไฟล์ env ส่วนกลางที่ `~/.config/cagent/.env` ให้เองโดยอัตโนมัติ
++(เป็นไฟล์เดียวกับที่ `docker agent setup` ใช้) — วางบรรทัดนี้ไว้ในนั้นครั้งเดียว แล้วรันได้ทุกที่:
++
++```bash
++mkdir -p ~/.config/cagent && chmod 700 ~/.config/cagent
++printf 'PUTER_AUTH_TOKEN=%s\n' "$(sed -n 's/^PUTER_AUTH_TOKEN=//p' puter/.env.puter)" >> ~/.config/cagent/.env
++chmod 600 ~/.config/cagent/.env
++```
++
++> **หมายเหตุ:** ลำดับความสำคัญของ docker-agent คือ OS env → run secrets → `~/.config/cagent/.env` → credential helper → Docker Desktop
++> ค่าที่ตั้งใน environment ของ shell จะชนะไฟล์เสมอ
++
++## 5) ส่วนสำคัญของ `examples/puter.yaml` และเหตุผล
++
++```yaml
++providers:
++  puter:
++    provider: openai                     # ใช้ไคลเอนต์ตระกูล OpenAI
++    api_type: openai_chatcompletions     # ⚠️ ต้องระบุ (ดูข้อ 3 ด้านล่าง)
++    base_url: https://api.puter.com/puterai/openai/v1/
++    token_key: PUTER_AUTH_TOKEN          # ชื่อตัวแปร ไม่ใช่ตัว token
++
++models:
++  puter-fast:
++    provider: puter
++    model: gpt-5.4-nano
++    max_tokens: 8192
++    provider_opts:
++      context_size: 128000
++```
++
++จากนั้น agent ไหนจะใช้โมเดลไหนก็แค่อ้างชื่อ:
++
++```yaml
++agents:
++  root:
++    model: puter-fast
++    sub_agents: [coder, researcher]
++  coder:
++    model: puter-code
++```
++
++และใช้รูปแบบย่อ ` provider/model ` ได้ด้วย:
++
++```bash
++docker agent run --env-from-file puter/.env.puter --model root=puter/claude-sonnet-5 examples/puter.yaml
++```
++
++### 3 จุดที่พลาดบ่อย
++
++1. **ต้องมี `api_type: openai_chatcompletions`** — ถ้าไม่ระบุ docker-agent จะเดาชนิด API จากชื่อโมเดล
++   (เช่น `gpt-5.x`, `gpt-4.1`, o-series → `openai_responses`) ซึ่ง Puter ไม่รองรับ → ได้ 400/404
++   ในทางกลับกัน docker-agent จะไม่ส่งคำขอผ่าน models gateway เมื่อตั้ง `base_url` เองอยู่แล้ว
++2. **`token_key` เป็นชื่อตัวแปรสภาพแวดล้อม** (เช่น `PUTER_AUTH_TOKEN`) ไม่ใช่ตัว token — ตัว token เก็บใน `puter/.env.puter`
++3. **ต้องส่งไฟล์ token เข้าไปด้วย** `--env-from-file puter/.env.puter` ทุกครั้งถ้ารันมือ (สคริปต์ `run-agent.sh` ทำให้แล้ว)
++
++## 6) เลือกโมเดล
++
++โมเดลใน Puter มีชื่อตามเจ้าของ เช่น `claude-sonnet-5`, `gemini-3.1-flash-lite`, `grok-4-1-fast`,
++หรือแบบมี prefix ได้แก่ `openai/...`, `deepseek/...`, `qwen/...`, `z-ai/...`, `moonshotai/...`
++
++| ใน `examples/puter.yaml` | โมเดล Puter | เหมาะกับ |
++| --- | --- | --- |
++| `puter-fast` | `gpt-5.4-nano` | งานทั่วไป เร็ว ค่าใช้จ่ายต่ำ |
++| `puter-smart` | `claude-sonnet-5` | วิเคราะห์/วางแผนซับซ้อน |
++| `puter-gemini` | `gemini-3.1-flash-lite` | บริบทใหญ่ อ่านไฟล์ยาว |
++| `puter-code` | `openai/gpt-5.3-codex` | เขียน/แก้โค้ด |
++| `puter-oss` | `openai/gpt-oss-120b` | โมเดล open weights |
++
++สลับโมเดลชั่วคราวโดยไม่แก้ไฟล์:
++
++```bash
++./puter/run-agent.sh --model root=puter/claude-sonnet-5   # provider puter + ชื่อโมเดลของ Puter
++./puter/run-agent.sh --model root=puter/grok-4-1-fast     # สลับไป Grok
++./puter/run-agent.sh --model coder=puter/gemini-3.1-flash-lite
++```
++
++(รูปแบบคือ `provider/model` โดย `puter` คือชื่อใน `providers:` ที่เราประกาศไว้ — ใช้ได้กับทุกคำสั่งย่อย
++ไม่ต้องแก้ `examples/puter.yaml` เลย)
++
++> รายชื่อโมเดลทั้งหมดดูได้ที่ Puter: <https://developer.puter.com/ai/> — ถ้าบัญชีไม่มีสิทธิ์ใช้โมเดลนั้น
++> จะได้ error `model_not_found` / `permission denied` ให้เปลี่ยนโมเดลหรือเติมเครดิต
++
++## 7) ข้อจำกัดที่ควรรู้ก่อนใช้จริง
++
++- **โมเดล "user-pays"**: ผู้ใช้ (บัญชี Puter ของคุณ) เป็นคนจ่ายตามการใช้งาน ไม่ใช่เรา —
++  โควตาฟรีมีจำกัด และโมเดลระดับพรีเมียมอาจต้องมีเครดิต ตรวจได้ด้วย `npm run verify --prefix puter`
++  (`getMonthlyUsage`) และที่ <https://puter.com/dashboard>
++- **Tool calling ไม่เท่ากันทุกโมเดล**: docker-agent ทำงานด้วย tools (think/todo/filesystem/transfer_task)
++  โมเดลที่รองรับ function calling จะทำงานได้เต็มที่ ส่วนโมเดลที่ไม่รองรับจะตอบได้แต่ไม่เรียกเครื่องมือ
++  ถ้าเห็น agent "พูดอย่างเดียวไม่ลงมือ" ให้เปลี่ยนไปใช้ตระกูล GPT/Claude/Gemini
++- **พารามิเตอร์เฉพาะรุ่น**: endpoint ของ Puter อาจไม่รองรับ parameter พิเศษบางตัว
++  (`reasoning_effort`, ตัวเลือกเฉพาะ Codex ฯลฯ) ให้ลด config ให้เรียบง่ายถ้าเจอ 400
++- **ค่าใช้จ่ายยังเกิดขึ้นแม้กดหยุด**: ปุ่มหยุดของ TUI/CLI หยุดการรับผลเท่านั้น ไม่ได้ยกเลิกคำขอที่ส่งไปแล้ว
++- **ทดสอบในแซนด์บ็อกซ์ที่เขียนโค้ดนี้ไม่ได้แบบ end-to-end**: สภาพแวดล้อมนั้นบล็อกการเชื่อมต่อ
++  `api.puter.com` จึงยืนยันได้เฉพาะไวยากรณ์, schema ของ docker-agent, ขั้นตอนล็อกอิน (จำลอง),
++  และการส่ง argument — การยิงจริงให้ทดสอบบนเครื่องของคุณด้วย `npm run verify:ping --prefix puter`
++
++## 8) แก้ปัญหา
++
++| อาการ | สาเหตุที่พบบ่อย | วิธีแก้ |
++| --- | --- | --- |
++| `401 Unauthorized` | token หมดอายุ/ถูกลบ หรือล็อกอินผิดบัญชี | `npm run login:force --prefix puter` หรือสร้าง token ใหม่จาก dashboard |
++| `404 model_not_found` | ชื่อโมเดลไม่ตรงกับที่ Puter เปิดให้ใช้ | เช็คชื่อจาก <https://developer.puter.com/ai/> แล้วแก้ใน `examples/puter.yaml` |
++| `400` + ข้อความเกี่ยวกับ `/responses` | ลืมตั้ง `api_type: openai_chatcompletions` | เติมคีย์นี้ใน `providers.puter` |
++| agent ไม่เรียก tools | โมเดลนั้นไม่รองรับ function calling | เปลี่ยนเป็น `gpt-5.4-nano`, `claude-sonnet-5`, `gemini-3.1-flash-lite` |
++| `429` / ใช้เกินโควตา | ชนเพดานของบัญชี Puter | รอรอบถัดไป ใช้โมเดลถูกลง หรือเติมเครดิต |
++| `✘ ไม่พบคำสั่ง docker-agent` | ยังไม่ได้ติดตั้ง | ติดตั้งตามตารางข้อ 1 แล้วลองใหม่ |
++| ตรวจ token ไม่ผ่านเพราะ "เชื่อมต่อไม่ได้" | เน็ต/ไฟร์วอลล์บล็อก `api.puter.com` | ตรวจการเชื่อมต่อหรือ VPN/พร็อกซีขององค์กร |
++| `EACCES` ตอนรัน `run-agent.sh` | ไฟล์ยังไม่ executable | `chmod +x run-agent.sh` |
++| หน้าเว็บขึ้น "ล็อกอินสำเร็จ" แต่ terminal ยังรอ | เบราว์เซอร์เปิด `localhost` คนละเครื่อง/stack กับที่รันสคริปต์ | กด Ctrl+C แล้วใช้ `npm run login --prefix puter -- --sdk-login` หรือวิธี B |
++
++## 9) ความปลอดภัย
++
++- token ของ Puter = สิทธิ์เข้าถึงบัญชีคุณ (AI, ไฟล์บน Puter Drive, ฯลฯ) **ห้ามแชร์ ห้าม commit**
++  โฟลเดอร์ `puter/` มี `.gitignore` กัน `puter/.env.puter` และ `puter/node_modules/` ไว้แล้ว
++- สคริปต์เขียนไฟล์ด้วยสิทธิ์ `600` และปิดบัง token เวลาพิมพ์ออกจอ (แสดงเฉพาะ 6 ตัวแรก/4 ตัวท้าย)
++- `--print` จะพิมพ์ token เต็ม — ระวังประวัติคำสั่งใน shell
++- ถ้า token หลุด: ลบบัญชี token นั้นที่ <https://puter.com/dashboard> แล้วล็อกอินใหม่
++
++## 10) ตรวจสอบแล้วแค่ไหน (ความโปร่งใส)
++
++| สิ่งที่ตรวจ | ผล |
++| --- | --- |
++| `examples/puter.yaml` เทียบ schema ทางการของ docker-agent v16 (`agent-schema.json`) | ✅ ผ่าน (Ajv, draft-07) |
++| ขั้นตอนล็อกอินแบบ localhost callback (จำลองหน้าเว็บ Puter ในเครื่อง) | ✅ `npm test` ผ่าน — ได้ token กลับมาและพิมพ์ออกถูกต้อง |
++| `run-agent.sh` ส่ง argument/ไฟล์ env ให้ docker-agent | ✅ ทดสอบด้วย docker-agent ปลอมใน `npm test` |
++| การโหลด `@heyputer/puter.js` (`init`, `getAuthToken`) และการจัดการ error รูปแบบ XHR ของ SDK | ✅ ทดสอบในเครื่อง |
++| ยิงคำขอจริงไปที่ `api.puter.com` | ❌ ยังไม่ได้ — สภาพแวดล้อมที่เขียนโค้ดนี้บล็อกโดเมนนั้น ให้คุณยืนยันด้วย `npm run verify:ping --prefix puter` |
++
++## 11) รีโพนี้คืออะไร
++
++เป็น fork ของ [`docker/docker-agent`](https://github.com/docker/docker-agent) (สัญญาอนุญาต Apache-2.0
++ตามต้นฉบับ) ที่เพิ่มโฟลเดอร์ `puter/`, ไฟล์ `examples/puter.yaml` และหน้า docs ของ Puter
++โดยไม่ได้แก้โค้ด Go ของต้นฉบับ — อัปเดตจาก upstream ได้ตามปกติ:
++
++```bash
++git remote add upstream https://github.com/docker/docker-agent.git   # ครั้งเดียว
++git fetch upstream && git merge upstream/main
++```
++
++## 12) อ้างอิง
++
++- Puter — OpenAI-compatible endpoint: <https://developer.puter.com/tutorials/use-openai-sdk-with-puter/>
++- Puter — Node.js + การล็อกอินด้วย `getAuthToken()`: <https://developer.puter.com/tutorials/puter-js-node-js/>
++- Puter — เอกสาร Auth: <https://docs.puter.com/Auth/>
++- docker-agent — provider แบบกำหนดเอง (`providers:`, `api_type`, `token_key`): [`docs/providers/custom`](https://github.com/docker/docker-agent/blob/main/docs/providers/custom/index.md)
++- docker-agent — ตัวเลือกบรรทัดคำสั่ง: `docker agent run --help`
+diff --git a/puter/package-lock.json b/puter/package-lock.json
+new file mode 100644
+index 0000000..0acae95
+--- /dev/null
++++ b/puter/package-lock.json
+@@ -0,0 +1,299 @@
++{
++  "name": "docker-agent-puter",
++  "version": "1.0.0",
++  "lockfileVersion": 3,
++  "requires": true,
++  "packages": {
++    "": {
++      "name": "docker-agent-puter",
++      "version": "1.0.0",
++      "dependencies": {
++        "@heyputer/puter.js": "^2.5.3",
++        "open": "^10.1.0"
++      },
++      "engines": {
++        "node": ">=20"
++      }
++    },
++    "node_modules/@heyputer/kv.js": {
++      "version": "0.2.1",
++      "resolved": "https://registry.npmjs.org/@heyputer/kv.js/-/kv.js-0.2.1.tgz",
++      "integrity": "sha512-YhVtzz7ZA/HmuaDvzZZhhUyQWBvp3/TXeY4jULssTdLJwT+tEM4BTYHXttORX+V5auvrYinjj8dNFQnby5T82w==",
++      "license": "MIT"
++    },
++    "node_modules/@heyputer/puter.js": {
++      "version": "2.6.3",
++      "resolved": "https://registry.npmjs.org/@heyputer/puter.js/-/puter.js-2.6.3.tgz",
++      "integrity": "sha512-iFFxhS4Uz/Fi98ln2VR4pc5QlpKuG3iQP9xoW5iP7LGj6eCcbCKaaHiiPxUXG8EW3Qn1eOcxV64uF/CfnkNj2A==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@heyputer/kv.js": "^0.2.1",
++        "open": "^10.2.0",
++        "path-browserify": "1.0.1",
++        "socket.io-client": "^4.8.3"
++      }
++    },
++    "node_modules/@socket.io/component-emitter": {
++      "version": "3.1.2",
++      "resolved": "https://registry.npmjs.org/@socket.io/component-emitter/-/component-emitter-3.1.2.tgz",
++      "integrity": "sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==",
++      "license": "MIT"
++    },
++    "node_modules/bundle-name": {
++      "version": "4.1.1",
++      "resolved": "https://registry.npmjs.org/bundle-name/-/bundle-name-4.1.1.tgz",
++      "integrity": "sha512-DdH81/zPLVS11EUgWq3tEu/xn+EzljlMYooDNdzWEnFha3R3NBMpMV1UqYIpjYHV/SgpFKMIX1Oh7o06SjM/oA==",
++      "license": "MIT",
++      "dependencies": {
++        "run-applescript": "^7.0.0"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/debug": {
++      "version": "4.4.3",
++      "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
++      "integrity": "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==",
++      "license": "MIT",
++      "dependencies": {
++        "ms": "^2.1.3"
++      },
++      "engines": {
++        "node": ">=6.0"
++      },
++      "peerDependenciesMeta": {
++        "supports-color": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/default-browser": {
++      "version": "5.5.1",
++      "resolved": "https://registry.npmjs.org/default-browser/-/default-browser-5.5.1.tgz",
++      "integrity": "sha512-m1pAzaJgZ/gssEqlOhJkPJp8Xly7QyW6xcrkUa2KKcDeDSEMP7X8xipU3snUcfisTQx0w1AGae+9UtJSfVnXGw==",
++      "license": "MIT",
++      "dependencies": {
++        "bundle-name": "^4.1.0",
++        "default-browser-id": "^5.0.0"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/default-browser-id": {
++      "version": "5.0.1",
++      "resolved": "https://registry.npmjs.org/default-browser-id/-/default-browser-id-5.0.1.tgz",
++      "integrity": "sha512-x1VCxdX4t+8wVfd1so/9w+vQ4vx7lKd2Qp5tDRutErwmR85OgmfX7RlLRMWafRMY7hbEiXIbudNrjOAPa/hL8Q==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/define-lazy-prop": {
++      "version": "3.0.0",
++      "resolved": "https://registry.npmjs.org/define-lazy-prop/-/define-lazy-prop-3.0.0.tgz",
++      "integrity": "sha512-N+MeXYoqr3pOgn8xfyRPREN7gHakLYjhsHhWGT3fWAiL4IkAt0iDw14QiiEm2bE30c5XX5q0FtAA3CK5f9/BUg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=12"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/engine.io-client": {
++      "version": "6.6.7",
++      "resolved": "https://registry.npmjs.org/engine.io-client/-/engine.io-client-6.6.7.tgz",
++      "integrity": "sha512-GyAvmPA7gnRCpDQbYACAy79Lg4ewevrmaPzySZz0OVvgyZc3gEfLLqPTYk8wVBScjOEpM9ZO4KryyFpVItjGEA==",
++      "license": "MIT",
++      "dependencies": {
++        "@socket.io/component-emitter": "~3.1.0",
++        "debug": "~4.4.1",
++        "engine.io-parser": "~5.2.1",
++        "ws": "~8.21.0",
++        "xmlhttprequest-ssl": "~2.1.1"
++      }
++    },
++    "node_modules/engine.io-parser": {
++      "version": "5.2.3",
++      "resolved": "https://registry.npmjs.org/engine.io-parser/-/engine.io-parser-5.2.3.tgz",
++      "integrity": "sha512-HqD3yTBfnBxIrbnM1DoD6Pcq8NECnh8d4As1Qgh0z5Gg3jRRIqijury0CL3ghu/edArpUYiYqQiDUQBIs4np3Q==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=10.0.0"
++      }
++    },
++    "node_modules/is-docker": {
++      "version": "3.0.0",
++      "resolved": "https://registry.npmjs.org/is-docker/-/is-docker-3.0.0.tgz",
++      "integrity": "sha512-eljcgEDlEns/7AXFosB5K/2nCM4P7FQPkGc/DWLy5rmFEWvZayGrik1d9/QIY5nJ4f9YsVvBkA6kJpHn9rISdQ==",
++      "license": "MIT",
++      "bin": {
++        "is-docker": "cli.js"
++      },
++      "engines": {
++        "node": "^12.20.0 || ^14.13.1 || >=16.0.0"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/is-inside-container": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/is-inside-container/-/is-inside-container-1.0.0.tgz",
++      "integrity": "sha512-KIYLCCJghfHZxqjYBE7rEy0OBuTd5xCHS7tHVgvCLkx7StIoaxwNW3hCALgEUjFfeRk+MG/Qxmp/vtETEF3tRA==",
++      "license": "MIT",
++      "dependencies": {
++        "is-docker": "^3.0.0"
++      },
++      "bin": {
++        "is-inside-container": "cli.js"
++      },
++      "engines": {
++        "node": ">=14.16"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/is-wsl": {
++      "version": "3.1.1",
++      "resolved": "https://registry.npmjs.org/is-wsl/-/is-wsl-3.1.1.tgz",
++      "integrity": "sha512-e6rvdUCiQCAuumZslxRJWR/Doq4VpPR82kqclvcS0efgt430SlGIk05vdCN58+VrzgtIcfNODjozVielycD4Sw==",
++      "license": "MIT",
++      "dependencies": {
++        "is-inside-container": "^1.0.0"
++      },
++      "engines": {
++        "node": ">=16"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/ms": {
++      "version": "2.1.3",
++      "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
++      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
++      "license": "MIT"
++    },
++    "node_modules/open": {
++      "version": "10.2.0",
++      "resolved": "https://registry.npmjs.org/open/-/open-10.2.0.tgz",
++      "integrity": "sha512-YgBpdJHPyQ2UE5x+hlSXcnejzAvD0b22U2OuAP+8OnlJT+PjWPxtgmGqKKc+RgTM63U9gN0YzrYc71R2WT/hTA==",
++      "license": "MIT",
++      "dependencies": {
++        "default-browser": "^5.2.1",
++        "define-lazy-prop": "^3.0.0",
++        "is-inside-container": "^1.0.0",
++        "wsl-utils": "^0.1.0"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/path-browserify": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/path-browserify/-/path-browserify-1.0.1.tgz",
++      "integrity": "sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==",
++      "license": "MIT"
++    },
++    "node_modules/run-applescript": {
++      "version": "7.1.0",
++      "resolved": "https://registry.npmjs.org/run-applescript/-/run-applescript-7.1.0.tgz",
++      "integrity": "sha512-DPe5pVFaAsinSaV6QjQ6gdiedWDcRCbUuiQfQa2wmWV7+xC9bGulGI8+TdRmoFkAPaBXk8CrAbnlY2ISniJ47Q==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/socket.io-client": {
++      "version": "4.8.4",
++      "resolved": "https://registry.npmjs.org/socket.io-client/-/socket.io-client-4.8.4.tgz",
++      "integrity": "sha512-7wjKAvVXYOJsbmUgkWbnhPD4bFpkqrUR0++XOjpGFmqDqsqV1CI93VTraeExLxpjxEqrWgFoSRZu1ihjLWfkAA==",
++      "license": "MIT",
++      "dependencies": {
++        "@socket.io/component-emitter": "~3.1.0",
++        "debug": "~4.4.1",
++        "engine.io-client": "~6.6.1",
++        "socket.io-parser": "~4.2.4"
++      },
++      "engines": {
++        "node": ">=10.0.0"
++      }
++    },
++    "node_modules/socket.io-parser": {
++      "version": "4.2.7",
++      "resolved": "https://registry.npmjs.org/socket.io-parser/-/socket.io-parser-4.2.7.tgz",
++      "integrity": "sha512-IH/iSeO9T6gz1KkFleGDWkG9N3dl4jXVYUtMhIqH10Md0ttMer8nUNWiP1DKuNrybD2xBrixLJdCC9J6ECoYkg==",
++      "license": "MIT",
++      "dependencies": {
++        "@socket.io/component-emitter": "~3.1.0",
++        "debug": "~4.4.1"
++      },
++      "engines": {
++        "node": ">=10.0.0"
++      }
++    },
++    "node_modules/ws": {
++      "version": "8.21.3",
++      "resolved": "https://registry.npmjs.org/ws/-/ws-8.21.3.tgz",
++      "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=10.0.0"
++      },
++      "peerDependencies": {
++        "bufferutil": "^4.0.1",
++        "utf-8-validate": ">=5.0.2"
++      },
++      "peerDependenciesMeta": {
++        "bufferutil": {
++          "optional": true
++        },
++        "utf-8-validate": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/wsl-utils": {
++      "version": "0.1.0",
++      "resolved": "https://registry.npmjs.org/wsl-utils/-/wsl-utils-0.1.0.tgz",
++      "integrity": "sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==",
++      "license": "MIT",
++      "dependencies": {
++        "is-wsl": "^3.1.0"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/sindresorhus"
++      }
++    },
++    "node_modules/xmlhttprequest-ssl": {
++      "version": "2.1.2",
++      "resolved": "https://registry.npmjs.org/xmlhttprequest-ssl/-/xmlhttprequest-ssl-2.1.2.tgz",
++      "integrity": "sha512-TEU+nJVUUnA4CYJFLvK5X9AOeH4KvDvhIfm0vV1GaQRtchnG0hgK5p8hw/xjv8cunWYCsiPCSDzObPyhEwq3KQ==",
++      "engines": {
++        "node": ">=0.4.0"
++      }
++    }
++  }
++}
+diff --git a/puter/package.json b/puter/package.json
+new file mode 100644
+index 0000000..1027518
+--- /dev/null
++++ b/puter/package.json
+@@ -0,0 +1,22 @@
++{
++  "name": "docker-agent-puter",
++  "version": "1.0.0",
++  "private": true,
++  "type": "module",
++  "description": "ล็อกอินบัญชี Puter แล้วใช้โมเดลของ Puter เป็นโมเดลให้ docker-agent (ผ่าน Puter OpenAI-compatible endpoint)",
++  "scripts": {
++    "login": "node puter-login.mjs",
++    "login:force": "node puter-login.mjs --force",
++    "verify": "node puter-login.mjs --verify",
++    "verify:ping": "node puter-login.mjs --verify --ping",
++    "agent": "./run-agent.sh",
++    "test": "node --test tests/*.test.mjs"
++  },
++  "dependencies": {
++    "@heyputer/puter.js": "^2.5.3",
++    "open": "^10.1.0"
++  },
++  "engines": {
++    "node": ">=20"
++  }
++}
+diff --git a/puter/puter-login.mjs b/puter/puter-login.mjs
+new file mode 100644
+index 0000000..4a56466
+--- /dev/null
++++ b/puter/puter-login.mjs
+@@ -0,0 +1,531 @@
++#!/usr/bin/env node
++/**
++ * puter-login.mjs — ล็อกอินบัญชี Puter แล้วดึง auth token มาใช้กับ docker-agent
++ *
++ * ทำไมต้องมีสคริปต์นี้
++ *   docker-agent รับโมเดลผ่านตัวแปรสภาพแวดล้อม (Bearer token) เท่านั้น
++ *   ปกติต้องไปก๊อป token จาก puter.com/dashboard เอง
++ *   สคริปต์นี้เปิดเบราว์เซอร์ให้ล็อกอิน Puter แล้วเก็บ token ให้อัตโนมัติ
++ *
++ * ตัวอย่าง
++ *   node puter-login.mjs              # ล็อกอิน (ถ้ามี token เดิมจะตรวจจับให้ก่อน)
++ *   node puter-login.mjs --force      # ล็อกอินใหม่ทับของเดิม
++ *   node puter-login.mjs --print      # ล็อกอินแล้วพิมพ์ token (ไม่เขียนไฟล์)
++ *   node puter-login.mjs --verify     # ตรวจ token ที่มีอยู่ (env หรือ .env.puter)
++ *   node puter-login.mjs --verify --ping   # ตรวจ + ยิงทดสอบจริง 1 ครั้งที่ endpoint
++ *   node puter-login.mjs --set-token <token>   # ใช้ token ที่ก๊อปจาก dashboard
++ *
++ * ไฟล์ผลลัพธ์: .env.puter (chmod 600) — ห้าม commit ไฟล์นี้
++ */
++
++import { createRequire } from "node:module";
++import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
++import { dirname, resolve } from "node:path";
++import { fileURLToPath } from "node:url";
++
++const HERE = dirname(fileURLToPath(import.meta.url));
++const ENV_FILE = resolve(HERE, ".env.puter");
++const TOKEN_KEY = "PUTER_AUTH_TOKEN";
++const API_BASE =
++  process.env.PUTER_API_BASE ?? "https://api.puter.com/puterai/openai/v1/";
++const PING_MODEL = process.env.PUTER_MODEL ?? "gpt-5.4-nano";
++const GUI_ORIGIN = (process.env.PUTER_GUI_ORIGIN ?? "https://puter.com").replace(/\/+$/, "");
++const LOGIN_TIMEOUT_MS = Number(process.env.PUTER_LOGIN_TIMEOUT_MS ?? 5 * 60 * 1000);
++
++// SDK ของ Puter ทิ้ง promise ภายในไว้บ้าง (เช่น การเช็คสิทธิ์ RAO ตอนเน็ตถูกบล็อก)
++// ทำให้มีข้อความ stack trace รบกวนจอโดยไม่เกี่ยวกับผลลัพธ์ — กลืนไว้ก่อนโหลด SDK
++process.on("unhandledRejection", (reason) => {
++  if (process.env.PUTER_DEBUG_ERRORS === "1") console.error("[puter]", reason);
++});
++
++const argv = process.argv.slice(2);
++const has = (...flags) => flags.some((f) => argv.includes(f));
++const valueOf = (flag) => {
++  const i = argv.indexOf(flag);
++  return i >= 0 ? argv[i + 1] : undefined;
++};
++
++const C = (() => {
++  const color =
++    process.env.NO_COLOR ? false : process.stdout.isTTY === true || process.env.FORCE_COLOR === "1";
++  return color
++    ? {
++        reset: "\x1b[0m",
++        dim: "\x1b[2m",
++        bold: "\x1b[1m",
++        red: "\x1b[31m",
++        green: "\x1b[32m",
++        yellow: "\x1b[33m",
++        cyan: "\x1b[36m",
++      }
++    : { reset: "", dim: "", bold: "", red: "", green: "", yellow: "", cyan: "" };
++})();
++const ok = (m) => console.log(`${C.green}✔${C.reset} ${m}`);
++const warn = (m) => console.log(`${C.yellow}!${C.reset} ${m}`);
++const bad = (m) => console.log(`${C.red}✘${C.reset} ${m}`);
++const info = (m) => console.log(`${C.cyan}•${C.reset} ${m}`);
++const head = (m) => console.log(`\n${C.bold}${m}${C.reset}`);
++
++function usage(exitCode = 0) {
++  console.log(`
++${C.bold}puter-login${C.reset} — ล็อกอิน Puter เพื่อใช้โมเดลกับ docker-agent
++
++${C.bold}ใช้งาน${C.reset}
++  node puter-login.mjs [ตัวเลือก]
++
++${C.bold}ตัวเลือก${C.reset}
++  (ไม่ใส่)              ล็อกอินผ่านเบราว์เซอร์ แล้วบันทึก token ลง .env.puter
++  --force, -f          ล็อกอินใหม่แม้จะมี token เดิมอยู่
++  --print, -p          พิมพ์ token ออกทางจอ (ไม่เขียนไฟล์) — ระวังประวัติ shell
++  --set-token <token>  บันทึก token ที่ก๊อปจาก puter.com/dashboard
++  --verify             ตรวจ token ปัจจุบัน (จาก env ${TOKEN_KEY} หรือ .env.puter)
++  --ping               ร่วมกับ --verify: ยิงทดสอบแชตจริง 1 ครั้ง (มีค่าใช้จ่ายเล็กน้อย)
++  --sdk-login          ล็อกอินผ่าน getAuthToken() ของ SDK แทนวิธี localhost callback
++  --json               แสดงผลลัพธ์แบบ JSON (ใช้กับ automation)
++  --help, -h           แสดงข้อความนี้
++
++${C.bold}ตัวแปรสภาพแวดล้อม${C.reset}
++  PUTER_AUTH_TOKEN        token (ถ้าตั้งไว้ จะถูกใช้ก่อนไฟล์ .env.puter)
++  PUTER_API_BASE          ค่าเริ่มต้น ${API_BASE}
++  PUTER_MODEL             โมเดลที่ใช้ตอน --ping (ค่าเริ่มต้น ${PING_MODEL})
++  PUTER_LOGIN_TIMEOUT_MS  เวลารอสูงสุดของการล็อกอิน (ค่าเริ่มต้น 300000)
++  PUTER_GUI_ORIGIN        ต้นทางหน้าเว็บล็อกอิน (ค่าเริ่มต้น https://puter.com)
++  NO_COLOR=1              ปิดสีในข้อความ (เหมาะกับ log/automation)
++`);
++  process.exit(exitCode);
++}
++
++const mask = (t) => (t.length <= 12 ? "***" : `${t.slice(0, 6)}…${t.slice(-4)} (${t.length} ตัวอักษร)`);
++
++function readTokenFromEnv() {
++  const t = (process.env[TOKEN_KEY] ?? "").trim();
++  return t || null;
++}
++
++function readTokenFromFile() {
++  if (!existsSync(ENV_FILE)) return null;
++  const text = readFileSync(ENV_FILE, "utf8");
++  for (const rawLine of text.split(/\r?\n/)) {
++    const line = rawLine.trim();
++    if (!line || line.startsWith("#")) continue;
++    const eq = line.indexOf("=");
++    if (eq < 0) continue;
++    if (line.slice(0, eq).trim() !== TOKEN_KEY) continue;
++    let v = line.slice(eq + 1).trim();
++    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
++      v = v.slice(1, -1);
++    }
++    if (v) return v;
++  }
++  return null;
++}
++
++function writeEnvFile(token) {
++  const body = `# สร้างโดย puter-login.mjs — ไฟล์นี้มี token ส่วนตัว ห้าม commit/แชร์
++# docker-agent ใช้ผ่าน:  docker-agent run --env-from-file .env.puter agent.yaml
++${TOKEN_KEY}=${token}
++`;
++  writeFileSync(ENV_FILE, body, { encoding: "utf8", mode: 0o600 });
++  try {
++    chmodSync(ENV_FILE, 0o600);
++  } catch {
++    /* Windows ไม่รองรับ chmod — ข้ามได้ */
++  }
++  return ENV_FILE;
++}
++
++function looksLikeToken(t) {
++  return typeof t === "string" && t.length >= 20 && !/\s/.test(t);
++}
++
++/* ------------------------------------------------------------------ */
++/* SDK ของ Puter (@heyputer/puter.js)                                  */
++/* ------------------------------------------------------------------ */
++
++let sdkCache = null;
++function loadSdk() {
++  if (sdkCache) return sdkCache;
++  let require;
++  try {
++    require = createRequire(import.meta.url);
++    sdkCache = require("@heyputer/puter.js/src/init.cjs");
++  } catch (err) {
++    throw new Error(
++      `โหลด @heyputer/puter.js ไม่ได้ — รัน \`npm install\` ในโฟลเดอร์นี้ก่อน\n` +
++        `สาเหตุ: ${err.message}`
++    );
++  }
++  if (typeof sdkCache.getAuthToken !== "function" || typeof sdkCache.init !== "function") {
++    throw new Error("@heyputer/puter.js เวอร์ชันนี้ไม่รองรับ init()/getAuthToken()");
++  }
++  return sdkCache;
++}
++
++const SUCCESS_HTML = `<!DOCTYPE html>
++<html lang="th"><head><meta charset="utf-8"><title>ล็อกอินสำเร็จ</title>
++<style>
++ body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#404C71;margin:0;
++      min-height:100vh;display:flex;align-items:center;justify-content:center}
++ .box{background:#fff;color:#0f172a;border-radius:16px;padding:40px 48px;text-align:center;max-width:420px;
++      box-shadow:0 25px 50px -12px rgba(0,0,0,.25)}
++ h1{font-size:22px;margin:0 0 10px} p{color:#64748b;margin:0;line-height:1.6}
++ small{display:block;margin-top:24px;color:#94a3b8}
++</style></head>
++<body><div class="box">
++ <h1>✅ ล็อกอิน Puter สำเร็จ</h1>
++ <p>กลับไปที่ terminal ได้เลย ปิดหน้าต่างนี้ได้</p>
++ <small>docker-agent × Puter</small>
++</div></body></html>`;
++
++/** พยายามเปิดเบราว์เซอร์ (ถ้าทำไม่ได้ก็ไม่เป็นไร เพราะเราพิมพ์ URL ให้อยู่แล้ว) */
++async function tryOpenBrowser(url) {
++  try {
++    const require = createRequire(import.meta.url);
++    const mod = require("open");
++    const fn = typeof mod === "function" ? mod : mod.default;
++    if (typeof fn !== "function") return false;
++    await fn(url);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++/**
++ * ล็อกอินผ่านเบราว์เซอร์ โดยเปิด localhost callback รับ token กลับมา
++ * (วิธีเดียวกับ getAuthToken() ของ Puter แต่พิมพ์ URL ให้ด้วย เผื่ออยู่บนเครื่องรีโมต/ไม่มีจอ)
++ */
++function loginWithLocalCallback() {
++  return import("node:http").then(
++    (http) =>
++      new Promise((resolve, reject) => {
++        let finished = false;
++        let timer = null;
++
++        const settle = (err, token) => {
++          if (finished) return;
++          finished = true;
++          if (timer) clearTimeout(timer);
++          server.close(() => {});
++          if (err) reject(err);
++          else resolve(token);
++        };
++
++        const server = http.createServer((req, res) => {
++          let token = null;
++          try {
++            token = new URL(req.url, "http://localhost").searchParams.get("token");
++          } catch {
++            /* URL แปลก ๆ — ไม่เป็นไร */
++          }
++          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
++          res.end(SUCCESS_HTML);
++          if (token) settle(null, token);
++        });
++
++        server.on("error", (err) => settle(err));
++
++        server.listen(0, "127.0.0.1", async () => {
++          const port = server.address().port;
++          const redirect = `http://localhost:${port}`;
++          const url = `${GUI_ORIGIN}/?action=authme&redirectURL=${encodeURIComponent(redirect)}`;
++
++          head("ล็อกอิน Puter");
++          const opened = await tryOpenBrowser(url);
++          if (opened) info("เปิดเบราว์เซอร์ให้แล้ว — ล็อกอิน/กดอนุญาตในหน้าต่างนั้น");
++          else warn("เปิดเบราว์เซอร์ให้ไม่ได้ — ก๊อป URL นี้ไปเปิดในเบราว์เซอร์เอง");
++          console.log(`\n  ${C.cyan}${url}${C.reset}\n`);
++          info(`รอผลลัพธ์สูงสุด ${Math.round(LOGIN_TIMEOUT_MS / 1000)} วินาที (Ctrl+C เพื่อยกเลิก)`);
++
++          timer = setTimeout(
++            () =>
++              settle(
++                new Error(
++                  "หมดเวลารอล็อกอิน — ลองใหม่, ใช้ --sdk-login, หรือใช้ --set-token ด้วย token จาก puter.com/dashboard"
++                )
++              ),
++            LOGIN_TIMEOUT_MS
++          );
++        });
++      })
++  );
++}
++
++/** ทางเลือก: ใช้ getAuthToken() จาก SDK ของ Puter โดยตรง */
++async function loginWithSdk() {
++  const { getAuthToken } = loadSdk();
++  head("ล็อกอิน Puter (ผ่าน SDK)");
++  info("กำลังเปิดเบราว์เซอร์ไปที่ puter.com — กรุณาล็อกอิน/กดอนุญาตในหน้าต่างนั้น");
++  info(`รอสูงสุด ${Math.round(LOGIN_TIMEOUT_MS / 1000)} วินาที (Ctrl+C เพื่อยกเลิก)`);
++
++  const token = await Promise.race([
++    getAuthToken(GUI_ORIGIN),
++    new Promise((_, reject) =>
++      setTimeout(() => reject(new Error("หมดเวลารอล็อกอิน (PUTER_LOGIN_TIMEOUT_MS)")), LOGIN_TIMEOUT_MS)
++    ),
++  ]);
++  return token;
++}
++
++/** ล็อกอิน (ค่าเริ่มต้น: localhost callback, --sdk-login: ใช้ SDK) */
++async function login() {
++  const token = has("--sdk-login") ? await loginWithSdk() : await loginWithLocalCallback();
++  if (!looksLikeToken(token)) throw new Error("ไม่ได้รับ token ที่ถูกต้องจากเบราว์เซอร์");
++  ok("ล็อกอินสำเร็จ");
++  return token;
++}
++
++/* ------------------------------------------------------------------ */
++/* ตรวจสอบ token                                                       */
++/* ------------------------------------------------------------------ */
++
++/**
++ * ดึงข้อมูลจาก error ได้ทุกรูปแบบ
++ * SDK ของ Puter บางครั้ง reject ด้วยอ็อบเจ็กต์คล้าย XHR
++ * (มี status / statusText / response / _puterReq.url) ไม่ใช่ Error ปกติ
++ */
++function errorInfo(err) {
++  if (err == null) return { text: "ไม่ทราบสาเหตุ", status: 0 };
++  if (typeof err === "string") return { text: err, status: 0 };
++
++  const status = Number(err.status ?? err.error?.status ?? 0) || 0;
++  const parts = [];
++  if (status) parts.push(`HTTP ${status}`);
++  if (err.statusText) parts.push(String(err.statusText));
++  if (err.message && typeof err.message === "string") parts.push(err.message);
++  if (err.error) {
++    if (typeof err.error === "string") parts.push(err.error);
++    else if (typeof err.error?.message === "string") parts.push(err.error.message);
++  }
++  if (err.response) parts.push(String(err.response).replace(/\s+/g, " ").slice(0, 200));
++  const url = err._puterReq?.url ?? err._puterReq?.requestURL ?? err.responseURL;
++  if (url) parts.push(`(${url})`);
++
++  if (!parts.length) {
++    const t = typeof err.toString === "function" ? err.toString() : "";
++    if (t && t !== "[object EventTarget]" && t !== "[object Object]") parts.push(t);
++  }
++  return { text: parts.join(" — ") || "ไม่ทราบสาเหตุ", status };
++}
++
++/** @returns {"invalid"|"unreachable"} */
++function classifyError(err) {
++  const { text, status } = errorInfo(err);
++  if (status === 401 || status === 403) return "invalid";
++  if (status >= 400 && status < 500) return "invalid";
++  if (status >= 500) return "unreachable";
++  if (/invalid[_ ]?token|unauthorized|not signed in|no auth token|permission denied/i.test(text))
++    return "invalid";
++  // ค่าที่เหลือ (status 0 = ต่อเครือข่ายไม่ได้) ถือว่า "ตรวจสอบไม่ได้" ไม่ใช่ token เสีย
++  return "unreachable";
++}
++
++/**
++ * ตรวจ token ผ่าน SDK ของ Puter (เรียก getUser + getMonthlyUsage)
++ * @returns {Promise<{status:"valid"|"invalid"|"unreachable"|"unknown", user?:any, usage?:any, error?:string}>}
++ */
++async function verifyToken(token) {
++  const { init } = loadSdk();
++  let puter;
++  try {
++    puter = init(token);
++  } catch (err) {
++    return { status: "unknown", error: `สร้างไคลเอนต์ Puter ไม่ได้: ${err.message}` };
++  }
++
++  let user;
++  try {
++    user = await puter.auth.getUser();
++  } catch (err) {
++    return { status: classifyError(err), error: errorInfo(err).text };
++  }
++
++  // SDK บางกรณีไม่ throw แต่คืนอ็อบเจ็กต์ error กลับมา
++  if (user && typeof user === "object" && user.success === false) {
++    const e = user.error;
++    const text =
++      typeof e === "string"
++        ? e
++        : e?.message ?? e?.code ?? JSON.stringify(e ?? { error: "unknown" });
++    const invalid = /invalid|token|unauthor|not signed|permission|forbidden/i.test(text);
++    return { status: invalid ? "invalid" : "unreachable", error: String(text) };
++  }
++
++  let usage = null;
++  try {
++    usage = await puter.auth.getMonthlyUsage();
++  } catch {
++    /* บางบัญชี/เวอร์ชันไม่มีข้อมูลนี้ — ไม่ถือว่า token เสีย */
++  }
++  return { status: "valid", user, usage };
++}
++
++/** ยิงทดสอบจริงที่ endpoint ที่ docker-agent ใช้ (chat completions) */
++async function pingChatCompletions(token) {
++  const url = `${API_BASE.replace(/\/+$/, "")}/chat/completions`;
++  try {
++    const res = await fetch(url, {
++      method: "POST",
++      headers: {
++        Authorization: `Bearer ${token}`,
++        "Content-Type": "application/json",
++      },
++      body: JSON.stringify({
++        model: PING_MODEL,
++        messages: [{ role: "user", content: "ตอบคำว่า pong เท่านั้น" }],
++        max_tokens: 16,
++      }),
++    });
++    const text = await res.text();
++    let preview = text.slice(0, 300);
++    try {
++      const json = JSON.parse(text);
++      preview = json?.choices?.[0]?.message?.content ?? json?.error?.message ?? preview;
++    } catch {
++      /* เก็บข้อความดิบไว้ */
++    }
++    return { ok: res.ok, status: res.status, preview: String(preview).trim() };
++  } catch (err) {
++    return { ok: false, status: 0, preview: `เชื่อมต่อไม่ได้: ${err.message}` };
++  }
++}
++
++function printAccount(v) {
++  if (v.status !== "valid") return;
++  const name =
++    v.user?.username ?? v.user?.email ?? (v.user ? JSON.stringify(v.user).slice(0, 120) : "ไม่ทราบ");
++  ok(`token ใช้ได้ — บัญชี: ${C.bold}${name}${C.reset}`);
++  if (v.usage) {
++    const used = v.usage?.usage?.total ?? v.usage?.total ?? null;
++    const limit = v.usage?.entitlement?.remaining ?? v.usage?.allowance ?? null;
++    if (used != null) info(`การใช้งานเดือนนี้: ${used}`);
++    if (limit != null) info(`โควตาคงเหลือ: ${limit}`);
++  } else {
++    info("อ่านข้อมูลการใช้งานเดือนนี้ไม่ได้ (ไม่กระทบการใช้งาน)");
++  }
++}
++
++/* ------------------------------------------------------------------ */
++/* main                                                                */
++/* ------------------------------------------------------------------ */
++
++async function main() {
++  if (has("--help", "-h")) usage(0);
++
++  const jsonMode = has("--json");
++  const emitJson = (obj, code) => {
++    if (jsonMode) console.log(JSON.stringify(obj, null, 2));
++    process.exit(code);
++  };
++
++  // 1) บันทึก token ที่ก๊อปมาจาก dashboard
++  const setToken = valueOf("--set-token");
++  if (setToken !== undefined) {
++    const token = String(setToken).trim();
++    if (!looksLikeToken(token)) {
++      bad("token ดูไม่ถูกต้อง (สั้นเกินไปหรือมีช่องว่าง) — ลองก๊อปใหม่จาก puter.com/dashboard");
++      emitJson({ ok: false, error: "invalid-token-format" }, 1);
++    }
++    const file = writeEnvFile(token);
++    ok(`บันทึก token ลง ${file} แล้ว`);
++    const v = await verifyToken(token);
++    if (v.status === "valid") printAccount(v);
++    else if (v.status === "unreachable") warn(`ตรวจสอบออนไลน์ไม่ได้ (เน็ตมีปัญหา): ${v.error}`);
++    else {
++      bad(`token ถูกบันทึกแต่ตรวจแล้วใช้ไม่ได้: ${v.error}`);
++      emitJson({ ok: false, error: v.status }, 1);
++    }
++    console.log(`\n${C.bold}ขั้นต่อไป${C.reset}\n  ./run-agent.sh "สวัสดี"`);
++    emitJson({ ok: true, file, verified: v.status }, 0);
++  }
++
++  // 2) ตรวจ token เดิม
++  if (has("--verify")) {
++    const token = readTokenFromEnv() ?? readTokenFromFile();
++    if (!token) {
++      bad(`ไม่พบ token — ตั้งตัวแปร ${TOKEN_KEY} หรือรัน \`node puter-login.mjs\` ก่อน`);
++      emitJson({ ok: false, error: "no-token" }, 1);
++    }
++    info(`ตรวจ token ${mask(token)}`);
++    const v = await verifyToken(token);
++    if (v.status === "valid") {
++      printAccount(v);
++      if (has("--ping")) {
++        head("ทดสอบยิงที่ OpenAI-compatible endpoint ของ Puter");
++        const p = await pingChatCompletions(token);
++        if (p.ok) ok(`HTTP ${p.status} — ตอบกลับ: ${p.preview}`);
++        else bad(`HTTP ${p.status} — ${p.preview}`);
++        emitJson({ ok: p.ok, verified: "valid", ping: p }, p.ok ? 0 : 1);
++      }
++      emitJson({ ok: true, verified: "valid" }, 0);
++    }
++    if (v.status === "unreachable") {
++      bad(`เชื่อมต่อ Puter ไม่ได้: ${v.error}`);
++      info("สาเหตุที่พบบ่อย: เน็ตหลุด, ไฟร์วอลล์/พร็อกซีขององค์กร, หรือสภาพแวดล้อมที่บล็อก api.puter.com");
++      info("token ในเครื่องอาจยังใช้ได้ปกติ — ลองใหม่เมื่อเน็ตกลับมา");
++      emitJson({ ok: false, verified: "unreachable", error: v.error }, 1);
++    }
++    bad(`token ใช้ไม่ได้: ${v.error ?? v.status}`);
++    emitJson({ ok: false, verified: v.status, error: v.error }, 1);
++  }
++
++  // 3) ค่าเริ่มต้น: ใช้ token เดิมถ้ายังดี ไม่งั้นล็อกอินใหม่
++  const force = has("--force", "-f");
++  const printOnly = has("--print", "-p");
++  const existing = readTokenFromEnv() ?? readTokenFromFile();
++
++  if (existing && !force) {
++    info(`พบ token เดิม ${mask(existing)} — กำลังตรวจสอบ`);
++    const v = await verifyToken(existing);
++    if (v.status === "valid") {
++      printAccount(v);
++      if (printOnly) {
++        console.log(existing);
++        emitJson({ ok: true, token: existing }, 0);
++      }
++      console.log(`\n${C.bold}พร้อมใช้${C.reset} — รัน:  ./run-agent.sh "สวัสดี"`);
++      console.log(`${C.dim}(ต้องการล็อกอินบัญชีใหม่ ใช้ --force)${C.reset}`);
++      emitJson({ ok: true, reused: true }, 0);
++    }
++    if (v.status === "unreachable") {
++      bad(`ตรวจสอบ token ไม่ได้เพราะเชื่อมต่อ Puter ไม่ได้: ${v.error}`);
++      info("ตรวจเน็ตก่อน แล้วลองใหม่ (หรือใช้ --force ถ้าต้องการล็อกอินใหม่)");
++      emitJson({ ok: false, error: "unreachable", detail: v.error }, 1);
++    }
++    warn(`token เดิมใช้ไม่ได้ (${v.status}) — จะเปิดล็อกอินใหม่`);
++  }
++
++  // 4) ล็อกอินผ่านเบราว์เซอร์
++  const token = await login();
++
++  const v = await verifyToken(token);
++  if (v.status === "valid") printAccount(v);
++  else if (v.status === "unreachable") warn(`ตรวจสอบออนไลน์ไม่ได้ (เน็ตมีปัญหา): ${v.error}`);
++  else warn(`ตรวจสอบ token ได้ผลลัพธ์: ${v.status}${v.error ? ` — ${v.error}` : ""}`);
++
++  if (printOnly) {
++    console.log(token);
++    emitJson({ ok: true, token }, 0);
++  }
++
++  const file = writeEnvFile(token);
++  ok(`บันทึก token ลง ${file} (สิทธิ์ 600)`);
++
++  head("ขั้นต่อไป");
++  console.log(`  ./run-agent.sh "สวัสดี แนะนำตัวหน่อย"`);
++  console.log(`  ${C.dim}# หรือเรียกใช้ตรง ๆ${C.reset}`);
++  console.log(`  docker-agent run --env-from-file .env.puter agent.yaml`);
++  console.log(`\n${C.dim}ใช้ token นี้ได้ทุกโปรเจกต์: คัดลอกบรรทัด ${TOKEN_KEY}=… ไปวางใน ~/.config/cagent/.env${C.reset}`);
++  emitJson({ ok: true, file, verified: v.status }, 0);
++}
++
++main().catch((err) => {
++  bad(err?.message ?? String(err));
++  process.exit(1);
++});
++
++process.on("SIGINT", () => {
++  console.log("");
++  bad("ยกเลิกโดยผู้ใช้");
++  process.exit(130);
++});
+diff --git a/puter/run-agent.sh b/puter/run-agent.sh
+new file mode 100755
+index 0000000..732fa3d
+--- /dev/null
++++ b/puter/run-agent.sh
+@@ -0,0 +1,96 @@
++#!/usr/bin/env bash
++# ---------------------------------------------------------------------------
++# run-agent.sh — ล็อกอิน Puter (ถ้ายังไม่มี token) แล้วรัน docker-agent
++#                ด้วยโมเดลของ Puter ผ่าน OpenAI-compatible endpoint
++#
++# ใช้:
++#   ./run-agent.sh                          # เปิด TUI
++#   ./run-agent.sh "สรุปโปรเจกต์นี้ให้หน่อย"   # ส่งคำสั่งแรกไปเลย
++#   FORCE_LOGIN=1 ./run-agent.sh            # บังคับล็อกอินใหม่ก่อนรัน
++#   AGENT_FILE=examples/other.yaml ./run-agent.sh   # ใช้ไฟล์ config อื่น
++# ---------------------------------------------------------------------------
++set -euo pipefail
++
++HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++cd "$HERE"
++
++ENV_FILE="${PUTER_ENV_FILE:-.env.puter}"
++AGENT_FILE="${AGENT_FILE:-$HERE/../examples/puter.yaml}"
++AUTO_LOGIN="${AUTO_LOGIN:-1}"
++
++read_env_value() { # $1 = key, $2 = file
++  local key="$1" file="$2" line
++  [[ -f "$file" ]] || return 1
++  line="$(grep -E "^[[:space:]]*${key}=" "$file" | tail -n 1 || true)"
++  [[ -n "$line" ]] || return 1
++  line="${line#*=}"
++  line="${line%\"}"; line="${line#\"}"
++  line="${line%\'}"; line="${line#\'}"
++  printf '%s' "$line"
++}
++
++# 1) หาคำสั่ง docker-agent (binary ตรง ๆ หรือ plugin ใต้ docker)
++if command -v docker-agent >/dev/null 2>&1; then
++  AGENT_CMD=(docker-agent)
++elif command -v docker >/dev/null 2>&1 && docker agent version >/dev/null 2>&1; then
++  AGENT_CMD=(docker agent)
++else
++  cat >&2 <<'EOS'
++✘ ไม่พบคำสั่ง docker-agent
++
++ติดตั้งอย่างใดอย่างหนึ่ง:
++  • Docker Desktop 4.63+  → มีปลั๊กอินมาให้แล้ว ใช้ `docker agent`
++  • Homebrew              → brew install docker-agent
++  • ดาวน์โหลด binary      → https://github.com/docker/docker-agent/releases
++EOS
++  exit 1
++fi
++
++# 2) ต้องมีไฟล์ config (ทำพาธให้อยู่ในรูปมาตรฐาน อ่านง่าย)
++if [[ -e "$AGENT_FILE" ]]; then
++  AGENT_DIR="$(cd "$(dirname "$AGENT_FILE")" && pwd)"
++  AGENT_FILE="$AGENT_DIR/$(basename "$AGENT_FILE")"
++fi
++
++if [[ ! -f "$AGENT_FILE" ]]; then
++  echo "✘ ไม่พบไฟล์ config: $AGENT_FILE" >&2
++  exit 1
++fi
++
++# 3) จัดการ token (ลำดับ: env → ไฟล์ → ล็อกอินใหม่)
++token="${PUTER_AUTH_TOKEN:-}"
++if [[ -z "$token" ]]; then
++  token="$(read_env_value PUTER_AUTH_TOKEN "$ENV_FILE" || true)"
++fi
++
++if [[ "${FORCE_LOGIN:-0}" == "1" ]]; then
++  token=""
++fi
++
++if [[ -z "$token" ]]; then
++  if [[ "$AUTO_LOGIN" != "1" ]]; then
++    echo "✘ ยังไม่มี PUTER_AUTH_TOKEN และ AUTO_LOGIN=0" >&2
++    echo "  รัน: node puter-login.mjs" >&2
++    exit 1
++  fi
++  if ! command -v node >/dev/null 2>&1; then
++    echo "✘ ต้องมี Node.js 20+ เพื่อล็อกอิน (หรือใช้ --set-token ด้วย token จาก puter.com/dashboard)" >&2
++    exit 1
++  fi
++  echo "• ยังไม่มี token ของ Puter — กำลังเปิดขั้นตอนล็อกอิน"
++  node puter-login.mjs
++  token="$(read_env_value PUTER_AUTH_TOKEN "$ENV_FILE" || true)"
++  [[ -n "$token" ]] || { echo "✘ ล็อกอินไม่สำเร็จ" >&2; exit 1; }
++fi
++
++# 4) ประกอบคำสั่ง (แนบ --env-from-file เฉพาะเมื่อไฟล์มีจริง)
++args=(run)
++if [[ -f "$ENV_FILE" ]]; then
++  args+=(--env-from-file "$ENV_FILE")
++else
++  export PUTER_AUTH_TOKEN="$token"
++fi
++args+=("$AGENT_FILE")
++
++echo "• รัน: ${AGENT_CMD[*]} ${args[*]} ${*:-}"
++exec "${AGENT_CMD[@]}" "${args[@]}" "$@"
+diff --git a/puter/tests/login-flow.test.mjs b/puter/tests/login-flow.test.mjs
+new file mode 100644
+index 0000000..17f0aaa
+--- /dev/null
++++ b/puter/tests/login-flow.test.mjs
+@@ -0,0 +1,148 @@
++/**
++ * ทดสอบขั้นตอนล็อกอินแบบไม่ต้องมีเบราว์เซอร์/เน็ตจริง
++ *
++ * วิธีทำ: สร้าง "Puter ปลอม" ขึ้นมาในเครื่อง แล้วตั้ง PUTER_GUI_ORIGIN ให้สคริปต์ไปขอ token ที่นั่น
++ * — พิสูจน์ว่า callback server, การรับ token, และการพิมพ์ผล ทำงานครบวงจร
++ *
++ * รัน: npm test
++ */
++
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { spawn } from "node:child_process";
++import http from "node:http";
++import { once } from "node:events";
++import { dirname, resolve } from "node:path";
++import { fileURLToPath } from "node:url";
++import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++
++const HERE = resolve(dirname(fileURLToPath(import.meta.url)), "..");
++const FAKE_TOKEN = "test_token_abcdefghijklmnopqrstuvwxyz_1234567890";
++
++/** สร้างเซิร์ฟเวอร์เลียนแบบหน้าเว็บล็อกอินของ Puter */
++function startFakePuter() {
++  return new Promise((done) => {
++    const seen = { authme: 0 };
++    const server = http.createServer((req, reply) => {
++      const url = new URL(req.url, "http://localhost");
++      if (url.searchParams.get("action") === "authme") {
++        seen.authme += 1;
++        const redirect = url.searchParams.get("redirectURL");
++        reply.writeHead(302, { Location: `${redirect}?token=${FAKE_TOKEN}` });
++        reply.end();
++        return;
++      }
++      reply.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
++      reply.end("fake puter gui");
++    });
++    server.listen(0, "127.0.0.1", () => done({ server, port: server.address().port, seen }));
++  });
++}
++
++function runCli(args, env) {
++  const child = spawn(process.execPath, ["puter-login.mjs", ...args], {
++    cwd: HERE,
++    env: { ...process.env, NO_COLOR: "1", ...env },
++  });
++  let stdout = "";
++  let stderr = "";
++  const listeners = [];
++  child.stdout.on("data", (chunk) => {
++    stdout += chunk.toString();
++    for (const fn of listeners) fn(stdout);
++  });
++  child.stderr.on("data", (chunk) => {
++    stderr += chunk.toString();
++  });
++  return { child, onStdout: (fn) => listeners.push(fn), output: () => ({ stdout, stderr }) };
++}
++
++test("ล็อกอินผ่าน localhost callback แล้วได้ token กลับมา", async () => {
++  const { server, port, seen } = await startFakePuter();
++  const { child, onStdout, output } = runCli(["--print", "--force"], {
++    PUTER_GUI_ORIGIN: `http://127.0.0.1:${port}`,
++    PUTER_LOGIN_TIMEOUT_MS: "20000",
++    PUTER_AUTH_TOKEN: "",
++  });
++
++  let simulated = false;
++  onStdout(async (out) => {
++    const match = out.match(/http:\/\/127\.0\.0\.1:\d+\/\?action=authme\S*/);
++    if (!match || simulated) return;
++    simulated = true;
++    // เล่นเป็นเบราว์เซอร์: เปิด URL ที่สคริปต์พิมพ์ แล้วตาม redirect กลับมาที่ callback
++    try {
++      await fetch(match[0], { redirect: "follow" });
++    } catch {
++      /* ให้ assert ด้านล่างรายงานผล */
++    }
++  });
++
++  const [code] = await once(child, "exit");
++  server.close();
++
++  const { stdout } = output();
++  assert.equal(simulated, true, `ไม่พบ URL ล็อกอินในผลลัพธ์:\n${stdout}`);
++  assert.equal(seen.authme, 1, "ต้องยิงไปที่หน้า authme 1 ครั้ง");
++  assert.equal(code, 0, `ควรจบด้วย exit 0 แต่ได้ ${code}\n${stdout}`);
++  assert.ok(stdout.includes(FAKE_TOKEN), `ควรพิมพ์ token ที่ได้ออกมา:\n${stdout}`);
++});
++
++test("--help ใช้งานได้และแสดงชื่อตัวแปรที่ต้องใช้", async () => {
++  const { child, output } = runCli(["--help"], {});
++  const [code] = await once(child, "exit");
++  assert.equal(code, 0);
++  assert.match(output().stdout, /PUTER_AUTH_TOKEN/);
++  assert.match(output().stdout, /--set-token/);
++});
++
++test("run-agent.sh อ่าน token จากไฟล์และส่ง argument ให้ docker-agent ถูกต้อง", async () => {
++  // สร้าง docker-agent ปลอม เพื่อดักดูคำสั่งที่สคริปต์จะรันจริง
++  const tmp = mkdtempSync(join(tmpdir(), "puter-agent-test-"));
++  const fakeBin = join(tmp, "docker-agent");
++  writeFileSync(fakeBin, '#!/usr/bin/env bash\necho "ARGS: $*"\n', { mode: 0o755 });
++
++  const envFile = join(tmp, "fake.env");
++  writeFileSync(envFile, "PUTER_AUTH_TOKEN=token_from_file_1234567890abcdef\n", { mode: 0o600 });
++
++  const child = spawn("bash", ["run-agent.sh", "สวัสดี"], {
++    cwd: HERE,
++    env: {
++      ...process.env,
++      PATH: `${tmp}:${process.env.PATH}`,
++      PUTER_ENV_FILE: envFile,
++      AUTO_LOGIN: "0",
++      PUTER_AUTH_TOKEN: "", // จงใจไม่ตั้ง เพื่อบังคับให้อ่านจากไฟล์
++      NO_COLOR: "1",
++    },
++  });
++  let stdout = "";
++  child.stdout.on("data", (c) => (stdout += c.toString()));
++  child.stderr.on("data", (c) => (stdout += c.toString()));
++
++  // ค่าเริ่มต้นของไฟล์ config ต่างกันได้ตาม layout (ในรีโพ docker-agent ใช้ $HERE/../examples/puter.yaml)
++  // สคริปต์แปลงพาธของไฟล์ config ให้เป็น absolute เสมอเมื่อไฟล์มีอยู่
++  const defaultAgent = existsSync(resolve(HERE, "../examples/puter.yaml"))
++    ? resolve(HERE, "../examples/puter.yaml")
++    : resolve(HERE, "agent.yaml");
++
++  const [code] = await once(child, "exit");
++  assert.equal(code, 0, `ควรจบด้วย exit 0 แต่ได้ ${code}\n${stdout}`);
++  const expected = `ARGS: run --env-from-file ${envFile} ${defaultAgent} สวัสดี`;
++  assert.ok(
++    stdout.includes(expected),
++    `คำสั่งที่ส่งให้ docker-agent ไม่ถูกต้อง\nคาดหวัง: ${expected}\nได้:\n${stdout}`
++  );
++});
++
++test("--verify ต้องไม่ผ่านเมื่อ token ใช้ไม่ได้", async () => {
++  const { child, output } = runCli(["--verify"], {
++    PUTER_AUTH_TOKEN: "definitely_not_a_valid_token_0000000000",
++  });
++  const [code] = await once(child, "exit");
++  const { stdout } = output();
++  assert.equal(code, 1, `ควรจบด้วย exit 1\n${stdout}`);
++  assert.match(stdout, /token/i);
++});

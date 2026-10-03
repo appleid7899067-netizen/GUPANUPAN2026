@@ -24,6 +24,7 @@ npm run dev -- --hostname 0.0.0.0
 7. **History**: กู้คืนโค้ดก่อนแก้ไขได้ 8 ครั้งล่าสุด
 8. **Export ZIP**: ดาวน์โหลด `index.html`, `project.json`, `README.txt` เพื่อสำรองงาน
 9. ย้ายเว็บไปเครื่องอื่น: แตก ZIP สร้างโปรเจกต์เปล่า แล้ว **นำเข้า HTML** (ไม่ได้นำเข้าประวัติแชต/เวอร์ชัน)
+10. ปุ่ม **บัญชี Puter** (มุมขวาบน): ล็อกอิน/ออกจากระบบ และ **คัดลอก token สำหรับเทอร์มินัล** — token ถูกอ่านจาก SDK ตอนที่กดเท่านั้น ไม่ถูกบันทึกหรือส่งไปที่อื่น (ดูข้อ 5)
 
 ใช้ AI ผ่าน Puter SDK โดยตรง ใช้ model เริ่มต้นของบริการ หรือระบุ model ID ที่บัญชีคุณใช้ได้ ไม่มี API key ฝั่งผู้ใช้ ค่าใช้จ่าย/โควตาเป็นไปตามบัญชี Puter **ไม่รับรองว่าฟรีไม่จำกัด**
 
@@ -38,6 +39,8 @@ npm run dev -- --hostname 0.0.0.0
 - **โหมดการสร้าง 8 แบบ** (เว็บแอป / แลนดิ้ง / แดชบอร์ด / เกม / เนื้อหาไทย / accessibility / รีแฟกเตอร์ / เอกสาร) — เลือกแล้ว AI ได้ข้อกำหนดเพิ่มของโหมดนั้น (แนวคิดเดียวกับ persona ของ docker-agent)
 - **Agent kit** — ปุ่มในหัวเวิร์กสเปซที่ส่งออก ZIP: `agent.yaml` (ผ่าน schema ของ docker-agent v16), `README.md`, `index.html`
   พร้อมสคริปต์ล็อกอิน Puter เพื่อเอาโปรเจกต์ไปทำงานต่อในเทอร์มินัลด้วย docker-agent + บัญชี Puter
+- **บัญชี Puter + token bridge** — ล็อกอินในบิลเดอร์ครั้งเดียว แล้วใช้ token เดียวกันกับ docker-agent ในเทอร์มินัลได้
+  (`node puter/puter-login.mjs --set-token …`) โดย token อยู่ในเบราว์เซอร์ของคุณเท่านั้น; แสดงแบบมาสก์ และมีคำเตือนความปลอดภัยในแผง
 - Console รับ log/warn/error จาก iframe ที่ตรงกันเท่านั้น (ไม่ใช่ shell terminal)
 - ไม่อนุญาตโค้ดพรีวิวเข้าถึง Puter, cookies หรือ storage ของ builder
 - เก็บโปรเจกต์ใน localStorage ของ **เบราว์เซอร์และ origin นี้เท่านั้น** ไม่มี cloud sync
@@ -63,7 +66,7 @@ cp .env.example .env.local
 ## ตรวจสอบ
 
 ```bash
-npm test                     # 28 unit tests (ไม่มีเทสต์ที่ต้องใช้เน็ต/บัญชีจริง)
+npm test                     # 33 unit tests (ไม่มีเทสต์ที่ต้องใช้เน็ต/บัญชีจริง)
 npm run check-types-errors
 npm run build
 npm start -- --hostname 0.0.0.0
@@ -74,7 +77,8 @@ npm start -- --hostname 0.0.0.0
 | ไฟล์ | ตรวจอะไร |
 | --- | --- |
 | `tests/sandbox.test.cjs` | runtime ของแซนด์บ็อกซ์ (รันใน VM จริง): eval, error, Promise, snapshot, แยก channel; `collectSnapshot` ↔ `analyzeSnapshot` ทำงานคู่กัน; timeout และการไม่รับข้อความข้าม channel |
-| `tests/sandbox-panel.test.cjs` | เรนเดอร์ `SandboxPanel` ด้วย `react-dom/server` — แท็บ, ปุ่ม REPL, CSP ใน `srcDoc` และ `sandbox="allow-scripts"` (ห้าม same-origin) |
+| `tests/builder-ui.test.cjs` | เรนเดอร์ `SandboxPanel` + ปุ่มบัญชี Puter ด้วย `react-dom/server` — แท็บ, ปุ่ม REPL, CSP ใน `srcDoc`, `sandbox="allow-scripts"` (ห้าม same-origin) และต้องไม่โชว์ token ใน HTML |
+| `tests/puter-token.test.cjs` | อ่าน token จาก SDK (ไม่ได้ → ค่อยดู localStorage), ไม่พังเมื่อ storage โยน error, มาสก์ token และคำสั่งเทอร์มินัลไม่ฝัง token |
 | `tests/build-modes.test.cjs` | โหมดครบ ไม่ซ้ำ และ system prompt ต่อกับกติกากลางถูกต้อง |
 | `tests/agent-export.test.cjs` | `agent.yaml` parse ได้ด้วย `yaml`, ชี้ที่ Puter endpoint, และข้อความผู้ใช้ที่พยายามแทรก YAML ต้องไม่เปลี่ยนโครงสร้าง |
 
