@@ -1,35 +1,64 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowDown,
   ArrowLeft,
   ArrowUp,
+  Bookmark,
+  Brain,
   Check,
+  CheckCircle2,
+  ChevronDown,
+  Circle,
+  Copy,
+  ChevronsUpDown,
+  ListChecks,
+  Pencil,
+  ThumbsDown,
+  ThumbsUp,
+  XCircle,
   Code2,
   Download,
+  ExternalLink,
   Eye,
+  Github,
   History,
   Loader2,
   LogIn,
+  Mic,
   Monitor,
+  MoreHorizontal,
   Package,
   Play,
+  Plus,
+  Rocket,
   RotateCcw,
   Save,
+  SlidersHorizontal,
   Smartphone,
   Square,
+  Tablet,
   Terminal,
   Upload,
+  X,
   Zap,
 } from "lucide-react";
 import { zipSync, strToU8 } from "fflate";
 import {
+  changedPaths,
   checkpoint,
+  defaultPage,
+  extractFiles,
   extractHtml,
+  extractSummary,
+  inlineAssets,
   loadProject,
-  MAX_HTML_SIZE,
+  MAX_FILE_SIZE,
+  MAX_TOTAL_SIZE,
   previewDocument,
+  sameFiles,
   saveProject,
   type BuildProject,
 } from "@/lib/builder";
@@ -42,19 +71,100 @@ import {
   DEFAULT_AGENT_MODEL,
 } from "@/lib/agent-export";
 import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
+import GithubCloneDialog, {
+  type GithubCloneResult,
+} from "./GithubCloneDialog";
+import {
+  buildPreviewDocument,
+  previewFailureDocument,
+  previewPlaceholderDocument,
+} from "@/lib/react-runtime/preview";
+import { reportToServer } from "@/lib/dev-report";
+import { detectPreviewEngine } from "@/lib/react-runtime/transform";
 import PuterAccountButton from "./PuterAccountButton";
 import SandboxPanel from "./SandboxPanel";
+import { useSpeechInput } from "./use-speech-input";
+import {
+  getPublishInfo,
+  publishProject,
+  type PublishRecord,
+} from "@/lib/puter-publish";
+import MarkdownLite from "./MarkdownLite";
 import "./builder.css";
 
+/**
+ * ═══ หน้า 2 จาก 2 หน้าของบิลเดอร์ (รูปแบบเดียวกับ bolt.new) ═══════════════
+ *
+ * bolt.new มี 2 หน้า: หน้าแรกใส่พรอมป์ (`BuilderHome.tsx`) และหน้านี้ —
+ * แชตอยู่ซ้าย มุมมองงานอยู่ขวา ด้านขวาจึงเหลือแท็บหลัก 2 แท็บเหมือน Bolt คือ
+ * Preview กับ Code ส่วน Sandbox (REPL/ตัวตรวจ DOM) และ History ไม่หายไปไหน
+ * แต่เปิดเป็น "แผงลอย" ทับพื้นที่ขวา จากปุ่มย่อยในแถบแท็บหรือเมนู ⋯ บนหัวเพจ
+ */
 type LogLine = { level: string; text: string };
+type WorkTab = "preview" | "code";
+type Plan = {
+  step: number;
+  live: boolean;
+  chars: number;
+  error?: string;
+  writes?: string[];
+};
+
+/**
+ * ส่งไฟล์ปัจจุบันของโปรเจกต์ให้ AI เห็นทุกครั้งที่จะแก้
+ * ถ้ารวมกันใหญ่เกิน 60 KB ส่งเฉพาะ index.html + รายชื่อไฟล์ที่เหลือ
+ */
+function filesContext(files: Record<string, string>): string {
+  const entries = Object.entries(files);
+  const total = entries.reduce((sum, [, content]) => sum + content.length, 0);
+  if (total <= 60_000) {
+    return `Current files:
+${entries
+      .map(([path, content]) => "```file:" + path + "\n" + content + "\n```")
+      .join("\n")}`;
+  }
+  return `Current index.html:
+${files["index.html"] ?? ""}
+Other files in the project: ${Object.keys(files).join(", ")}`;
+}
+type WorkOverlay = "sandbox" | "history";
+/** ขนาดพรีวิว — Bolt ให้เลือก desktop / tablet / mobile */
+type Device = "desktop" | "tablet" | "mobile";
+
 export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<BuildProject | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [draftPath, setDraftPath] = useState("index.html");
+  const [page, setPage] = useState("index.html");
+  const [streamSummary, setStreamSummary] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [tab, setTab] = useState<"preview" | "code" | "sandbox" | "history">("preview");
+  const [tab, setTab] = useState<WorkTab>("preview");
+  const [overlay, setOverlay] = useState<WorkOverlay | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showModel, setShowModel] = useState(false);
   const [mode, setMode] = useState<string>(DEFAULT_MODE_ID);
-  const [mobile, setMobile] = useState(false);
+  const [device, setDevice] = useState<Device>("desktop");
+  /** จอแคบแบบ Bolt: เห็นทีละ pane — แชตเต็มจอ หรือ pane งาน (พรีวิว/โค้ด) */
+  const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
+  /** การ์ดแผนงาน: step = จำนวนขั้นที่เสร็จแล้ว (แต่ละขั้น = เหตุการณ์จริงใน pipeline) */
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [planOpen, setPlanOpen] = useState(true);
+  const [lastBuild, setLastBuild] = useState<{
+    label: string;
+    at: string;
+    version: number;
+  } | null>(null);
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [atBottom, setAtBottom] = useState(true);
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishProgress, setPublishProgress] = useState("");
+  const [publishError, setPublishError] = useState("");
+  const [publishInfo, setPublishInfo] = useState<PublishRecord | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -65,20 +175,36 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [showLogs, setShowLogs] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
   const [channel, setChannel] = useState("");
+  const [srcDoc, setSrcDoc] = useState("");
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewNote, setPreviewNote] = useState("");
   const frame = useRef<HTMLIFrameElement>(null);
+  const projectRef = useRef<BuildProject | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const menuBox = useRef<HTMLDivElement>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
   const run = useRef(0);
   const running = useRef(false);
   const cancelWait = useRef<(() => void) | null>(null);
-  const dirty = !!project && draft !== project.html;
+  const dirty = !!project && !sameFiles(drafts, project.files);
+  const lastUserIndex =
+    project?.messages.reduce(
+      (acc, message, i) => (message.role === "user" ? i : acc),
+      -1,
+    ) ?? -1;
+  const speech = useSpeechInput((text) =>
+    setPrompt((current) => (current.trim() ? `${current} ${text}` : text)),
+  );
 
   useEffect(() => {
     setChannel(crypto.randomUUID());
     try {
       const stored = loadProject(projectId);
       setProject(stored);
-      setDraft(stored?.html || "");
+      const files = stored?.files ?? {};
+      setDrafts(files);
+      setDraftPath(defaultPage(files));
+      setPage(defaultPage(files));
       setPrompt(sessionStorage.getItem(`gupan:prompt:${projectId}`) || "");
       const savedMode = localStorage.getItem(`gupan:mode:${projectId}`);
       if (savedMode && BUILD_MODES.some((item) => item.id === savedMode)) setMode(savedMode);
@@ -87,6 +213,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     }
     setLoaded(true);
     let alive = true;
+    getPublishInfo(projectId)
+      .then((record) => {
+        if (alive) setPublishInfo(record);
+      })
+      .catch(() => {
+        /* ไม่มีประวัติเผยแพร่ = ปุ่มเผยแพร่ครั้งแรก */
+      });
     ensurePuterLoaded()
       .then((ok) => {
         if (alive) {
@@ -107,7 +240,16 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     const receive = (event: MessageEvent) => {
       if (
         event.source !== frame.current?.contentWindow ||
-        event.data?.channel !== channel ||
+        event.data?.channel !== channel
+      )
+        return;
+      // link ภายในแอปที่สร้าง: ข้ามหน้าโดยไม่ออกจาก sandbox
+      if (typeof event.data.navigate === "string") {
+        const target = event.data.navigate.split("#")[0];
+        if (projectRef.current?.files[target] !== undefined) setPage(target);
+        return;
+      }
+      if (
         !["log", "warn", "error"].includes(event.data.level) ||
         typeof event.data.text !== "string"
       )
@@ -116,10 +258,30 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         ...old.slice(-99),
         { level: event.data.level, text: event.data.text.slice(0, 2000) },
       ]);
+      // ช่วยวินิจฉัย: error จากในพรีวิวจะไปโผล่ใน log ของ dev server ด้วย
+      if (event.data.level === "error") {
+        reportToServer("preview-console", event.data.text.slice(0, 600));
+      }
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
   }, [channel]);
+  // วินิจฉัย: error ที่หลุดจากฝั่งแอปบิลเดอร์เอง (ไม่ใช่ในพรีวิว) ก็ควรเห็นใน log ของ dev
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const onError = (event: ErrorEvent) =>
+      reportToServer("builder-window", event.message || "unknown error");
+    const onRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason as { message?: string } | undefined;
+      reportToServer("builder-promise", reason?.message ?? String(event.reason));
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty || busy) {
@@ -133,22 +295,138 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [project?.messages.length, busy]);
-  const srcDoc = useMemo(
-    () => (channel && project ? previewDocument(project.html, channel) : ""),
-    [project?.html, channel],
-  );
+  // เมนูย่อย/แผงลอยปิดได้ด้วย Escape และคลิกนอกกรอบ — พฤติกรรมเดียวกับ popover ของ Bolt
+  useEffect(() => {
+    if (!overlay && !menuOpen) return;
+    const away = (event: MouseEvent) => {
+      if (menuOpen && !menuBox.current?.contains(event.target as Node))
+        setMenuOpen(false);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (menuOpen) setMenuOpen(false);
+      else setOverlay(null);
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", key);
+    };
+  }, [overlay, menuOpen]);
+  /**
+   * พรีวิว: โปรเจกต์ HTML ล้วนใช้เส้นทางเดิม (เร็ว ทันที) ส่วน React/Vite/Next
+   * ต้องคอมไพล์ TS/JSX ด้วย Babel ในเบราว์เซอร์แล้วรันผ่าน runner
+   */
+  const files = project?.files;
+  const origin = project?.origin;
+  const previewTicket = useRef(0);
+  const previewWatchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const ticket = ++previewTicket.current;
+    if (previewWatchdog.current !== null) {
+      clearTimeout(previewWatchdog.current);
+      previewWatchdog.current = null;
+    }
+    if (!channel || !files) {
+      setSrcDoc("");
+      setPreviewBusy(false);
+      setPreviewNote("");
+      return;
+    }
+    const engine = detectPreviewEngine(files);
+    reportToServer("preview-build", `engine=${engine} page=${page} files=${Object.keys(files).length}`);
+    if (engine === "static") {
+      setSrcDoc(previewDocument(files, page, channel));
+      setPreviewBusy(false);
+      setPreviewNote("");
+      return;
+    }
+    setPreviewBusy(true);
+    setPreviewNote("");
+    // ให้ iframe แสดงสถานะกำลังคอมไพล์ของตัวเอง ระหว่างโหลด Babel/คอมไพล์
+    setSrcDoc(previewPlaceholderDocument());
+    // กันพรีวิวค้างที่หน้า "กำลังโหลด" ตลอดไป (เช่น ดึงตัวคอมไพล์จาก CDN ไม่สำเร็จ)
+    previewWatchdog.current = setTimeout(() => {
+      if (ticket !== previewTicket.current) return;
+      const message =
+        "โหลดตัวคอมไพล์ไม่สำเร็จหรือใช้เวลานานเกิน 40 วินาที — ตรวจอินเทอร์เน็ตแล้วกดรีเฟรชพรีวิวอีกครั้ง";
+      reportToServer("preview-timeout", `engine=${engine}`);
+      setSrcDoc(previewFailureDocument(message, "พรีวิวใช้เวลานานเกินไป"));
+      setPreviewBusy(false);
+      setPreviewNote(message);
+    }, 40000);
+    buildPreviewDocument(files, page, channel, { engine, origin }, previewDocument)
+      .then((result) => {
+        if (previewWatchdog.current !== null) {
+          clearTimeout(previewWatchdog.current);
+          previewWatchdog.current = null;
+        }
+        if (ticket !== previewTicket.current) return; // มีการแก้โค้ดใหม่ระหว่างคอมไพล์
+        setSrcDoc(result.doc);
+        setPreviewBusy(false);
+        if (result.bundle) {
+          reportToServer(
+            "preview-compiled",
+            `modules=${result.bundle.modules.length} errors=${result.bundle.errors.length} missing=${result.bundle.missing.length} mount=${result.bundle.mount}`,
+            {
+              entry: result.bundle.entryModule,
+              errors: result.bundle.errors.slice(0, 3),
+              missing: result.bundle.missing.slice(0, 3).map((item) => item.specifier),
+            },
+          );
+        }
+        const problems = result.bundle
+          ? result.bundle.errors.length + result.bundle.missing.length
+          : 0;
+        setPreviewNote(
+          result.bundle?.mount === "synthetic" && result.bundle.entryModule
+            ? "พรีวิวนี้ mount หน้าแรกให้อัตโนมัติ (ไม่มี HTML/SSR ในรีโป)"
+            : problems
+              ? "พรีวิวมีบางส่วนรันไม่ได้ — ดูรายละเอียดในแบนเนอร์ในพรีวิว"
+              : "",
+        );
+      })
+      .catch((e) => {
+        if (previewWatchdog.current !== null) {
+          clearTimeout(previewWatchdog.current);
+          previewWatchdog.current = null;
+        }
+        if (ticket !== previewTicket.current) return;
+        // ไม่ fallback ไปเป็น HTML เปล่า (ผู้ใช้จะเห็นจอขาว) — แสดงสาเหตุในพรีวิวเลย
+        const message = errorText(e);
+        reportToServer("preview-failed", message);
+        setSrcDoc(previewFailureDocument(message, "คอมไพล์โปรเจกต์นี้ไม่สำเร็จ"));
+        setPreviewBusy(false);
+        setPreviewNote(`คอมไพล์ไม่สำเร็จ: ${message}`);
+      });
+  }, [files, origin, page, channel]);
 
+  /** สลับมุมมองหลัก Preview/Code และปิดแผงลอยที่ทับอยู่ */
+  function showTab(next: WorkTab) {
+    setOverlay(null);
+    setTab(next);
+  }
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
   function apply(next: BuildProject) {
     saveProject(next); // Don't claim a successful save or replace the preview on quota failure.
     setProject(next);
-    setDraft(next.html);
+    setDrafts(next.files);
+    setDraftPath((current) =>
+      next.files[current] !== undefined ? current : defaultPage(next.files),
+    );
+    setPage((current) =>
+      next.files[current] !== undefined ? current : defaultPage(next.files),
+    );
     setLogs([]);
     setPreviewKey((k) => k + 1);
   }
   function saveCode() {
     if (!project || busy) return;
     try {
-      apply(checkpoint(project, draft, "ก่อนแก้โค้ดด้วยตัวเอง"));
+      apply(checkpoint(project, drafts, "ก่อนแก้โค้ดด้วยตัวเอง"));
       setError("");
       setStatus("บันทึกแล้วในเบราว์เซอร์นี้");
     } catch (e) {
@@ -180,7 +458,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     if (!project || !prompt.trim() || running.current) return;
     if (dirty) {
       setError("บันทึกหรือยกเลิกการแก้โค้ดก่อนส่งคำสั่ง AI");
-      setTab("code");
+      showTab("code");
       return;
     }
     if (!window.puter?.auth?.isSignedIn?.()) {
@@ -195,17 +473,23 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     const request = prompt.trim();
     setBusy(true);
     setError("");
+    setPlan({ step: 1, live: true, chars: 0 });
+    setStreamSummary("");
+    setPlanOpen(true);
+    setLastBuild(null);
+    setFeedback(null);
     setStatus("กำลังส่งคำสั่งให้ AI…");
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const generate = async () => {
+        let gotStream = false;
         const stream = await window.puter.ai.chat(
           [
             { role: "system", content: systemPromptFor(mode) },
             ...project.messages.slice(-6),
             {
               role: "user",
-              content: `Current index.html:\n${project.html}\n\nRequested change:\n${request}`,
+              content: `${filesContext(project.files)}\n\nRequested change:\n${request}`,
             },
           ],
           { stream: true, ...(model.trim() ? { model: model.trim() } : {}) },
@@ -213,9 +497,19 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         let text = "";
         for await (const chunk of stream) {
           if (ticket !== run.current) return "";
+          if (!gotStream) {
+            gotStream = true;
+            setPlan((p) => (p ? { ...p, step: 2 } : p)); // เชื่อมต่อ AI สำเร็จ
+          }
           if (typeof chunk?.text === "string") text += chunk.text;
-          if (text.length > MAX_HTML_SIZE + 1000)
+          if (text.length > MAX_TOTAL_SIZE + 1000)
             throw new Error("คำตอบ AI ใหญ่เกินขีดจำกัด");
+          setPlan((p) => (p ? { ...p, chars: text.length } : p));
+          // สตรีมส่วนสรุปคำต่อคำลงแชทแบบ Bolt (หยุดที่ fence ไฟล์แรก)
+          const fenceAt = text.indexOf("```");
+          const head = fenceAt === -1 ? text : text.slice(0, fenceAt);
+          if (!/^\s*<!doctype|^\s*<html/i.test(head))
+            setStreamSummary(head.slice(0, 700));
           setStatus(
             `AI กำลังเขียนโค้ด · ${text.length.toLocaleString()} ตัวอักษร`,
           );
@@ -236,18 +530,29 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         }),
       ]);
       if (ticket !== run.current) return;
-      const html = extractHtml(raw);
-      const next = checkpoint(project, html, `ก่อน: ${request}`);
+      setPlan((p) => (p ? { ...p, step: 3 } : p)); // รับคำตอบครบแล้ว
+      const files = extractFiles(raw);
+      setPlan((p) => (p ? { ...p, step: 4 } : p)); // ชุดไฟล์สมบูรณ์
+      const writes = changedPaths(project.files, files);
+      const next = checkpoint(project, files, `ก่อน: ${request}`);
       next.messages = [
         ...project.messages,
         { role: "user", content: request },
         {
           role: "assistant",
           content:
-            "อัปเดต index.html แล้ว ตรวจผลใน Preview หรือแก้ไขต่อใน Code ได้เลย",
+            extractSummary(raw) ||
+            "อัปเดต index.html แล้ว ตรวจผลในพรีวิว หรือแก้ไขต่อในแท็บโค้ดได้เลย",
         },
       ].slice(-40) as BuildProject["messages"];
       apply(next);
+      setLastBuild({
+        label: request.slice(0, 80),
+        at: new Date().toISOString(),
+        version: next.versions.length,
+      });
+      setPlan({ step: 5, live: false, chars: raw.length, writes });
+      setStreamSummary("");
       setPrompt("");
       try {
         sessionStorage.removeItem(`gupan:prompt:${projectId}`);
@@ -255,11 +560,17 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         /* Project is already saved. */
       }
       setStatus("สร้างเสร็จแล้ว · บันทึกในเบราว์เซอร์นี้");
-      setTab("preview");
+      showTab("preview");
     } catch (e) {
       if (ticket === run.current) {
         setError(errorText(e));
         setStatus("สร้างไม่สำเร็จ · โค้ดเดิมยังอยู่");
+        setPlan((p) => ({
+          step: p?.step ?? 0,
+          chars: p?.chars ?? 0,
+          live: false,
+          error: errorText(e),
+        }));
       }
     } finally {
       if (timer) clearTimeout(timer);
@@ -269,6 +580,63 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         running.current = false;
         setBusy(false);
       }
+    }
+  }
+  function commitRename() {
+    setRenaming(false);
+    const next = nameDraft.trim().slice(0, 60);
+    if (!project || !next || next === project.name) return;
+    const renamed = { ...project, name: next };
+    setProject(renamed);
+    try {
+      saveProject(renamed);
+      setError("");
+      setStatus("เปลี่ยนชื่อโปรเจกต์แล้ว");
+    } catch (e) {
+      setProject(project);
+      setError(errorText(e));
+    }
+  }
+  async function publishNow() {
+    if (!project) return;
+    setPublishing(true);
+    setPublishError("");
+    try {
+      const record = await publishProject(
+        projectId,
+        project.name,
+        drafts,
+        setPublishProgress,
+      );
+      setPublishInfo(record);
+      setStatus(`เผยแพร่แล้วที่ ${record.url}`);
+    } catch (e) {
+      setPublishError(errorText(e));
+    } finally {
+      setPublishing(false);
+    }
+  }
+  async function copyPublishUrl() {
+    if (!publishInfo) return;
+    try {
+      await navigator.clipboard.writeText(publishInfo.url);
+      setPublishError("");
+      setPublishProgress("คัดลอก URL แล้ว");
+    } catch {
+      setPublishError("คัดลอกอัตโนมัติไม่ได้ — เลือก URL แล้วคัดลอกเอง");
+    }
+  }
+  async function copyAnswer() {
+    const last = [...project.messages]
+      .reverse()
+      .find((message) => message.role === "assistant");
+    if (!last) return;
+    try {
+      await navigator.clipboard.writeText(last.content);
+      setError("");
+      setStatus("คัดลอกคำตอบล่าสุดแล้ว");
+    } catch {
+      setError("คัดลอกอัตโนมัติไม่ได้ — กรุณาเลือกข้อความแล้วคัดลอกเอง");
     }
   }
   function stop() {
@@ -283,12 +651,17 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     if (!project) return;
     try {
       const zip = zipSync({
-        "index.html": strToU8(draft),
+        ...Object.fromEntries(
+          Object.entries(drafts).map(([path, content]) => [
+            path,
+            strToU8(content),
+          ]),
+        ),
         "README.txt": strToU8(
           "Open index.html in a browser. This is a static frontend, not a Node.js app. Review AI-generated code before publishing.\n",
         ),
         "project.json": strToU8(
-          JSON.stringify({ ...project, html: draft }, null, 2),
+          JSON.stringify({ ...project, files: drafts }, null, 2),
         ),
       });
       const url = URL.createObjectURL(
@@ -326,7 +699,12 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       const files: Record<string, Uint8Array> = {
         [`${AGENT_KIT_DIR}/agent.yaml`]: strToU8(buildAgentYaml(project, options)),
         [`${AGENT_KIT_DIR}/README.md`]: strToU8(buildHandoffReadme(project, options)),
-        [`${AGENT_KIT_DIR}/index.html`]: strToU8(draft),
+        ...Object.fromEntries(
+          Object.entries(drafts).map(([path, content]) => [
+            `${AGENT_KIT_DIR}/${path}`,
+            strToU8(content),
+          ]),
+        ),
       };
       let attached = 0;
       for (const path of AGENT_KIT_FILES) {
@@ -352,10 +730,37 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       setStatus("");
     }
   }
+  /**
+   * แทนที่ไฟล์ทั้งโปรเจกต์ด้วย repo ที่โคลนมา — เก็บ checkpoint ไว้ใน History
+   * และบันทึกข้อความสรุปไว้ในการสนทนา (ไม่มี AI/เครดิตเกี่ยวข้อง)
+   */
+  function importClone({ plan }: GithubCloneResult) {
+    if (!project) return;
+    try {
+      const checked = checkpoint(project, plan.files, "ก่อนโคลนจาก GitHub");
+      apply({
+        ...checked,
+        name: project.name,
+        origin: plan.origin,
+        messages: [
+          ...checked.messages,
+          { role: "assistant", content: plan.summary },
+        ],
+      });
+      setCloneOpen(false);
+      setError("");
+      showTab("preview");
+    } catch (e) {
+      setCloneOpen(false);
+      setError(
+        e instanceof Error ? e.message : "บันทึกไฟล์จาก GitHub ไม่สำเร็จ",
+      );
+    }
+  }
   async function importHtml(file?: File) {
     if (!file || !project) return;
     try {
-      if (file.size > MAX_HTML_SIZE) throw new Error("นำเข้าได้สูงสุด 400 KB");
+      if (file.size > MAX_FILE_SIZE) throw new Error("นำเข้าได้สูงสุด 400 KB");
       const html = extractHtml(await file.text());
       if (
         !confirm(
@@ -363,9 +768,15 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         )
       )
         return;
-      apply(checkpoint(project, html, "ก่อนนำเข้า HTML"));
+      apply(
+        checkpoint(
+          project,
+          { ...project.files, "index.html": html },
+          "ก่อนนำเข้า HTML",
+        ),
+      );
       setError("");
-      setTab("preview");
+      showTab("preview");
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -390,9 +801,11 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     );
   return (
     <div className="builder workspace">
+      {/* ── แถบบนแบบ Bolt: กลับ · โลโก้ · ชื่อโปรเจกต์ ‖ บัญชี · Export · เมนู ⋯ ── */}
       <header className="builder-header">
         <Link
           href="/"
+          className="icon-button"
           aria-label="กลับหน้าหลัก"
           onClick={(e) => {
             if (
@@ -402,12 +815,37 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               e.preventDefault();
           }}
         >
-          <ArrowLeft size={19} />
+          <ArrowLeft size={18} />
         </Link>
         <span className="brand">
-          <Zap size={18} fill="currentColor" /> GUPAN
+          <Zap size={18} fill="currentColor" /> GUPAN<span>studio</span>
         </span>
-        <span className="project-title">{project.name}</span>
+        {renaming ? (
+          <input
+            className="project-title-input"
+            aria-label="ชื่อโปรเจกต์"
+            value={nameDraft}
+            maxLength={60}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") setRenaming(false);
+            }}
+            autoFocus
+          />
+        ) : (
+          <button
+            className="project-title"
+            title="เปลี่ยนชื่อโปรเจกต์"
+            onClick={() => {
+              setNameDraft(project.name);
+              setRenaming(true);
+            }}
+          >
+            {project.name}
+          </button>
+        )}
         <span className="saved-status">
           {dirty ? (
             "ยังไม่บันทึก"
@@ -417,32 +855,102 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             </>
           )}
         </span>
-        <PuterAccountButton
-          onStatus={(message) => {
-            setError("");
-            setStatus(message);
-          }}
-          onError={(message) => setError(message)}
-        />
-        <button
-          className="subtle"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-        >
-          <Upload size={15} />
-          <span>นำเข้า HTML</span>
-        </button>
-        <button className="primary" onClick={download}>
-          <Download size={15} /> Export ZIP
-        </button>
-        <button
-          className="subtle"
-          disabled={busy}
-          title="ชุดไฟล์สำหรับทำงานต่อด้วย docker-agent โดยใช้บัญชี Puter"
-          onClick={() => void downloadAgentKit()}
-        >
-          <Package size={15} /> <span>Agent kit</span>
-        </button>
+        <div className="header-actions">
+          <PuterAccountButton
+            onStatus={(message) => {
+              setError("");
+              setStatus(message);
+            }}
+            onError={(message) => setError(message)}
+          />
+          <button
+            className="primary"
+            disabled={publishing}
+            onClick={() => {
+              setPublishError("");
+              setPublishOpen(true);
+            }}
+          >
+            {publishing ? (
+              <Loader2 size={15} className="spin" />
+            ) : (
+              <Rocket size={15} />
+            )}
+            <span>เผยแพร่</span>
+          </button>
+          <button className="subtle" onClick={download}>
+            <Download size={15} /> <span>Export ZIP</span>
+          </button>
+          {/* เมนู ⋯ : เครื่องมือรองที่ไม่ใช่แท็บหลัก (นำเข้า · ส่งออก · แซนด์บ็อกซ์ · ประวัติ) */}
+          <div className="menu-anchor" ref={menuBox}>
+            <button
+              className="icon-button"
+              aria-label="เครื่องมือเพิ่มเติม"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <MoreHorizontal size={18} />
+            </button>
+            {menuOpen && (
+              <div className="menu-pop" role="menu" aria-label="เครื่องมือเพิ่มเติม">
+                <button
+                  role="menuitem"
+                  disabled={busy}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    fileInput.current?.click();
+                  }}
+                >
+                  <Upload size={15} /> นำเข้า HTML
+                </button>
+                <button
+                  role="menuitem"
+                  disabled={busy}
+                  title="โคลน repo สาธารณะจาก GitHub มาแทนที่ไฟล์โปรเจกต์นี้"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setCloneOpen(true);
+                  }}
+                >
+                  <Github size={15} /> โคลนจาก GitHub
+                </button>
+                <button
+                  role="menuitem"
+                  disabled={busy}
+                  title="ชุดไฟล์สำหรับทำงานต่อด้วย docker-agent โดยใช้บัญชี Puter"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void downloadAgentKit();
+                  }}
+                >
+                  <Package size={15} /> ส่งออก Agent kit
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setOverlay("sandbox");
+                  }}
+                >
+                  <Terminal size={15} /> Sandbox · REPL
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setOverlay("history");
+                  }}
+                >
+                  <History size={15} /> ประวัติโค้ด
+                  {!!project.versions.length && (
+                    <span className="menu-count">{project.versions.length}</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
         <input
           ref={fileInput}
           type="file"
@@ -451,7 +959,47 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           onChange={(e) => void importHtml(e.target.files?.[0])}
         />
       </header>
-      <div className="workspace-body">
+      {/* จอแคบแบบ Bolt: immersive ทีละ pane — แชตมี pill เปิดงาน, pane งานมีปุ่มกลับ */}
+      <div
+        className={`mobile-switch ${
+          mobileView === "chat" ? "is-chat" : "is-work"
+        }`}
+      >
+        {mobileView === "chat" ? (
+          <button
+            className="switch-pill"
+            onClick={() => setMobileView("work")}
+          >
+            <Eye size={14} /> พรีวิวและโค้ด
+          </button>
+        ) : (
+          <>
+            <button
+              className="switch-back"
+              onClick={() => setMobileView("chat")}
+            >
+              <ArrowLeft size={14} /> กลับสู่การสนทนา
+            </button>
+            <span className="switch-seg">
+              {(
+                [
+                  { id: "preview", label: "พรีวิว" },
+                  { id: "code", label: "โค้ด" },
+                ] as const
+              ).map(({ id, label }) => (
+                <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
+                  {label}
+                </button>
+              ))}
+            </span>
+          </>
+        )}
+      </div>
+      <div
+        className={`workspace-body ${
+          mobileView === "chat" ? "show-chat" : "show-work"
+        }`}
+      >
         <aside className="chat-panel">
           <div className="chat-heading">
             <span>
@@ -459,32 +1007,126 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             </span>
             <span className="mode-pill">Puter AI</span>
           </div>
-          <div className="chat-messages">
-            <div className="assistant-intro">
-              <div className="assistant-symbol">✦</div>
-              <h2>จากไอเดีย สู่เว็บของคุณ</h2>
-              <p>
-                สั่งสร้างเว็บ แล้วแก้ต่อได้เรื่อย ๆ AI
-                จะเห็นโค้ดล่าสุดของคุณทุกครั้ง
-              </p>
-              <div className="scope-note">
-                โหมดนี้สร้าง HTML/CSS/JS แบบไฟล์เดียว
-                <br />
-                ไม่มี npm, terminal server หรือฐานข้อมูลจริง
+          <div className="chat-scroll-wrap">
+            <div
+              className="chat-messages"
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                setAtBottom(
+                  el.scrollTop + el.clientHeight >= el.scrollHeight - 60,
+                );
+              }}
+            >
+              <div className="assistant-intro">
+                <div className="assistant-wordmark" aria-hidden="true">
+                  gupan
+                </div>
+                <h2>จากไอเดีย สู่เว็บของคุณ</h2>
+                <p>
+                  สั่งสร้างเว็บ แล้วแก้ต่อได้เรื่อย ๆ AI
+                  จะเห็นโค้ดล่าสุดของคุณทุกครั้ง
+                </p>
+                <div className="scope-note">
+                  โหมดนี้สร้าง HTML/CSS/JS แบบไฟล์เดียว
+                  <br />
+                  ไม่มี npm, terminal server หรือฐานข้อมูลจริง
+                </div>
               </div>
+              {project.messages.map((message, i) => (
+                <Fragment key={i}>
+                  <div className={`chat-message ${message.role}`}>
+                    <small>{message.role === "user" ? "คุณ" : "GUPAN"}</small>
+                    <MarkdownLite text={message.content} />
+                  </div>
+                  {i === lastUserIndex && plan && (
+                    <BuildActivity
+                      plan={plan}
+                      reads={Object.keys(project.files)}
+                      open={planOpen}
+                      onToggle={() => setPlanOpen((value) => !value)}
+                    />
+                  )}
+                </Fragment>
+              ))}
+              {busy && streamSummary && (
+                <div className="chat-message assistant streaming">
+                  <small>GUPAN</small>
+                  <MarkdownLite text={streamSummary} />
+                </div>
+              )}
+              {busy && (
+                <div className="build-progress" role="status">
+                  <Brain size={16} /> {status}
+                </div>
+              )}
+              {!busy && lastBuild && (
+                <>
+                  <div className="feedback-row">
+                    <button
+                      className="ghost-btn"
+                      aria-label="คัดลอกคำตอบ"
+                      title="คัดลอกคำตอบ"
+                      onClick={() => void copyAnswer()}
+                    >
+                      <Copy size={15} />
+                    </button>
+                    <button
+                      className="ghost-btn"
+                      aria-label="ถูกใจคำตอบ"
+                      title="ถูกใจคำตอบ"
+                      aria-pressed={feedback === "up"}
+                      onClick={() =>
+                        setFeedback((value) => (value === "up" ? null : "up"))
+                      }
+                    >
+                      <ThumbsUp size={15} />
+                    </button>
+                    <button
+                      className="ghost-btn"
+                      aria-label="ไม่ถูกใจคำตอบ"
+                      title="ไม่ถูกใจคำตอบ"
+                      aria-pressed={feedback === "down"}
+                      onClick={() =>
+                        setFeedback((value) => (value === "down" ? null : "down"))
+                      }
+                    >
+                      <ThumbsDown size={15} />
+                    </button>
+                  </div>
+                  <button
+                    className="version-card"
+                    onClick={() => setOverlay("history")}
+                  >
+                    <span>
+                      <strong>สร้าง: {lastBuild.label}</strong>
+                      <small>
+                        เวอร์ชัน {lastBuild.version} ณ{" "}
+                        {new Date(lastBuild.at).toLocaleString("th-TH", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </small>
+                    </span>
+                    <Bookmark size={16} />
+                  </button>
+                </>
+              )}
+              <div ref={chatEnd} />
             </div>
-            {project.messages.map((message, i) => (
-              <div key={i} className={`chat-message ${message.role}`}>
-                <small>{message.role === "user" ? "คุณ" : "GUPAN"}</small>
-                <p>{message.content}</p>
-              </div>
-            ))}
-            {busy && (
-              <div className="build-progress" role="status">
-                <Loader2 size={17} className="spin" /> {status}
-              </div>
+            {!atBottom && (
+              <button
+                className="scroll-fab"
+                aria-label="เลื่อนลงล่างสุด"
+                title="เลื่อนลงล่างสุด"
+                onClick={() =>
+                  chatEnd.current?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                <ArrowDown size={16} />
+              </button>
             )}
-            <div ref={chatEnd} />
           </div>
           <div className="composer-area">
             {error && (
@@ -523,78 +1165,119 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   }
                 }}
               />
-              <div className="composer-bottom">
-                <span>Ctrl / ⌘ + Enter</span>
+              <div className="composer-row">
+                <button
+                  type="button"
+                  className="round-btn"
+                  aria-label="นำเข้า HTML"
+                  title="นำเข้า HTML"
+                  disabled={busy}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  <Plus size={16} />
+                </button>
+                <label className="mode-select">
+                  <select
+                    aria-label="โหมดการสร้าง"
+                    value={mode}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setMode(next);
+                      try {
+                        localStorage.setItem(`gupan:mode:${projectId}`, next);
+                      } catch {
+                        /* โหมดเป็นเพียงตัวช่วย ไม่กระทบการบันทึกโปรเจกต์ */
+                      }
+                      setStatus(
+                        `โหมด ${getBuildMode(next).label} · ${getBuildMode(next).hint}`,
+                      );
+                    }}
+                  >
+                    {BUILD_MODES.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronsUpDown size={12} />
+                </label>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  aria-label="ตั้งค่าโมเดล AI"
+                  title="ตั้งค่าโมเดล AI"
+                  aria-expanded={showModel}
+                  onClick={() => setShowModel((value) => !value)}
+                >
+                  <SlidersHorizontal size={15} />
+                </button>
+                <span className="row-spacer" />
+                {speech.supported && (
+                  <button
+                    type="button"
+                    className="ghost-btn mic-btn"
+                    aria-label="พิมพ์ด้วยเสียง"
+                    title="พิมพ์ด้วยเสียง"
+                    aria-pressed={speech.listening}
+                    disabled={busy}
+                    onClick={speech.toggle}
+                  >
+                    <Mic size={16} />
+                  </button>
+                )}
                 {busy ? (
                   <button
                     type="button"
-                    className="stop-button"
+                    className="send-circle running"
+                    aria-label="หยุดรับผล"
+                    title="หยุดรับผล"
                     onClick={(e) => {
                       e.preventDefault();
                       stop();
                     }}
                   >
-                    <Square size={13} /> หยุดรับผล
+                    <Square size={12} />
                   </button>
                 ) : (
                   <button
-                    className="primary"
                     type="submit"
+                    className="send-circle"
                     disabled={!prompt.trim() || !ready}
+                    aria-label="ส่งคำสั่ง"
+                    title="ส่งคำสั่ง (Ctrl/⌘ + Enter)"
                   >
-                    <ArrowUp size={17} /> ส่งคำสั่ง
+                    <ArrowUp size={18} />
                   </button>
                 )}
               </div>
             </form>
-            <label className="mode-field">
-              โหมด{" "}
-              <select
-                aria-label="โหมดการสร้าง"
-                value={mode}
-                disabled={busy}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setMode(next);
-                  try {
-                    localStorage.setItem(`gupan:mode:${projectId}`, next);
-                  } catch {
-                    /* โหมดเป็นเพียงตัวช่วย ไม่กระทบการบันทึกโปรเจกต์ */
-                  }
-                  setStatus(`โหมด ${getBuildMode(next).label} · ${getBuildMode(next).hint}`);
-                }}
-              >
-                {BUILD_MODES.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="model-field">
-              Model{" "}
-              <input
-                aria-label="Puter model ID"
-                placeholder="ค่าเริ่มต้นของ Puter"
-                value={model}
-                disabled={busy}
-                onChange={(e) => setModel(e.target.value)}
-              />
-            </label>
+            {showModel && (
+              <label className="model-field">
+                Model{" "}
+                <input
+                  aria-label="Puter model ID"
+                  placeholder="ค่าเริ่มต้นของ Puter"
+                  value={model}
+                  disabled={busy}
+                  onChange={(e) => setModel(e.target.value)}
+                />
+              </label>
+            )}
             <small className="billing-note">
-              ใช้โควตา/ค่าบริการบัญชี Puter ของคุณ · ไม่ส่งคำสั่งอัตโนมัติ
+              ใช้โควตา/ค่าบริการบัญชี Puter ของคุณ · Ctrl/⌘ + Enter เพื่อส่ง ·
+              ไม่ส่งคำสั่งอัตโนมัติ
             </small>
           </div>
         </aside>
         <section className="work-panel">
+          {/* แท็บหลัก 2 แท็บเหมือน Bolt: Preview | Code — เครื่องมือรองอยู่ขวามือ */}
           <div className="work-tabs">
             <div role="tablist" aria-label="Workspace views">
               {(
                 [
                   { id: "preview", icon: Eye, label: "Preview" },
-                  { id: "sandbox", icon: Terminal, label: "Sandbox" },
                   { id: "code", icon: Code2, label: "Code" },
-                  { id: "history", icon: History, label: "History" },
                 ] as const
               ).map(({ id, icon: Icon, label }) => (
                 <button
@@ -602,16 +1285,50 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   aria-selected={tab === id}
                   key={id}
                   className={tab === id ? "active" : ""}
-                  onClick={() => setTab(id)}
+                  onClick={() => {
+                    setTab(id);
+                    setMobileView("work");
+                  }}
                 >
                   <Icon size={15} />
                   {label}
                 </button>
               ))}
             </div>
-            <span className="sandbox-label">
-              <i /> Isolated preview
-            </span>
+            <div className="tab-side">
+              <span className="sandbox-label">
+                <i /> Isolated preview
+              </span>
+              <button
+                className="icon-button"
+                aria-label="เปิด Sandbox และ REPL"
+                title="Sandbox · REPL"
+                aria-pressed={overlay === "sandbox"}
+                onClick={() =>
+                  setOverlay((current) =>
+                    current === "sandbox" ? null : "sandbox",
+                  )
+                }
+              >
+                <Terminal size={16} />
+              </button>
+              <button
+                className="icon-button"
+                aria-label="เปิดประวัติโค้ด"
+                title="ประวัติโค้ด"
+                aria-pressed={overlay === "history"}
+                onClick={() =>
+                  setOverlay((current) =>
+                    current === "history" ? null : "history",
+                  )
+                }
+              >
+                <History size={16} />
+                {!!project.versions.length && (
+                  <span className="menu-count">{project.versions.length}</span>
+                )}
+              </button>
+            </div>
           </div>
           {tab === "preview" && (
             <div className="preview-panel">
@@ -625,26 +1342,65 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 >
                   <RotateCcw size={15} />
                 </button>
-                <div className="preview-address">preview / index.html</div>
-                <button
-                  aria-label="Desktop preview"
-                  aria-pressed={!mobile}
-                  className={!mobile ? "selected" : ""}
-                  onClick={() => setMobile(false)}
+                <label className="preview-address">
+                  <select
+                    aria-label="เลือกหน้าพรีวิว"
+                    value={page}
+                    onChange={(e) => setPage(e.target.value)}
+                  >
+                    {Object.keys(project.files)
+                      .filter((path) => path.endsWith(".html"))
+                      .map((path) => (
+                        <option key={path} value={path}>
+                          preview / {path}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <div
+                  className="device-group"
+                  role="group"
+                  aria-label="ขนาดพรีวิว"
                 >
-                  <Monitor size={16} />
-                </button>
-                <button
-                  aria-label="Mobile preview"
-                  aria-pressed={mobile}
-                  className={mobile ? "selected" : ""}
-                  onClick={() => setMobile(true)}
-                >
-                  <Smartphone size={16} />
-                </button>
+                  {(
+                    [
+                      { id: "desktop", icon: Monitor, label: "Desktop preview" },
+                      { id: "tablet", icon: Tablet, label: "Tablet preview" },
+                      { id: "mobile", icon: Smartphone, label: "Mobile preview" },
+                    ] as const
+                  ).map(({ id, icon: Icon, label }) => (
+                    <button
+                      key={id}
+                      aria-label={label}
+                      title={label}
+                      aria-pressed={device === id}
+                      className={device === id ? "selected" : ""}
+                      onClick={() => setDevice(id)}
+                    >
+                      <Icon size={16} />
+                    </button>
+                  ))}
+                </div>
               </div>
+              {previewBusy && (
+                <div className="preview-compiling" role="status">
+                  <span className="preview-spinner" aria-hidden="true" />
+                  กำลังคอมไพล์ React/TS ด้วย Babel ในเบราว์เซอร์…
+                </div>
+              )}
+              {!previewBusy && previewNote && (
+                <div className="preview-note" role="status">
+                  {previewNote}
+                </div>
+              )}
               <div
-                className={`preview-stage ${mobile ? "mobile-preview" : ""}`}
+                className={`preview-stage ${
+                  device === "mobile"
+                    ? "mobile-preview"
+                    : device === "tablet"
+                      ? "tablet-preview"
+                      : ""
+                }`}
               >
                 <iframe
                   key={previewKey}
@@ -657,12 +1413,11 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               </div>
             </div>
           )}
-          {tab === "sandbox" && <SandboxPanel html={project.html} />}
           {tab === "code" && (
             <div className="code-panel">
               <div className="code-toolbar">
                 <span>
-                  <Code2 size={15} /> index.html
+                  <Code2 size={15} /> {draftPath}
                 </span>
                 <div>
                   <button
@@ -670,7 +1425,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                     disabled={!dirty || busy}
                     onClick={() => {
                       if (confirm("ยกเลิกการแก้ไขที่ยังไม่บันทึก?"))
-                        setDraft(project.html);
+                        setDrafts(project.files);
                     }}
                   >
                     ยกเลิก
@@ -684,13 +1439,38 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   </button>
                 </div>
               </div>
+              <div className="file-list" role="group" aria-label="ไฟล์ในโปรเจกต์">
+                {Object.keys(drafts)
+                  .sort((a, b) =>
+                    a === draftPath
+                      ? -1
+                      : b === draftPath
+                        ? 1
+                        : a === "index.html"
+                          ? -1
+                          : b === "index.html"
+                            ? 1
+                            : a.localeCompare(b),
+                  )
+                  .map((path) => (
+                    <button
+                      key={path}
+                      aria-pressed={path === draftPath}
+                      onClick={() => setDraftPath(path)}
+                    >
+                      {path}
+                    </button>
+                  ))}
+              </div>
               <textarea
                 className="code-editor"
-                aria-label="index.html source code"
+                aria-label={`${draftPath} source code`}
                 spellCheck={false}
-                value={draft}
+                value={drafts[draftPath] ?? ""}
                 disabled={busy}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) =>
+                  setDrafts({ ...drafts, [draftPath]: e.target.value })
+                }
                 onKeyDown={(e) => {
                   if ((e.ctrlKey || e.metaKey) && e.key === "s") {
                     e.preventDefault();
@@ -699,59 +1479,98 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 }}
               />
               <div className="code-footnote">
-                {draft.split("\n").length} lines ·{" "}
-                {(draft.length / 1000).toFixed(1)} KB · Ctrl/⌘ + S
+                {(drafts[draftPath] ?? "").split("\n").length} lines ·{" "}
+                {((drafts[draftPath] ?? "").length / 1000).toFixed(1)} KB ·{" "}
+                {Object.keys(drafts).length} ไฟล์ · Ctrl/⌘ + S
                 เพื่อบันทึกและอัปเดตพรีวิว
               </div>
             </div>
           )}
-          {tab === "history" && (
-            <div className="history-panel">
-              <h2>ประวัติโค้ด</h2>
-              <p>เก็บโค้ดก่อนแก้ไข 8 ครั้งล่าสุดในเบราว์เซอร์นี้</p>
-              {!project.versions.length && (
-                <div className="empty-projects">
-                  <History size={26} />
-                  <p>เมื่อบันทึกหรือให้ AI แก้โค้ด ประวัติจะปรากฏที่นี่</p>
-                </div>
-              )}
-              {project.versions.map((version) => (
-                <article key={version.id}>
-                  <div>
-                    <h3>{version.label}</h3>
-                    <small>
-                      {new Date(version.createdAt).toLocaleString("th-TH")}
-                    </small>
+          {/* ── แผงลอยทับพื้นที่ขวา: Sandbox กับ History ยังอยู่ครบ แต่ไม่แย่งแท็บหลัก ── */}
+          {overlay && (
+            <div
+              className="overlay-panel"
+              role="dialog"
+              aria-label={overlay === "sandbox" ? "Sandbox และ REPL" : "ประวัติโค้ด"}
+            >
+              <div className="overlay-head">
+                <span>
+                  {overlay === "sandbox" ? (
+                    <>
+                      <Terminal size={15} /> Sandbox · รันและทดลองโค้ด
+                    </>
+                  ) : (
+                    <>
+                      <History size={15} /> ประวัติโค้ด{" "}
+                      <small>{project.versions.length}/8</small>
+                    </>
+                  )}
+                </span>
+                <button
+                  className="icon-button"
+                  aria-label="ปิดแผง"
+                  onClick={() => setOverlay(null)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="overlay-body">
+                {overlay === "sandbox" ? (
+                  <SandboxPanel
+                    html={inlineAssets(
+                      project.files[page] ?? "",
+                      project.files,
+                    )}
+                  />
+                ) : (
+                  <div className="history-panel">
+                    <p>เก็บโค้ดก่อนแก้ไข 8 ครั้งล่าสุดในเบราว์เซอร์นี้</p>
+                    {!project.versions.length && (
+                      <div className="empty-projects">
+                        <History size={26} />
+                        <p>เมื่อบันทึกหรือให้ AI แก้โค้ด ประวัติจะปรากฏที่นี่</p>
+                      </div>
+                    )}
+                    {project.versions.map((version) => (
+                      <article key={version.id}>
+                        <div>
+                          <h3>{version.label}</h3>
+                          <small>
+                            {new Date(version.createdAt).toLocaleString("th-TH")}
+                          </small>
+                        </div>
+                        <button
+                          className="subtle"
+                          disabled={busy}
+                          onClick={() => {
+                            if (
+                              !confirm(
+                                "กู้คืนเวอร์ชันนี้? การแก้ไขที่ยังไม่บันทึกจะหายไป",
+                              )
+                            )
+                              return;
+                            try {
+                              apply(
+                                checkpoint(
+                                  project,
+                                  version.files,
+                                  "ก่อนกู้คืนเวอร์ชัน",
+                                ),
+                              );
+                              showTab("preview");
+                              setError("");
+                            } catch (e) {
+                              setError(errorText(e));
+                            }
+                          }}
+                        >
+                          <RotateCcw size={14} /> กู้คืน
+                        </button>
+                      </article>
+                    ))}
                   </div>
-                  <button
-                    className="subtle"
-                    disabled={busy}
-                    onClick={() => {
-                      if (
-                        !confirm(
-                          "กู้คืนเวอร์ชันนี้? การแก้ไขที่ยังไม่บันทึกจะหายไป",
-                        )
-                      )
-                        return;
-                      try {
-                        apply(
-                          checkpoint(
-                            project,
-                            version.html,
-                            "ก่อนกู้คืนเวอร์ชัน",
-                          ),
-                        );
-                        setTab("preview");
-                        setError("");
-                      } catch (e) {
-                        setError(errorText(e));
-                      }
-                    }}
-                  >
-                    <RotateCcw size={14} /> กู้คืน
-                  </button>
-                </article>
-              ))}
+                )}
+              </div>
             </div>
           )}
           <div className="console-section">
@@ -785,6 +1604,94 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           </div>
         </section>
       </div>
+      {publishOpen && (
+        <div
+          className="publish-backdrop"
+          role="dialog"
+          aria-label="เผยแพร่โปรเจกต์"
+          onClick={() => {
+            if (!publishing) setPublishOpen(false);
+          }}
+        >
+          <div className="publish-dialog" onClick={(e) => e.stopPropagation()}>
+            <header>
+              <span>
+                <Rocket size={15} /> เผยแพร่ขึ้น Puter Hosting
+              </span>
+              <button
+                className="icon-button"
+                aria-label="ปิด"
+                disabled={publishing}
+                onClick={() => setPublishOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </header>
+            <p className="publish-note">
+              อัปโหลดไฟล์ทั้งหมดไปยัง Puter Drive ของบัญชีคุณ แล้วผูกกับ
+              subdomain บน puter.site — พื้นที่/โควตา hosting
+              ขึ้นกับบัญชี Puter ของคุณเอง
+            </p>
+            {publishInfo && (
+              <p className="publish-url">
+                <a href={publishInfo.url} target="_blank" rel="noreferrer noopener">
+                  {publishInfo.url}
+                </a>
+                <small>
+                  เผยแพร่ล่าสุด{" "}
+                  {new Date(publishInfo.publishedAt).toLocaleString("th-TH")}
+                </small>
+              </p>
+            )}
+            {publishing && (
+              <p className="publish-progress" role="status">
+                {publishProgress}
+              </p>
+            )}
+            {publishError && (
+              <div className="builder-error" role="alert">
+                {publishError}
+              </div>
+            )}
+            <div className="publish-actions">
+              <button
+                className="primary"
+                disabled={publishing}
+                onClick={() => void publishNow()}
+              >
+                {publishing ? (
+                  <Loader2 size={15} className="spin" />
+                ) : (
+                  <Rocket size={15} />
+                )}
+                {publishInfo ? "อัปเดตเว็บไซต์" : "เผยแพร่ครั้งแรก"}
+              </button>
+              {publishInfo && (
+                <>
+                  <a
+                    className="subtle"
+                    href={publishInfo.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    <ExternalLink size={14} /> เปิดเว็บไซต์
+                  </a>
+                  <button className="subtle" onClick={() => void copyPublishUrl()}>
+                    <Copy size={14} /> คัดลอก URL
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {cloneOpen && (
+        <GithubCloneDialog
+          mode="replace"
+          onClose={() => setCloneOpen(false)}
+          onImport={importClone}
+        />
+      )}
       <footer className="workspace-footer">
         <span>
           <Play size={11} /> Browser sandbox · ไม่มีสิทธิ์เข้าถึงบัญชี Puter
@@ -805,4 +1712,97 @@ function errorText(error: unknown): string {
     );
   }
   return String(error);
+}
+
+/**
+ * การ์ดกิจกรรมระหว่าง/หลังสร้าง เลียนแบบแชทของ Bolt:
+ * บน = การ์ดไฟล์ที่อ่าน/เขียน (พับได้) ล่าง = การ์ดแผนงาน 5 ขั้น
+ * ⚠️ ทุกขั้นผูกกับเหตุการณ์จริงใน build() ไม่ใช่แอนิเมชันหลอก:
+ * 1 อ่านโค้ดปัจจุบัน → 2 เชื่อมต่อ Puter AI → 3 รับโค้ดครบ →
+ * 4 ตรวจ HTML สมบูรณ์ → 5 บันทึกเวอร์ชัน/อัปเดตพรีวิว
+ */
+const PLAN_STEPS = [
+  "อ่านไฟล์ปัจจุบันของโปรเจกต์",
+  "ส่งคำสั่งให้ Puter AI",
+  "รับโค้ดชุดใหม่",
+  "ตรวจความสมบูรณ์ของ HTML",
+  "บันทึกเวอร์ชันและอัปเดตพรีวิว",
+] as const;
+
+function BuildActivity({
+  plan,
+  reads,
+  open,
+  onToggle,
+}: {
+  plan: Plan;
+  reads: string[];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const writes = plan.writes ?? [];
+  const shownReads = reads.slice(0, 5);
+  return (
+    <div className="activity-stack">
+      <div className="action-card">
+        <button className="action-head" aria-expanded={open} onClick={onToggle}>
+          <Eye size={15} /> {reads.length} ไฟล์ที่อ่าน
+          {writes.length > 0 && ` · ${writes.length} ไฟล์ที่เขียน`}
+          <ChevronDown size={15} className={open ? "flipped" : ""} />
+        </button>
+        {open && (
+          <div className="action-rows">
+            {shownReads.map((path) => (
+              <span key={`r-${path}`} className="action-row">
+                <Eye size={13} /> อ่าน <code>{path}</code>
+              </span>
+            ))}
+            {reads.length > shownReads.length && (
+              <span className="action-row">… อีก {reads.length - shownReads.length} ไฟล์</span>
+            )}
+            {writes.map((path) => (
+              <span key={`w-${path}`} className="action-row">
+                <Pencil size={13} /> เขียน <code>{path}</code>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="plan-card">
+        <span className="plan-head">
+          <ListChecks size={15} /> วางแผน
+        </span>
+        <ol>
+          {PLAN_STEPS.map((label, i) => {
+            const done = plan.step > i;
+            const live = plan.live && plan.step === i;
+            return (
+              <li key={label} className={done ? "done" : live ? "live" : ""}>
+                {done ? (
+                  <CheckCircle2 size={15} />
+                ) : live ? (
+                  <Loader2 size={15} className="spin" />
+                ) : (
+                  <Circle size={15} />
+                )}
+                {i === 2 && plan.chars > 0
+                  ? `รับโค้ดชุดใหม่ · ${plan.chars.toLocaleString()} ตัวอักษร`
+                  : label}
+              </li>
+            );
+          })}
+          {plan.step >= 5 && !plan.live && !plan.error && (
+            <li className="done final">
+              <Check size={15} /> แผนงานเสร็จสมบูรณ์
+            </li>
+          )}
+          {plan.error && (
+            <li className="failed">
+              <XCircle size={15} /> {plan.error}
+            </li>
+          )}
+        </ol>
+      </div>
+    </div>
+  );
 }

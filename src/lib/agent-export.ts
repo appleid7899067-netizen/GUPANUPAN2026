@@ -52,10 +52,10 @@ export function buildAgentInstruction(project: BuildProject, modeId?: string): s
     .map((message) => `- ${sanitizeForYaml(message.content, 120)}`);
 
   return [
-    `You maintain a single-file web app called "${sanitizeForYaml(project.name, 60)}" that was built with the GUPANUPAN2026 browser builder (mode: ${mode.label}).`,
-    "The whole app is index.html: inline CSS and JavaScript, no build step, no external assets, no network calls.",
+    `You maintain a multi-file static web app called "${sanitizeForYaml(project.name, 60)}" that was built with the GUPANUPAN2026 browser builder (mode: ${mode.label}).`,
+    "The app is a set of static files (index.html plus styles.css / app.js / extra pages): no build step, no external assets, no network calls.",
     "Rules:",
-    "- Read index.html before editing, then change the smallest possible part.",
+    "- Read the relevant files (index.html and any css/js/pages involved) before editing, then change the smallest possible part.",
     "- Keep the CSP-friendly constraints of the preview: no external scripts/styles/fonts, no fetch, no cookies or localStorage for app state.",
     "- Preserve existing behaviour unless the user asks to remove it.",
     "- After editing, run the checks the user has (npm test / your own review) and summarise the change in Thai.",
@@ -107,13 +107,13 @@ export function buildHandoffReadme(project: BuildProject, opts: AgentKitOptions 
 
   return `# ${project.name} — ชุดทำงานต่อด้วย docker-agent + Puter
 
-โปรเจกต์นี้ถูกสร้างในเบราว์เซอร์ (GUPANUPAN2026) เป็น HTML ไฟล์เดียว
+โปรเจกต์นี้ถูกสร้างในเบราว์เซอร์ (GUPANUPAN2026) เป็นแอปสถิตหลายไฟล์
 โฟลเดอร์นี้ช่วยให้คุณทำงานต่อด้วย agent ฝั่งเทอร์มินัล โดยใช้ **บัญชี Puter** ของคุณเป็นผู้จ่ายค่าโมเดล
 (ไม่ต้องมี API key ของ OpenAI / Anthropic / Google)
 
 - โหมดที่ใช้ตอนสร้าง: ${mode.label}
 - โมเดลที่ตั้งไว้: ${model}
-- ไฟล์แอป: \`index.html\` (แก้ไฟล์นี้ได้เลย เปิดในเบราว์เซอร์ดูผลได้ทันที)
+- ไฟล์แอป: ${Object.keys(project.files).join(", ")} (หน้าหลักคือ index.html เปิดในเบราว์เซอร์ดูผลได้ทันที)
 
 ## ขั้นตอน
 
