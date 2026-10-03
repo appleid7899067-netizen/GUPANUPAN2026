@@ -555,8 +555,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border: 1px solid transparent;
   border-left: 1px solid var(--border);
-  padding-left: 14px;
+  padding: 5px 8px 5px 14px;
+  border-radius: 0 7px 7px 0;
+  background: none;
+  flex: 1;
+  min-width: 50px;
+  justify-content: flex-start;
+}
+.project-title:hover {
+  color: #e6e2ee;
+  border-color: var(--border);
+  border-left-color: var(--border);
+}
+.project-title-input {
+  font-size: 12px;
+  color: #eee;
+  background: #1b1a20;
+  border: 1px solid #44374f;
+  border-radius: 7px;
+  padding: 5px 8px;
   flex: 1;
   min-width: 50px;
 }
@@ -1152,10 +1171,29 @@
   background: #141417;
   border: 1px solid #302c35;
   border-radius: 6px;
-  padding: 7px 12px;
+  padding: 0 10px;
   font-size: 10px;
   color: #9b92a7;
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+/* route picker แบบ Bolt: เลือกหน้าของแอปที่สร้างได้เอง */
+.preview-address select {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  appearance: none;
+  padding: 7px 2px;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.preview-address select option {
+  background: #17171b;
+  color: #d7d2de;
 }
 .preview-stage {
   flex: 1;
@@ -1382,6 +1420,74 @@
   float: right;
   padding: 3px 6px;
   font-size: 9px;
+}
+/* dialog เผยแพร่ขึ้น Puter Hosting */
+.publish-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: #00000099;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.publish-dialog {
+  width: min(440px, 100%);
+  background: #17171b;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 24px 60px #000c;
+}
+.publish-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #efeaf7;
+}
+.publish-dialog header > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.publish-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.publish-url {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #12283a;
+  border: 1px solid #1f4360;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.publish-url a {
+  color: #8ec7f8;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.publish-url small {
+  color: #8fb8d8;
+  font-size: 10px;
+}
+.publish-progress {
+  margin: 0;
+  font-size: 11px;
+  color: #8ec7f8;
+}
+.publish-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .workspace-footer {
   display: flex;
@@ -1617,6 +1723,9 @@
     border-left: 0;
   }
   .workspace .header-actions .puter-account .subtle > span:not(.puter-dot) {
+    display: none;
+  }
+  .workspace .header-actions > .subtle > span {
     display: none;
   }
   .workspace .header-actions .primary {

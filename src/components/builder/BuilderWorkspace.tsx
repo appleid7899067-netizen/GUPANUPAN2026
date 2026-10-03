@@ -21,6 +21,7 @@ import {
   XCircle,
   Code2,
   Download,
+  ExternalLink,
   Eye,
   History,
   Loader2,
@@ -31,6 +32,7 @@ import {
   Package,
   Play,
   Plus,
+  Rocket,
   RotateCcw,
   Save,
   SlidersHorizontal,
@@ -71,6 +73,11 @@ import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
 import PuterAccountButton from "./PuterAccountButton";
 import SandboxPanel from "./SandboxPanel";
 import { useSpeechInput } from "./use-speech-input";
+import {
+  getPublishInfo,
+  publishProject,
+  type PublishRecord,
+} from "@/lib/puter-publish";
 import MarkdownLite from "./MarkdownLite";
 import "./builder.css";
 
@@ -139,6 +146,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   } | null>(null);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [atBottom, setAtBottom] = useState(true);
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishProgress, setPublishProgress] = useState("");
+  const [publishError, setPublishError] = useState("");
+  const [publishInfo, setPublishInfo] = useState<PublishRecord | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -184,6 +198,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     }
     setLoaded(true);
     let alive = true;
+    getPublishInfo(projectId)
+      .then((record) => {
+        if (alive) setPublishInfo(record);
+      })
+      .catch(() => {
+        /* ไม่มีประวัติเผยแพร่ = ปุ่มเผยแพร่ครั้งแรก */
+      });
     ensurePuterLoaded()
       .then((ok) => {
         if (alive) {
@@ -444,6 +465,50 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       }
     }
   }
+  function commitRename() {
+    setRenaming(false);
+    const next = nameDraft.trim().slice(0, 60);
+    if (!project || !next || next === project.name) return;
+    const renamed = { ...project, name: next };
+    setProject(renamed);
+    try {
+      saveProject(renamed);
+      setError("");
+      setStatus("เปลี่ยนชื่อโปรเจกต์แล้ว");
+    } catch (e) {
+      setProject(project);
+      setError(errorText(e));
+    }
+  }
+  async function publishNow() {
+    if (!project) return;
+    setPublishing(true);
+    setPublishError("");
+    try {
+      const record = await publishProject(
+        projectId,
+        project.name,
+        drafts,
+        setPublishProgress,
+      );
+      setPublishInfo(record);
+      setStatus(`เผยแพร่แล้วที่ ${record.url}`);
+    } catch (e) {
+      setPublishError(errorText(e));
+    } finally {
+      setPublishing(false);
+    }
+  }
+  async function copyPublishUrl() {
+    if (!publishInfo) return;
+    try {
+      await navigator.clipboard.writeText(publishInfo.url);
+      setPublishError("");
+      setPublishProgress("คัดลอก URL แล้ว");
+    } catch {
+      setPublishError("คัดลอกอัตโนมัติไม่ได้ — เลือก URL แล้วคัดลอกเอง");
+    }
+  }
   async function copyAnswer() {
     const last = [...project.messages]
       .reverse()
@@ -611,7 +676,32 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         <span className="brand">
           <Zap size={18} fill="currentColor" /> GUPAN<span>studio</span>
         </span>
-        <span className="project-title">{project.name}</span>
+        {renaming ? (
+          <input
+            className="project-title-input"
+            aria-label="ชื่อโปรเจกต์"
+            value={nameDraft}
+            maxLength={60}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") setRenaming(false);
+            }}
+            autoFocus
+          />
+        ) : (
+          <button
+            className="project-title"
+            title="เปลี่ยนชื่อโปรเจกต์"
+            onClick={() => {
+              setNameDraft(project.name);
+              setRenaming(true);
+            }}
+          >
+            {project.name}
+          </button>
+        )}
         <span className="saved-status">
           {dirty ? (
             "ยังไม่บันทึก"
@@ -629,8 +719,23 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             }}
             onError={(message) => setError(message)}
           />
-          <button className="primary" onClick={download}>
-            <Download size={15} /> Export ZIP
+          <button
+            className="primary"
+            disabled={publishing}
+            onClick={() => {
+              setPublishError("");
+              setPublishOpen(true);
+            }}
+          >
+            {publishing ? (
+              <Loader2 size={15} className="spin" />
+            ) : (
+              <Rocket size={15} />
+            )}
+            <span>เผยแพร่</span>
+          </button>
+          <button className="subtle" onClick={download}>
+            <Download size={15} /> <span>Export ZIP</span>
           </button>
           {/* เมนู ⋯ : เครื่องมือรองที่ไม่ใช่แท็บหลัก (นำเข้า · ส่งออก · แซนด์บ็อกซ์ · ประวัติ) */}
           <div className="menu-anchor" ref={menuBox}>
@@ -1082,7 +1187,21 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 >
                   <RotateCcw size={15} />
                 </button>
-                <div className="preview-address">preview / {page}</div>
+                <label className="preview-address">
+                  <select
+                    aria-label="เลือกหน้าพรีวิว"
+                    value={page}
+                    onChange={(e) => setPage(e.target.value)}
+                  >
+                    {Object.keys(project.files)
+                      .filter((path) => path.endsWith(".html"))
+                      .map((path) => (
+                        <option key={path} value={path}>
+                          preview / {path}
+                        </option>
+                      ))}
+                  </select>
+                </label>
                 <div
                   className="device-group"
                   role="group"
@@ -1319,6 +1438,87 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           </div>
         </section>
       </div>
+      {publishOpen && (
+        <div
+          className="publish-backdrop"
+          role="dialog"
+          aria-label="เผยแพร่โปรเจกต์"
+          onClick={() => {
+            if (!publishing) setPublishOpen(false);
+          }}
+        >
+          <div className="publish-dialog" onClick={(e) => e.stopPropagation()}>
+            <header>
+              <span>
+                <Rocket size={15} /> เผยแพร่ขึ้น Puter Hosting
+              </span>
+              <button
+                className="icon-button"
+                aria-label="ปิด"
+                disabled={publishing}
+                onClick={() => setPublishOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </header>
+            <p className="publish-note">
+              อัปโหลดไฟล์ทั้งหมดไปยัง Puter Drive ของบัญชีคุณ แล้วผูกกับ
+              subdomain บน puter.site — พื้นที่/โควตา hosting
+              ขึ้นกับบัญชี Puter ของคุณเอง
+            </p>
+            {publishInfo && (
+              <p className="publish-url">
+                <a href={publishInfo.url} target="_blank" rel="noreferrer noopener">
+                  {publishInfo.url}
+                </a>
+                <small>
+                  เผยแพร่ล่าสุด{" "}
+                  {new Date(publishInfo.publishedAt).toLocaleString("th-TH")}
+                </small>
+              </p>
+            )}
+            {publishing && (
+              <p className="publish-progress" role="status">
+                {publishProgress}
+              </p>
+            )}
+            {publishError && (
+              <div className="builder-error" role="alert">
+                {publishError}
+              </div>
+            )}
+            <div className="publish-actions">
+              <button
+                className="primary"
+                disabled={publishing}
+                onClick={() => void publishNow()}
+              >
+                {publishing ? (
+                  <Loader2 size={15} className="spin" />
+                ) : (
+                  <Rocket size={15} />
+                )}
+                {publishInfo ? "อัปเดตเว็บไซต์" : "เผยแพร่ครั้งแรก"}
+              </button>
+              {publishInfo && (
+                <>
+                  <a
+                    className="subtle"
+                    href={publishInfo.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    <ExternalLink size={14} /> เปิดเว็บไซต์
+                  </a>
+                  <button className="subtle" onClick={() => void copyPublishUrl()}>
+                    <Copy size={14} /> คัดลอก URL
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <footer className="workspace-footer">
         <span>
           <Play size={11} /> Browser sandbox · ไม่มีสิทธิ์เข้าถึงบัญชี Puter
