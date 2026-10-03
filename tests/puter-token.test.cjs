@@ -2,8 +2,12 @@ const { test, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { compileLib } = require("./ts-compile.cjs");
 
-const { mods, cleanup } = compileLib(["src/lib/puter.ts"]);
+const { mods, cleanup } = compileLib([
+  "src/lib/puter.ts",
+  "src/lib/puter-publish.ts",
+]);
 const puter = mods[0];
+const publish = mods[1];
 after(() => cleanup());
 
 test("readPuterToken อ่านจาก authToken ก่อน แล้วค่อยตกไปที่ localStorage", () => {
@@ -46,4 +50,11 @@ test("คำสั่งสำหรับเทอร์มินัลชี�
   const command = puter.terminalTokenCommand();
   assert.match(command, /puter-login\.mjs --set-token/);
   assert.ok(!command.includes("PUTER_AUTH_TOKEN="), "ต้องไม่ฝัง token ลงในสตริงคำสั่ง");
+});
+
+test("suggestSubdomain เป็น dns-safe และตรึงกับ id โปรเจกต์", () => {
+  const sub = publish.suggestSubdomain("abc123xyz", "ร้าน กาแฟ Online!");
+  assert.match(sub, /^gupan-[a-z0-9-]+-abc123$/);
+  assert.ok(sub.length <= 40);
+  assert.equal(publish.suggestSubdomain("zz9", "!!!"), "gupan-app-zz9");
 });

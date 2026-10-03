@@ -4,7 +4,8 @@
   --border: #303136;
   --muted: #999ba5;
   --text: #eeeef0;
-  --accent: #b6a0ff;
+  --accent: #4da3f5;
+  --bolt: #2f9df4;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-dm-sans), Arial, sans-serif;
@@ -94,52 +95,74 @@
   border-radius: 50%;
 }
 .home {
-  background:
-    radial-gradient(ellipse at 50% 21%, #30244755, transparent 47%), #111214;
+  background: #0f1013;
 }
 .home-main {
-  max-width: 950px;
+  max-width: 900px;
   margin: auto;
-  padding: 80px 28px 70px;
+  padding: 26px 20px 70px;
 }
-.eyebrow {
+/* การ์ดฮีโร่สีน้ำเงินเต็มความกว้าง — ลายจุดจาง ๆ แบบ bolt.new */
+.home-hero-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 54px 22px 34px;
+  background: radial-gradient(
+    130% 100% at 50% 0%,
+    #37b0ff 0%,
+    #128ae6 48%,
+    #0a63c0 100%
+  );
+  box-shadow: 0 24px 70px #0a63c033;
+}
+.home-hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#ffffff26 1px, transparent 1.4px);
+  background-size: 22px 22px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.home-hero-card > * {
+  position: relative;
+}
+.home-hero-card h1 {
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font-size: clamp(29px, 6vw, 46px);
+  line-height: 1.3;
+  font-weight: 750;
+  letter-spacing: -1.2px;
+}
+.hero-sub {
+  margin: 14px auto 26px;
+  max-width: 460px;
+  text-align: center;
+  color: #dbeeff;
+  font-size: 13px;
+  line-height: 1.8;
+}
+/* แถบบนของทั้งสองหน้า: กลุ่มปุ่มขวามือแบบ bolt.new */
+.header-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 9px;
-  font-size: 10px;
-  letter-spacing: 2.5px;
-  color: #baa8e9;
-  margin-bottom: 22px;
-}
-.home h1 {
-  text-align: center;
-  font-size: clamp(34px, 5vw, 56px);
-  line-height: 1.4;
-  font-weight: 650;
-  letter-spacing: -1.8px;
-  margin: 0;
-}
-.home h1 span {
-  color: #b9b4c6;
-}
-.hero-description {
-  text-align: center;
-  color: var(--muted);
-  margin: 19px 0 32px;
-  line-height: 1.8;
+  gap: 8px;
+  margin-left: auto;
 }
 .prompt-card {
   max-width: 720px;
   margin: auto;
-  background: #202024;
-  border: 1px solid #434049;
-  border-radius: 16px;
-  box-shadow: 0 15px 50px #0004;
+  background: #1d1d20;
+  border: 1px solid #ffffff24;
+  border-radius: 20px;
+  box-shadow: 0 18px 50px #00224455;
   overflow: hidden;
 }
 .prompt-card:focus-within {
-  border-color: #b6a0ff80;
+  border-color: #7cc0f8aa;
 }
 .prompt-card textarea {
   width: 100%;
@@ -156,51 +179,197 @@
 .builder input::placeholder {
   color: #7e7e89;
 }
-.prompt-footer {
-  padding: 0 16px 15px;
+.prompt-pill {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.prompt-footer > span {
-  display: flex;
   gap: 7px;
-  font-size: 11px;
-  color: #9d9ba8;
+  font-size: 10.5px;
+  color: #a9a4b6;
+  border: 1px solid #3a3742;
+  background: #1b1a20;
+  border-radius: 999px;
+  padding: 5px 11px;
+  white-space: nowrap;
 }
 .builder .primary {
-  background: #d6cafa;
-  color: #261d39;
-  border: 1px solid #d6cafa;
-  border-radius: 8px;
+  background: var(--bolt);
+  color: #fff;
+  border: 1px solid var(--bolt);
+  border-radius: 9px;
   padding: 9px 13px;
   font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
 }
 .builder .primary:hover:not(:disabled) {
-  background: #e7deff;
+  background: #55b1f7;
+}
+/* ไทล์เลือกประเภทงาน 4 ช่องบนการ์ดน้ำเงิน */
+.start-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 26px auto 0;
+  max-width: 520px;
+}
+.start-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: none;
+  color: #eaf5ff;
+  font-size: 11.5px;
+}
+.start-tile .tile-box {
+  width: 100%;
+  max-width: 92px;
+  aspect-ratio: 1;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: #0a5aa8b8;
+  border: 1px solid #ffffff2e;
+  transition:
+    transform 0.15s,
+    background 0.15s;
+}
+.start-tile:hover .tile-box {
+  background: #0b67c2cc;
+  transform: translateY(-2px);
+}
+.start-tile[aria-pressed="true"] .tile-box {
+  background: #fff;
+  color: #0a63c0;
+  border-color: #fff;
+}
+.start-tile[aria-pressed="true"] {
+  font-weight: 650;
+}
+.start-from {
+  margin: 26px 0 12px;
+  text-align: center;
+  color: #d5ebff;
+  font-size: 12px;
 }
 .suggestions {
   display: flex;
   justify-content: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin: 20px auto;
+  margin: 0 auto;
   max-width: 790px;
 }
 .suggestions button {
   font-size: 11px;
-  color: #aeabb7;
-  padding: 8px 11px;
-  border: 1px solid #323036;
-  border-radius: 7px;
-  background: #19181c;
+  color: #eaf5ff;
+  padding: 8px 12px;
+  border: 1px solid #ffffff30;
+  border-radius: 999px;
+  background: #08407ecc;
 }
 .suggestions button:hover {
-  border-color: #857598;
+  border-color: #ffffff55;
+  background: #0a4f9ad9;
+}
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+.composer-row .prompt-pill {
+  margin-left: auto;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #26262b;
+  border-color: #3a3a42;
+}
+.round-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid #3d3d44;
+  background: #2a2a2f;
+  color: #cfcdd6;
+}
+.round-btn:hover:not(:disabled) {
+  background: #35353c;
+  color: #fff;
+}
+.ghost-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #9a97a4;
+}
+.ghost-btn:hover:not(:disabled) {
+  color: #e6e3ee;
+  background: #2c2c33;
+}
+.ghost-btn[aria-expanded="true"] {
+  color: #7cc0f8;
+  background: #21303d;
+}
+.row-spacer {
+  flex: 1;
+}
+.send-circle {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bolt);
+  color: #fff;
+}
+.send-circle:hover:not(:disabled) {
+  background: #55b1f7;
+}
+/* ปุ่มส่งตอนยังพิมพ์ไม่ครบ = น้ำเงินหม่นแบบ bolt ไม่ใช่จางหาย */
+.send-circle:disabled {
+  opacity: 1;
+  background: #2b5a83;
+  color: #9db8cd;
+  cursor: not-allowed;
+}
+.mode-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 44%;
+}
+.mode-select select {
+  appearance: none;
+  background: none;
+  border: 0;
+  color: #b9b6c2;
+  font-size: 11px;
+  padding: 6px 20px 6px 8px;
+  border-radius: 8px;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+.mode-select select:hover:not(:disabled) {
+  background: #2c2c33;
   color: #eee;
+}
+.mode-select svg {
+  position: absolute;
+  right: 5px;
+  color: #8a8794;
+  pointer-events: none;
+}
+.mode-select option {
+  background: #1d1d22;
+  color: #e8e6ee;
 }
 .honest-note {
   text-align: center;
@@ -210,7 +379,7 @@
   margin-top: 27px;
 }
 .projects {
-  margin-top: 74px;
+  margin-top: 58px;
 }
 .section-heading {
   display: flex;
@@ -264,59 +433,97 @@
 .empty-projects > span {
   font-size: 11px;
 }
-.project-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 15px;
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.project-card {
+.project-row {
   position: relative;
-  background: #1c1c21;
+  display: flex;
+  align-items: center;
+  background: #1b1b20;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
+  border-radius: 11px;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
-.project-card:hover {
+.project-row:hover {
   border-color: #6e607f;
+  background: #201f26;
 }
-.project-card a {
-  display: block;
-  padding: 12px;
+.project-row > a {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 44px 11px 12px;
 }
-.project-art {
-  height: 94px;
-  border-radius: 6px;
-  background:
-    radial-gradient(ellipse at top right, #59447888, transparent), #25222e;
+.project-thumb {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 9px;
   display: grid;
   place-items: center;
   color: #c4b3e3;
+  border: 1px solid #3a3346;
+  background:
+    radial-gradient(ellipse at top right, #59447888, transparent), #25222e;
 }
-.project-card h3 {
-  font-size: 12px;
-  margin: 14px 23px 6px 1px;
+.project-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.project-meta strong {
+  font-size: 12.5px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.project-card p {
+.project-meta small {
   font-size: 10px;
-  color: #88828e;
-  margin: 0 0 3px;
+  color: #8b8593;
+}
+.project-go {
+  margin-left: auto;
+  display: flex;
+  color: #7e7789;
+}
+.project-row:hover .project-go {
+  color: #cbb9ea;
 }
 .delete-project {
   position: absolute;
-  right: 10px;
-  bottom: 27px;
-  padding: 5px;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px;
   color: #95869c;
   background: transparent;
   border: 0;
-  border-radius: 5px;
+  border-radius: 6px;
 }
 .delete-project:hover {
   color: #f9a9a9;
   background: #593636;
+}
+.builder-notice {
+  max-width: 720px;
+  margin: 14px auto 0;
+  background: #1b2a22;
+  border: 1px solid #33513f;
+  color: #c9e8d4;
+  font-size: 11.5px;
+  line-height: 1.7;
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
 }
 .home-footer {
   border-top: 1px solid #28262e;
@@ -348,8 +555,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border: 1px solid transparent;
   border-left: 1px solid var(--border);
-  padding-left: 14px;
+  padding: 5px 8px 5px 14px;
+  border-radius: 0 7px 7px 0;
+  background: none;
+  flex: 1;
+  min-width: 50px;
+  justify-content: flex-start;
+}
+.project-title:hover {
+  color: #e6e2ee;
+  border-color: var(--border);
+  border-left-color: var(--border);
+}
+.project-title-input {
+  font-size: 12px;
+  color: #eee;
+  background: #1b1a20;
+  border: 1px solid #44374f;
+  border-radius: 7px;
+  padding: 5px 8px;
   flex: 1;
   min-width: 50px;
 }
@@ -394,22 +620,103 @@
   font-size: 9px;
   padding: 3px 6px;
 }
+.chat-scroll-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .chat-messages {
   overflow: auto;
   flex: 1;
   min-height: 0;
   padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
 }
-.assistant-symbol {
-  width: 35px;
-  height: 35px;
-  display: grid;
-  place-items: center;
-  background: #2b233b;
-  border: 1px solid #4a3b63;
-  border-radius: 10px;
-  font-size: 25px;
-  color: #bca3eb;
+/* ปุ่มลอยเลื่อนลงล่างสุด เหมือนลูกศรลอยในแชทของ Bolt */
+.scroll-fab {
+  position: absolute;
+  right: 50%;
+  transform: translateX(50%);
+  bottom: 12px;
+  z-index: 6;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #26262bcc;
+  border: 1px solid var(--border);
+  color: #cfcdd6;
+  backdrop-filter: blur(4px);
+}
+.scroll-fab:hover {
+  color: #fff;
+  background: #32323a;
+}
+/* ข้อความผู้ช่วยแบบ markdown เบา (bullet + ตัวหนา) เหมือนคำตอบของ Bolt */
+.md-lite p {
+  white-space: pre-wrap;
+  margin: 4px 0;
+}
+.md-lite ul {
+  margin: 8px 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.md-lite li {
+  line-height: 1.8;
+}
+.md-lite strong {
+  color: #fff;
+  font-weight: 650;
+}
+/* ฟองสรุปที่สตรีมคำต่อคำระหว่าง AI คิด — กะพริบ caret ท้ายบรรทัด */
+.chat-message.streaming {
+  opacity: 0.95;
+}
+.chat-message.streaming .md-lite > p:last-child::after {
+  content: " ▍";
+  color: #8ec7f8;
+  animation: builder-pulse 1s ease-in-out infinite;
+}
+/* รายการไฟล์ในแท็บ Code */
+.file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 15px;
+  border-bottom: 1px solid var(--border);
+  background: #141419;
+}
+.file-list button {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10.5px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #1d1d23;
+  border: 1px solid var(--border);
+  color: #a5a0b1;
+}
+.file-list button:hover {
+  color: #e8e4f0;
+  border-color: #4a4356;
+}
+.file-list button[aria-pressed="true"] {
+  color: #e5d9fa;
+  border-color: #44374f;
+  background: #2e2839;
+}
+/* wordmark ตัวหนาเอียงแบบโลโก้ bolt ในหน้าแชท */
+.assistant-wordmark {
+  align-self: flex-start;
+  font-size: 20px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.6px;
+  color: #f2f0f7;
 }
 .assistant-intro h2 {
   font-size: 15px;
@@ -434,6 +741,8 @@
   font-size: 12px;
   line-height: 1.9;
   overflow-wrap: anywhere;
+  align-self: flex-start;
+  max-width: 92%;
 }
 .chat-message small {
   font-size: 9px;
@@ -445,28 +754,190 @@
   margin: 4px 0;
 }
 .chat-message.user {
+  align-self: flex-end;
   padding: 12px 14px;
-  border-radius: 10px;
-  background: #242129;
-  border: 1px solid #35303d;
+  border-radius: 12px;
+  background: #2a2a2e;
+  border: 1px solid #3a3a40;
 }
 .build-progress {
   margin-top: 20px;
-  color: #c3abea;
+  color: #8ec7f8;
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 11px;
+  align-self: flex-start;
+}
+.activity-stack {
+  align-self: stretch;
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.action-card,
+.plan-card {
+  border: 1px solid #33323a;
+  background: #1c1c21;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.action-head {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 12px 14px;
+  background: none;
+  border: 0;
+  color: #d7d2de;
+  font-size: 12px;
+}
+.action-head svg:last-child {
+  margin-left: auto;
+  transition: transform 0.15s;
+}
+.action-head svg.flipped {
+  transform: rotate(180deg);
+}
+.action-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 0 14px 13px;
+}
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a5a0b1;
+  font-size: 11px;
+}
+.action-row code {
+  font-family: var(--font-geist-mono), monospace;
+  background: #26262c;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: #d9d4e2;
+}
+.plan-card {
+  padding: 13px 14px 15px;
+}
+.plan-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: #d7d2de;
+  margin-bottom: 11px;
+}
+.plan-card ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plan-card li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #8b8794;
+}
+.plan-card li svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.plan-card li.done {
+  color: #d9d4e2;
+}
+.plan-card li.done svg {
+  color: #35c06f;
+}
+.plan-card li.live {
+  color: #8ec7f8;
+}
+.plan-card li.live svg {
+  color: #57b1f0;
+}
+.plan-card li.final {
+  color: #58d68d;
+  font-weight: 600;
+}
+.plan-card li.failed {
+  color: #faa2b1;
+}
+.plan-card li.failed svg {
+  color: #ef6a6a;
+}
+/* แถบคัดลอก/ถูกใจ/ไม่ถูกใจ ใต้คำตอบล่าสุด */
+.feedback-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  align-self: flex-start;
+}
+.feedback-row .ghost-btn[aria-pressed="true"] {
+  color: #7cc0f8;
+  background: #21303d;
+}
+/* การ์ดเวอร์ชันหลังสร้างเสร็จ — กดแล้วเปิดประวัติโค้ด */
+.version-card {
+  width: 100%;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  background: #12283a;
+  border: 1px solid #1f4360;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.version-card:hover {
+  background: #16334a;
+}
+.version-card strong {
+  display: block;
+  font-size: 12.5px;
+  color: #eaf5ff;
+  overflow-wrap: anywhere;
+}
+.version-card small {
+  color: #8fb8d8;
+  font-size: 10.5px;
+}
+.version-card > svg {
+  flex-shrink: 0;
+  color: #57b1f0;
+}
+.build-progress svg {
+  animation: builder-pulse 1.2s ease-in-out infinite;
+}
+@keyframes builder-pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
 .composer-area {
   padding: 12px;
   border-top: 1px solid #25232b;
 }
 .composer-area form {
-  border: 1px solid #48404f;
-  border-radius: 11px;
-  background: #212024;
+  border: 1px solid #3a3a42;
+  border-left: 2px solid var(--bolt);
+  border-radius: 16px;
+  background: #232327;
   overflow: hidden;
+}
+.composer-area form:focus-within {
+  border-color: #4a4a54;
+  border-left-color: var(--bolt);
 }
 .composer-area textarea {
   width: 100%;
@@ -479,20 +950,6 @@
   font-size: 12px;
   line-height: 1.8;
   color: #efedf3;
-}
-.composer-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 9px 9px;
-}
-.composer-bottom > span {
-  font-size: 9px;
-  color: #8d8399;
-}
-.composer-bottom .primary {
-  padding: 7px 9px;
-  font-size: 10px;
 }
 .sign-in {
   width: 100%;
@@ -548,20 +1005,108 @@
   font-size: 20px;
   margin-left: 8px;
 }
-.stop-button {
-  background: #4a2c36;
-  color: #f6bbc8;
-  border: 1px solid #7c3e50;
-  border-radius: 7px;
-  font-size: 10px;
-  padding: 8px;
-}
 .work-panel {
   flex: 1;
   min-width: 0;
+  position: relative; /* แผงลอย (Sandbox/History) ยึดกรอบนี้ */
   display: flex;
   flex-direction: column;
   background: #1c1c20;
+}
+/* ปุ่มไอคอนสี่เหลี่ยมใช้ในทั้งแถบบน แถบแท็บ และหัวแผงลอย */
+.icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #b9b3c4;
+}
+.builder a.icon-button {
+  color: #b9b3c4;
+}
+.icon-button:hover {
+  background: #2b2b33;
+  color: #efeaf7;
+}
+.builder a.icon-button:hover {
+  color: #efeaf7;
+}
+.icon-button[aria-pressed="true"],
+.icon-button[aria-expanded="true"] {
+  background: #2e2839;
+  border-color: #44374f;
+  color: #e5d9fa;
+}
+.menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.menu-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 45;
+  min-width: 236px;
+  padding: 6px;
+  background: #17171b;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.menu-pop button {
+  justify-content: flex-start;
+  gap: 9px;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 12px;
+  color: #d7d2de;
+  text-align: left;
+}
+.menu-pop button:hover:not(:disabled) {
+  background: #24242b;
+}
+.menu-count {
+  margin-left: auto;
+  background: #2e2839;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 10px;
+  color: #cbb9ea;
+}
+.icon-button .menu-count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  margin: 0;
+  padding: 0 5px;
+  font-size: 9px;
+  line-height: 15px;
+}
+.tab-side {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+/* เห็นเฉพาะจอแคบ: แชตมี pill เปิด pane งาน / pane งานมีปุ่มกลับสู่การสนทนา */
+.mobile-switch {
+  display: none;
+}
+.mic-btn[aria-pressed="true"] {
+  color: #ff8080;
+  background: #3a2426;
+  animation: builder-pulse 1s ease-in-out infinite;
 }
 .work-tabs {
   height: 50px;
@@ -626,10 +1171,29 @@
   background: #141417;
   border: 1px solid #302c35;
   border-radius: 6px;
-  padding: 7px 12px;
+  padding: 0 10px;
   font-size: 10px;
   color: #9b92a7;
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+/* route picker แบบ Bolt: เลือกหน้าของแอปที่สร้างได้เอง */
+.preview-address select {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  appearance: none;
+  padding: 7px 2px;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.preview-address select option {
+  background: #17171b;
+  color: #d7d2de;
 }
 .preview-stage {
   flex: 1;
@@ -652,10 +1216,74 @@
   background: white;
   border-radius: 5px;
 }
+.device-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #141417;
+  border: 1px solid #302c35;
+  border-radius: 9px;
+  padding: 2px;
+}
+.device-group button {
+  padding: 5px 8px;
+  border-radius: 6px;
+}
+.preview-stage.tablet-preview iframe {
+  max-width: 834px;
+  border-radius: 12px;
+  border: 4px solid #403b49;
+}
 .preview-stage.mobile-preview iframe {
   max-width: 390px;
   border-radius: 19px;
   border: 5px solid #403b49;
+}
+/* แผงลอยทับพื้นที่ด้านขวา — Sandbox กับ History เปิดจากปุ่มย่อย */
+.overlay-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: #17171b;
+  border-left: 1px solid var(--border);
+  animation: overlay-in 0.16s ease-out;
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.overlay-head {
+  height: 46px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 10px 0 15px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: #ddd5ea;
+}
+.overlay-head > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.overlay-head small {
+  color: #8b8593;
+  font-size: 10px;
+}
+.overlay-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .code-panel {
   flex: 1;
@@ -793,6 +1421,135 @@
   padding: 3px 6px;
   font-size: 9px;
 }
+/* dialog เผยแพร่ขึ้น Puter Hosting */
+.publish-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: #00000099;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.publish-dialog {
+  width: min(440px, 100%);
+  background: #17171b;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 24px 60px #000c;
+}
+.publish-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #efeaf7;
+}
+.publish-dialog header > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.publish-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.publish-url {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #12283a;
+  border: 1px solid #1f4360;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.publish-url a {
+  color: #8ec7f8;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.publish-url small {
+  color: #8fb8d8;
+  font-size: 10px;
+}
+.publish-progress {
+  margin: 0;
+  font-size: 11px;
+  color: #8ec7f8;
+}
+.publish-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* form ใน dialog GitHub (ใช้โครง publish-dialog ร่วม) */
+.gh-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: #9a95a6;
+  flex: 1;
+  min-width: 0;
+}
+.gh-field input {
+  background: #101014;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #eee;
+  font-size: 12px;
+  min-width: 0;
+}
+.gh-field input:focus {
+  outline: 1px solid #44374f;
+}
+.gh-row {
+  display: flex;
+  gap: 8px;
+}
+.gh-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #9a95a6;
+  cursor: pointer;
+}
+.gh-token-note {
+  margin: 0;
+  font-size: 10px;
+  color: #7c7889;
+  line-height: 1.7;
+}
+.gh-link-btn {
+  display: inline;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 10px;
+  color: #8ec7f8;
+  text-decoration: underline;
+}
+/* ปุ่มคู่บนหัวรายการโปรเจกต์หน้าแรก */
+.heading-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .workspace-footer {
   display: flex;
   justify-content: space-between;
@@ -834,9 +1591,66 @@
   }
 }
 @media (max-width: 850px) {
+  .mobile-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 10px 0;
+    flex-shrink: 0;
+  }
+  .mobile-switch.is-chat {
+    justify-content: flex-end;
+  }
+  .switch-pill {
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #232329;
+    border: 1px solid var(--border);
+    color: #cfcdd6;
+    font-size: 11px;
+  }
+  .switch-back {
+    flex: 1;
+    justify-content: flex-start;
+    height: 36px;
+    padding: 0 12px;
+    background: #17171b;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: #cfcdd6;
+    font-size: 11.5px;
+  }
+  .switch-seg {
+    display: flex;
+    gap: 3px;
+    background: #17171b;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .switch-seg button {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 8px;
+    background: none;
+    border: 0;
+    color: #9a97a4;
+    font-size: 11px;
+  }
+  .switch-seg button[aria-pressed="true"] {
+    background: #2e2839;
+    color: #e5d9fa;
+  }
+  /* เต็มจอทีละ pane: แชต หรือ pane งาน — ไม่ใช่ซ้อนกันสองอัน */
+  .workspace-body.show-chat .work-panel,
+  .workspace-body.show-work .chat-panel {
+    display: none;
+  }
   .chat-panel {
-    width: 310px;
-    min-width: 260px;
+    width: 100%;
+    min-width: 0;
+    border-right: 0;
   }
   .sandbox-label {
     display: none;
@@ -851,8 +1665,12 @@
     gap: 10px;
     padding: 0 12px;
   }
-  .workspace .builder-header .subtle span {
+  /* ปุ่มในแถบบนเหลือไอคอน + ปุ่มหลัก เพื่อให้พอดีจอแท็บเล็ต */
+  .workspace .builder-header .brand span {
     display: none;
+  }
+  .header-actions {
+    gap: 6px;
   }
 }
 @media (max-width: 650px) {
@@ -881,8 +1699,25 @@
   .projects {
     margin-top: 45px;
   }
-  .project-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .project-row > a {
+    gap: 10px;
+    padding: 10px 40px 10px 10px;
+  }
+  .home .mode-pill {
+    display: none;
+  }
+  .home-main {
+    padding: 14px 12px 50px;
+  }
+  .home-hero-card {
+    border-radius: 18px;
+    padding: 40px 14px 26px;
+  }
+  .start-tiles {
+    gap: 8px;
+  }
+  .start-tile .tile-box {
+    border-radius: 13px;
   }
   .home-footer {
     flex-wrap: wrap;
@@ -892,23 +1727,7 @@
     margin-left: 0;
     width: 100%;
   }
-  .workspace {
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
-  }
-  .workspace-body {
-    flex-direction: column;
-  }
-  .chat-panel {
-    width: 100%;
-    min-width: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
   .chat-messages {
-    max-height: 230px;
-    min-height: 120px;
     padding: 18px;
   }
   .assistant-intro h2 {
@@ -918,9 +1737,8 @@
   .assistant-intro p {
     margin: 5px 0;
   }
-  .assistant-symbol {
-    float: left;
-    margin-right: 12px;
+  .assistant-wordmark {
+    font-size: 17px;
   }
   .scope-note {
     margin-top: 10px;
@@ -929,13 +1747,8 @@
   .composer-area textarea {
     height: 65px;
   }
-  .work-panel {
-    min-height: 540px;
-    height: 65dvh;
-    flex: none;
-  }
   .preview-stage {
-    min-height: 340px;
+    padding: 8px;
   }
   .workspace .builder-header .brand {
     display: none;
@@ -963,6 +1776,25 @@
   }
   .work-tabs {
     padding: 0 9px;
+  }
+  .tab-side {
+    gap: 4px;
+  }
+  .overlay-panel {
+    border-left: 0;
+  }
+  .workspace .header-actions .puter-account .subtle > span:not(.puter-dot) {
+    display: none;
+  }
+  .workspace .header-actions > .subtle > span {
+    display: none;
+  }
+  .workspace .header-actions .primary {
+    padding: 7px 9px;
+    font-size: 10px;
+  }
+  .device-group button {
+    padding: 5px 6px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1155,22 +1987,6 @@
 .check-summary {
   font-size: 10.5px;
   color: var(--muted);
-}
-.mode-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--muted);
-}
-.mode-field select {
-  flex: 1;
-  background: #131417;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 8px;
-  font-size: 11.5px;
 }
 @media (max-width: 900px) {
   .sandbox-panel {

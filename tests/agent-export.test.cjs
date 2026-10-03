@@ -84,7 +84,7 @@ test("ชุดไฟล์ที่ส่งออกผ่านการต�
   const parts = [
     { path: "agent-kit/agent.yaml", content: agentExport.buildAgentYaml(project, {}) },
     { path: "agent-kit/README.md", content: agentExport.buildHandoffReadme(project, {}) },
-    { path: "agent-kit/index.html", content: project.html },
+    { path: "agent-kit/index.html", content: project.files["index.html"] },
   ];
   const result = agentExport.validateAgentKit(parts);
   assert.deepEqual(result.problems, []);
