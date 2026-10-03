@@ -171,6 +171,12 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [model, setModel] = useState("");
+  const modelPresets = [
+    { id: "qwen3-coder", label: "Qwen 3 Coder" },
+    { id: "deepseek-v4-flash:free", label: "DeepSeek V4 Flash · free" },
+    { id: "x-ai/grok-4.7", label: "Grok 4.7" },
+    { id: "custom", label: "กำหนด Model ID เอง" },
+  ];
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
@@ -1260,7 +1266,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   placeholder="ค่าเริ่มต้นของ Puter"
                   value={model}
                   disabled={busy}
-                  onChange={(e) => setModel(e.target.value)}
+                  onChange={(e) => {\n                    setModel(e.target.value);\n                    try { localStorage.setItem(`gupan:model:${projectId}`, e.target.value); } catch {}\n                  }}
                 />
               </label>
             )}
