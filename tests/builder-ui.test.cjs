@@ -12,10 +12,14 @@ const { mods, cleanup } = compileTsx([
   "src/components/builder/SandboxPanel.tsx",
   "src/components/builder/PuterAccountButton.tsx",
   "src/components/builder/MarkdownLite.tsx",
+  "src/components/builder/GithubCloneDialog.tsx",
+  "src/lib/github-import.ts",
+  "src/lib/builder.ts",
 ]);
 const SandboxPanel = mods[0].default;
 const PuterAccountButton = mods[1].default;
 const MarkdownLite = mods[2].default;
+const GithubCloneDialog = mods[3].default;
 
 after(() => {
   cleanup();
@@ -72,4 +76,20 @@ test("ปุ่มบัญชี Puter เรนเดอร์ได้โด�
   const html = renderToStaticMarkup(React.createElement(PuterAccountButton, {}));
   assert.ok(html.includes("Puter"), "ต้องมีป้ายสถานะระหว่างโหลด");
   assert.ok(!/PUTER_AUTH_TOKEN|auth\.token/.test(html), "ห้ามมี token หรือคีย์ storage ใน HTML เริ่มต้น");
+});
+
+test("GithubCloneDialog เรนเดอร์ช่องกรอก repo ปุ่มโหลด และข้อจำกัดที่บอกผู้ใช้", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(GithubCloneDialog, {
+      mode: "new",
+      onClose: () => {},
+      onImport: () => {},
+    }),
+  );
+  for (const label of ["โคลนจาก GitHub", "โหลด repo", "owner/repo", "โฟลเดอร์ย่อย"]) {
+    assert.ok(html.includes(label), `ต้องมี “${label}”`);
+  }
+  assert.ok(html.includes('aria-modal="true"'), "เป็น dialog ที่ประกาศตัวเอง");
+  assert.ok(html.includes("repo สาธารณะ"), "ต้องบอกว่ารองรับ repo สาธารณะ");
+  assert.ok(html.includes("ไม่มี AI หรือเครดิตถูกใช้"), "ต้องบอกว่าไม่ใช้เครดิต");
 });

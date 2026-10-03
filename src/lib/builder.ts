@@ -20,6 +20,20 @@ export interface BuildVersion {
   files: Record<string, string>;
   createdAt: string;
 }
+/**
+ * ที่มาของโปรเจกต์ (ตอนนี้มีทางเดียวคือโคลนจาก GitHub) — เก็บไว้เพื่อ
+ * 1) เขียน URL ของรูป/ฟอนต์ที่ไม่ได้เก็บในโปรเจกต์ให้ชี้ไฟล์จริงใน repo
+ * 2) รู้ว่าไฟล์ถูกยึดโฟลเดอร์ไหนเป็นรากเว็บ (`webRoot`) ตอนโคลน
+ */
+export interface ProjectOrigin {
+  provider: "github";
+  owner: string;
+  repo: string;
+  ref: string;
+  subpath?: string;
+  /** โฟลเดอร์ที่ถูกยึดเป็นรากเว็บ เช่น "dist" (ว่าง = ราก repo) */
+  webRoot?: string;
+}
 export interface BuildProject {
   id: string;
   name: string;
@@ -27,6 +41,7 @@ export interface BuildProject {
   messages: BuildMessage[];
   versions: BuildVersion[];
   updatedAt: string;
+  origin?: ProjectOrigin;
 }
 export const PROJECT_PREFIX = "gupan:builder:v1:";
 export const MAX_FILE_SIZE = 400_000;
@@ -209,6 +224,72 @@ export function inlineAssets(
   return out;
 }
 /**
+ * บริดจ์ของพรีวิว: ส่ง console log/warn/error กลับให้บิลเดอร์ และดักคลิก
+ * `<a href>` แบบพาธภายใน (postMessage `navigate`) เพื่อให้แอปหลายหน้า
+ * เปลี่ยนหน้าใน iframe ได้เอง
+ *
+ * ⚠️ เขียนเป็นฟังก์ชันจริงแล้ว stringify (ไม่ใช่สตริงที่ escapes ด้วยมือ) เพราะ
+ * เวอร์ชันก่อนหน้านี้ escapes `</script>` เกินหนึ่งชั้น ทำให้แท็กสคริปต์ไม่ปิด
+ * และทั้งเอกสารพรีวิวกลายเป็นเนื้อสคริปต์ (พรีวิวว่างเปล่า)
+ */
+function gupanPreviewBridge(): void {
+  var scope = window as unknown as { __GUPAN_CHANNEL__?: string; parent: Window };
+  var channel = scope.__GUPAN_CHANNEL__ || "";
+  function send(level: string, args: unknown[]): void {
+    try {
+      var text = args
+        .map(function (value: unknown) {
+          if (typeof value === "string") return value;
+          try {
+            return JSON.stringify(value);
+          } catch (error) {
+            return String(value);
+          }
+        })
+        .join(" ")
+        .slice(0, 2000);
+      scope.parent.postMessage({ channel: channel, level: level, text: text }, "*");
+    } catch (error) {
+      /* ข้าม: ต้องไม่ทำให้โค้ดผู้ใช้พังเพราะการรายงานผลล้มเหลว */
+    }
+  }
+  (["log", "warn", "error"] as const).forEach(function (level) {
+    var consoleScope = console as unknown as Record<string, (...args: unknown[]) => void>;
+    var original = consoleScope[level];
+    consoleScope[level] = function () {
+      send(level, Array.prototype.slice.call(arguments) as unknown[]);
+      if (original) original.apply(console, arguments as unknown as []);
+    };
+  });
+  window.addEventListener("error", function (event) {
+    send("error", [event.message]);
+  });
+  window.addEventListener("unhandledrejection", function (event) {
+    send("error", [String((event as PromiseRejectionEvent).reason)]);
+  });
+  document.addEventListener("click", function (event) {
+    var target = event.target as Element | null;
+    var anchor = target && target.closest ? target.closest("a[href]") : null;
+    if (!anchor) return;
+    var href = anchor.getAttribute("href") || "";
+    if (!href || /^(https?:|mailto:|tel:|#|data:)/.test(href)) return;
+    event.preventDefault();
+    scope.parent.postMessage(
+      { channel: channel, navigate: href.replace(/^\.\//, "") },
+      "*",
+    );
+  });
+}
+
+/** แท็กสคริปต์ของบริดจ์ (ใช้ทั้งพรีวิว static และ React) */
+export function previewConsoleBridge(channel: string): string {
+  return (
+    `<script>window.__GUPAN_CHANNEL__=${JSON.stringify(channel)};` +
+    `(${gupanPreviewBridge.toString()})();</script>`
+  );
+}
+
+/**
  * เอกสารพรีวิวหนึ่งหน้า: อินไลน์แอสเซต + CSP + bridge (console log กลับออก
  * มา และดักคลิก link ภายในให้ postMessage `navigate` มาเปลี่ยนหน้า)
  */
@@ -221,9 +302,10 @@ export function previewDocument(
     files[path] ?? files[defaultPage(files)] ?? "",
     files,
   );
-  // CSP comes before user code. No same-origin permission or parent access; only HTTPS/data images may load remotely.
-  const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: https:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">`;
-  const bridge = `<script>(()=>{const send=(level,args)=>parent.postMessage({channel:${JSON.stringify(channel)},level,text:args.map(x=>{try{return typeof x==='string'?x:JSON.stringify(x)}catch{return String(x)}}).join(' ').slice(0,2000)},'*');['log','warn','error'].forEach(level=>{const old=console[level];console[level]=(...args)=>{send(level,args);old.apply(console,args)}});addEventListener('error',e=>send('error',[e.message]));addEventListener('unhandledrejection',e=>send('error',[String(e.reason)]));document.addEventListener('click',e=>{const el=e.target;const a=el&&el.closest?el.closest('a[href]'):null;if(!a)return;const href=a.getAttribute('href')||'';if(!href||/^(https?:|mailto:|tel:|#|data:)/.test(href))return;e.preventDefault();parent.postMessage({channel:${JSON.stringify(channel)},navigate:href.replace(/^\\.\\//,'')},'*');});})();<\\/script>`;
+  // CSP comes before user code. No same-origin permission or parent access; only passive
+  // resources (images/media/fonts over HTTPS or data:) may load — never scripts, styles, forms or fetch.
+  const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: https:; media-src data: https:; font-src data: https:; connect-src 'none'; form-action 'none'; base-uri 'none'">`;
+  const bridge = previewConsoleBridge(channel);
   return `<!doctype html><html><head>${policy}${bridge}</head><body>${doc.replace(/<!doctype[^>]*>/i, "")}</body></html>`;
 }
 function isCompleteHtml(html: string): boolean {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -23,6 +23,7 @@ import {
   Download,
   ExternalLink,
   Eye,
+  Github,
   History,
   Loader2,
   LogIn,
@@ -70,6 +71,11 @@ import {
   DEFAULT_AGENT_MODEL,
 } from "@/lib/agent-export";
 import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
+import GithubCloneDialog, {
+  type GithubCloneResult,
+} from "./GithubCloneDialog";
+import { buildPreviewDocument } from "@/lib/react-runtime/preview";
+import { detectPreviewEngine } from "@/lib/react-runtime/transform";
 import PuterAccountButton from "./PuterAccountButton";
 import SandboxPanel from "./SandboxPanel";
 import { useSpeechInput } from "./use-speech-input";
@@ -149,6 +155,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [publishOpen, setPublishOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishProgress, setPublishProgress] = useState("");
   const [publishError, setPublishError] = useState("");
@@ -163,6 +170,9 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [showLogs, setShowLogs] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
   const [channel, setChannel] = useState("");
+  const [srcDoc, setSrcDoc] = useState("");
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewNote, setPreviewNote] = useState("");
   const frame = useRef<HTMLIFrameElement>(null);
   const projectRef = useRef<BuildProject | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -279,11 +289,53 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       document.removeEventListener("keydown", key);
     };
   }, [overlay, menuOpen]);
-  const srcDoc = useMemo(
-    () =>
-      channel && project ? previewDocument(project.files, page, channel) : "",
-    [project?.files, page, channel],
-  );
+  /**
+   * พรีวิว: โปรเจกต์ HTML ล้วนใช้เส้นทางเดิม (เร็ว ทันที) ส่วน React/Vite/Next
+   * ต้องคอมไพล์ TS/JSX ด้วย Babel ในเบราว์เซอร์แล้วรันผ่าน runner
+   */
+  const files = project?.files;
+  const origin = project?.origin;
+  const previewTicket = useRef(0);
+  useEffect(() => {
+    const ticket = ++previewTicket.current;
+    if (!channel || !files) {
+      setSrcDoc("");
+      setPreviewBusy(false);
+      setPreviewNote("");
+      return;
+    }
+    const engine = detectPreviewEngine(files);
+    if (engine === "static") {
+      setSrcDoc(previewDocument(files, page, channel));
+      setPreviewBusy(false);
+      setPreviewNote("");
+      return;
+    }
+    setPreviewBusy(true);
+    setPreviewNote("");
+    buildPreviewDocument(files, page, channel, { engine, origin }, previewDocument)
+      .then((result) => {
+        if (ticket !== previewTicket.current) return; // มีการแก้โค้ดใหม่ระหว่างคอมไพล์
+        setSrcDoc(result.doc);
+        setPreviewBusy(false);
+        const problems = result.bundle
+          ? result.bundle.errors.length + result.bundle.missing.length
+          : 0;
+        setPreviewNote(
+          result.bundle?.mount === "synthetic" && result.bundle.entryModule
+            ? "พรีวิวนี้ mount หน้าแรกให้อัตโนมัติ (ไม่มี HTML/SSR ในรีโป)"
+            : problems
+              ? "พรีวิวมีบางส่วนรันไม่ได้ — ดูรายละเอียดในแบนเนอร์ในพรีวิว"
+              : "",
+        );
+      })
+      .catch((e) => {
+        if (ticket !== previewTicket.current) return;
+        setSrcDoc(previewDocument(files, page, channel));
+        setPreviewBusy(false);
+        setPreviewNote(`คอมไพล์ไม่สำเร็จ: ${errorText(e)} — แสดง HTML เดิมแทน`);
+      });
+  }, [files, origin, page, channel]);
 
   /** สลับมุมมองหลัก Preview/Code และปิดแผงลอยที่ทับอยู่ */
   function showTab(next: WorkTab) {
@@ -613,6 +665,33 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       setStatus("");
     }
   }
+  /**
+   * แทนที่ไฟล์ทั้งโปรเจกต์ด้วย repo ที่โคลนมา — เก็บ checkpoint ไว้ใน History
+   * และบันทึกข้อความสรุปไว้ในการสนทนา (ไม่มี AI/เครดิตเกี่ยวข้อง)
+   */
+  function importClone({ plan }: GithubCloneResult) {
+    if (!project) return;
+    try {
+      const checked = checkpoint(project, plan.files, "ก่อนโคลนจาก GitHub");
+      apply({
+        ...checked,
+        name: project.name,
+        origin: plan.origin,
+        messages: [
+          ...checked.messages,
+          { role: "assistant", content: plan.summary },
+        ],
+      });
+      setCloneOpen(false);
+      setError("");
+      showTab("preview");
+    } catch (e) {
+      setCloneOpen(false);
+      setError(
+        e instanceof Error ? e.message : "บันทึกไฟล์จาก GitHub ไม่สำเร็จ",
+      );
+    }
+  }
   async function importHtml(file?: File) {
     if (!file || !project) return;
     try {
@@ -759,6 +838,17 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   }}
                 >
                   <Upload size={15} /> นำเข้า HTML
+                </button>
+                <button
+                  role="menuitem"
+                  disabled={busy}
+                  title="โคลน repo สาธารณะจาก GitHub มาแทนที่ไฟล์โปรเจกต์นี้"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setCloneOpen(true);
+                  }}
+                >
+                  <Github size={15} /> โคลนจาก GitHub
                 </button>
                 <button
                   role="menuitem"
@@ -1227,6 +1317,17 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   ))}
                 </div>
               </div>
+              {previewBusy && (
+                <div className="preview-compiling" role="status">
+                  <span className="preview-spinner" aria-hidden="true" />
+                  กำลังคอมไพล์ React/TS ด้วย Babel ในเบราว์เซอร์…
+                </div>
+              )}
+              {!previewBusy && previewNote && (
+                <div className="preview-note" role="status">
+                  {previewNote}
+                </div>
+              )}
               <div
                 className={`preview-stage ${
                   device === "mobile"
@@ -1518,6 +1619,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             </div>
           </div>
         </div>
+      )}
+      {cloneOpen && (
+        <GithubCloneDialog
+          mode="replace"
+          onClose={() => setCloneOpen(false)}
+          onImport={importClone}
+        />
       )}
       <footer className="workspace-footer">
         <span>

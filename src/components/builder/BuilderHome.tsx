@@ -10,6 +10,7 @@ import {
   Code2,
   Folder,
   Gamepad2,
+  Github,
   Globe,
   Lightbulb,
   Mic,
@@ -25,6 +26,9 @@ import {
   saveProject,
   type BuildProject,
 } from "@/lib/builder";
+import GithubCloneDialog, {
+  type GithubCloneResult,
+} from "./GithubCloneDialog";
 import PuterAccountButton from "./PuterAccountButton";
 import { useSpeechInput } from "./use-speech-input";
 import "./builder.css";
@@ -83,6 +87,7 @@ export default function BuilderHome() {
   const [prompt, setPrompt] = useState("");
   const [tile, setTile] = useState<string | null>(null);
   const [projects, setProjects] = useState<BuildProject[]>([]);
+  const [cloneOpen, setCloneOpen] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const speech = useSpeechInput((text) =>
@@ -111,6 +116,31 @@ export default function BuilderHome() {
     } catch {
       setError(
         "บันทึกโปรเจกต์ไม่ได้ พื้นที่เบราว์เซอร์อาจเต็มหรือปิดการเก็บข้อมูลอยู่",
+      );
+    }
+  }
+  /**
+   * สร้างโปรเจกต์ใหม่จาก repo ที่โคลนมา — ไฟล์มาจาก GitHub ทั้งชุด
+   * และบันทึกข้อความสรุปไว้ในการสนทนา เพื่อให้รู้ที่มาโดยไม่ต้องเรียก AI
+   */
+  function importClone({ plan }: GithubCloneResult) {
+    try {
+      const base = createProject(plan.name);
+      const project: BuildProject = {
+        ...base,
+        name: plan.name || base.name,
+        files: plan.files,
+        origin: plan.origin,
+        messages: [{ role: "assistant", content: plan.summary }],
+        updatedAt: new Date().toISOString(),
+      };
+      saveProject(project);
+      setCloneOpen(false);
+      router.push(`/build/${project.id}`);
+    } catch {
+      setCloneOpen(false);
+      setError(
+        "บันทึกโปรเจกต์จาก GitHub ไม่ได้ พื้นที่เบราว์เซอร์อาจเต็ม — ลองลบโปรเจกต์เก่าก่อน",
       );
     }
   }
@@ -244,6 +274,13 @@ export default function BuilderHome() {
 
           <p className="start-from">หรือเริ่มจาก</p>
           <div className="suggestions">
+            <button
+              type="button"
+              className="suggestion-github"
+              onClick={() => setCloneOpen(true)}
+            >
+              <Github size={13} /> โคลนจาก GitHub <ArrowUpRight size={12} />
+            </button>
             {STARTER_IDEAS.map((text) => (
               <button
                 key={text}
@@ -335,6 +372,14 @@ export default function BuilderHome() {
         GUPAN Studio <span>สร้าง · ทดลอง · ปรับปรุง</span>
         <span>ต้องการ full-stack? ตั้งค่า Totalum บนเซิร์ฟเวอร์</span>
       </footer>
+
+      {cloneOpen && (
+        <GithubCloneDialog
+          mode="new"
+          onClose={() => setCloneOpen(false)}
+          onImport={importClone}
+        />
+      )}
     </div>
   );
 }

@@ -320,7 +320,7 @@ export function sandboxRuntimeSource(channel: string): string {
 /** เอกสาร HTML ที่ปลอดภัยสำหรับรันโค้ดผู้ใช้ พร้อมความสามารถทดลอง/ตรวจสอบ */
 export function sandboxDocument(html: string, channel: string): string {
   // CSP มาก่อนโค้ดผู้ใช้เสมอ: ไม่มีเครือข่าย ไม่มี same-origin — เปิดเฉพาะ eval สำหรับ REPL
-  const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: https:; media-src data: https:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">`;
+  const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: https:; media-src data: https:; font-src data: https:; connect-src 'none'; form-action 'none'; base-uri 'none'">`;
   const runtime = sandboxRuntimeSource(channel);
   return `<!doctype html><html><head>${policy}<title>Sandbox</title>${runtime}</head><body>${html.replace(/<!doctype[^>]*>/i, "")}</body></html>`;
 }

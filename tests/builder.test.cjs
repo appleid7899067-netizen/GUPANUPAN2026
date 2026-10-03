@@ -160,7 +160,13 @@ test("preview adds CSP before generated code and scoped console bridge", () => {
   );
   assert.match(html, /connect-src 'none'/);
   assert.match(html, /form-action 'none'/);
-  assert.match(html, /channel:"test-channel"/);
+  // ช่องสื่อสารถูกส่งผ่านตัวแปรบน window (ไม่ฝังในอ็อบเจกต์ของบริดจ์อีกต่อไป)
+  assert.match(html, /window\.__GUPAN_CHANNEL__="test-channel"/);
+  assert.ok(html.includes("gupanPreviewBridge"), "ต้องมีบริดจ์คอนโซล");
+  assert.ok(
+    !html.includes("</script>\n<script>window.__GUPAN_CHANNEL__"),
+    "บริดจ์ต้องไม่ถูกตัดด้วย </script> ที่หลุดจากสตริง",
+  );
   assert.ok(
     html.indexOf("Content-Security-Policy") < html.indexOf("My new app"),
   );

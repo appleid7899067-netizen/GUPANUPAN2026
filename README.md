@@ -32,13 +32,14 @@ npm run dev -- --hostname 0.0.0.0
 
 - HTML/CSS/JavaScript แบบเอกสารเดียว ไม่ใช่ React/Next.js runtime สำหรับแอปที่สร้าง
 - พรีวิวมือถือ/เดสก์ท็อปใน `iframe sandbox="allow-scripts"` ไม่มี `allow-same-origin`
-- CSP บล็อก fetch, external scripts, forms; อนุญาต inline CSS/JS และรูป HTTPS/data
+- CSP บล็อก fetch, external scripts, forms; อนุญาต inline CSS/JS และรูป/สื่อ/ฟอนต์ HTTPS/data
 - **Sandbox tab** — รันแอปในกรอบแยกอีกชั้น แล้ว ทดลองโค้ด (REPL) และตรวจ DOM ได้:
   Console (log/warn/error จากแอป), ทดลองโค้ด (`document.querySelectorAll('*').length`, ลองใช้ `localStorage`/`fetch` เพื่อเห็นว่าแซนด์บ็อกซ์ปิดกั้น), และตัวตรวจ 11 ข้อ
   (viewport, lang, title, ลำดับหัวข้อ, alt ของรูป, ชื่อปุ่ม/ลิงก์, label, id ซ้ำ, ไฟล์ภายนอก, target=_blank, ปริมาณเนื้อหา)
 - **โหมดการสร้าง 8 แบบ** (เว็บแอป / แลนดิ้ง / แดชบอร์ด / เกม / เนื้อหาไทย / accessibility / รีแฟกเตอร์ / เอกสาร) — เลือกแล้ว AI ได้ข้อกำหนดเพิ่มของโหมดนั้น (แนวคิดเดียวกับ persona ของ docker-agent)
 - **Agent kit** — ปุ่มในหัวเวิร์กสเปซที่ส่งออก ZIP: `agent.yaml` (ผ่าน schema ของ docker-agent v16), `README.md`, `index.html`
   พร้อมสคริปต์ล็อกอิน Puter เพื่อเอาโปรเจกต์ไปทำงานต่อในเทอร์มินัลด้วย docker-agent + บัญชี Puter
+- **โคลนจาก GitHub** — ดึง repo สาธารณะมาเป็นโปรเจกต์ (หลายไฟล์) พร้อมแก้และพรีวิวต่อ โดยไม่ใช้ AI/เครดิต ดูหัวข้อ “โคลนโปรเจกต์จาก GitHub” ด้านล่าง
 - **บัญชี Puter + token bridge** — ล็อกอินในบิลเดอร์ครั้งเดียว แล้วใช้ token เดียวกันกับ docker-agent ในเทอร์มินัลได้
   (`node puter/puter-login.mjs --set-token …`) โดย token อยู่ในเบราว์เซอร์ของคุณเท่านั้น; แสดงแบบมาสก์ และมีคำเตือนความปลอดภัยในแผง
 - Console รับ log/warn/error จาก iframe ที่ตรงกันเท่านั้น (ไม่ใช่ shell terminal)
@@ -47,10 +48,56 @@ npm run dev -- --hostname 0.0.0.0
 - โค้ดสูงสุด 400 KB/เวอร์ชัน; quota storage ของเบราว์เซอร์อาจเต็มก่อนถึงเพดาน แจ้ง error โดยไม่อ้างว่าบันทึกแล้ว
 - เมื่อ AI error, output ไม่ครบ หรือหยุดรับผล จะไม่ทับโค้ดที่บันทึกไว้ คำสั่งยังอยู่ให้ลองใหม่
 - ปุ่มหยุดยกเลิกการรับผลใน UI เท่านั้น ไม่รับรองยกเลิกค่าใช้จ่ายของผู้ให้บริการ
-- ไม่มี npm, Node.js server, backend/database/auth/payment จริง, deploy หรือ GitHub sync ในโหมดนี้
+- โปรเจกต์ที่สร้างเป็น HTML/CSS/JS ล้วน: ไม่มี backend/database/auth/payment จริง หรือ deploy ในโหมดนี้ และ **ไม่มีการ push/pull กลับไป GitHub** (มีแต่การโคลน/นำเข้าทางเดียวผ่าน route ฝั่งเซิร์ฟเวอร์)
+- โปรเจกต์ **React/Vite/Next ที่โคลนมา รันในพรีวิวได้** ด้วยตัวคอมไพล์ในเบราว์เซอร์ (`@babel/standalone`) + React 18 ที่ vendor ไว้ — แต่ไม่มี SSR/API routes/`npm install` จริง (ดูหัวข้อ “พรีวิวโปรเจกต์ React/Vite/Next”)
 - โปรเจกต์ Puter legacy เดิมยังไม่ได้ migrate เข้า storage รูปแบบใหม่นี้ และไม่ได้ถูกลบ
 
 ตรวจโค้ด AI ก่อนเผยแพร่เสมอ Sandbox นี้ไม่ใช่ container สำหรับรันโค้ดที่เชื่อถือไม่ได้ทุกประเภท (เช่น infinite loop ยังใช้ CPU ได้) ไฟล์ HTML ที่ export ไม่ได้มีข้อจำกัด sandbox ของ builder ติดไปด้วย
+
+### โคลนโปรเจกต์จาก GitHub (repo สาธารณะ)
+
+นำ repo ที่มีอยู่แล้วเข้าเป็นโปรเจกต์ในบิลเดอร์ แล้วแก้/พรีวิวต่อได้ทันที — ขั้นตอนนี้ไม่เรียก AI และไม่ใช้เครดิต
+
+1. **หน้าหลัก `/`** กดชิป **โคลนจาก GitHub** ใต้กล่องพรอมป์ หรือ**ในเวิร์กสเปซ** เปิดเมนู ⋯ → **โคลนจาก GitHub** (จะแทนที่ไฟล์ของโปรเจกต์ที่เปิดอยู่ โดยเก็บของเดิมไว้ใน History)
+2. วาง `owner/repo`, URL เต็ม, URL แบบ `/tree/<branch>/<โฟลเดอร์>` หรือ SSH (`git@github.com:owner/repo.git`) แล้วกด **โหลด repo**
+3. ตรวจรายการไฟล์/คำเตือนในตัวอย่าง แล้วกด **สร้างโปรเจกต์จาก repo นี้** (หรือ **แทนที่ไฟล์ในโปรเจกต์นี้**)
+
+สิ่งที่เกิดขึ้นจริง
+
+- เซิร์ฟเวอร์ของแอปนี้ (`GET /api/github/import`) เป็นคนดาวน์โหลด tarball จาก `codeload.github.com` เพราะ codeload ไม่ส่ง CORS ให้ origin อื่น แล้วคลาย gzip/tar ในหน่วยความจำ (`lib/tar.ts`) — ไม่มีการเขียนไฟล์ลงดิสก์ของเซิร์ฟเวอร์
+- `lib/github-import.ts` เลือก **หน้าแรก** ของเว็บ (index.html ที่ตื้นที่สุด) ยึดโฟลเดอร์ของหน้านั้นเป็นราก ดึงไฟล์ที่หน้านั้นอ้างถึงก่อน แล้วค่อยเติมไฟล์อื่นในโฟลเดอร์เว็บจนครบเพดาน
+- **รูป/ฟอนต์/วิดีโอไม่ถูกเก็บในโปรเจกต์** แต่ถูกเขียนทับเป็น URL ตรงของ `raw.githubusercontent.com` ให้พรีวิวแสดงได้โดยไม่กินพื้นที่ (ต้องต่ออินเทอร์เน็ต) ส่วน CSS/JS ที่อ้างในเครื่องยังถูกอินไลน์ให้อัตโนมัติเหมือนเดิม
+- repo ที่ไม่มี HTML (ไลบรารี/เทมเพลต) จะได้ **หน้ารายการไฟล์ + README** เป็นหน้าแรก เพื่อให้เห็นว่าโคลนอะไรมา แล้วสั่ง AI ต่อได้
+- เพดานต่อครั้ง: repo ≤ 60 MB · ไฟล์ข้อความ ≤ 400 KB · รวม ≤ 800 KB · ≤ 600 ไฟล์ และข้าม `node_modules`, lock file, CHANGELOG, ไฟล์ config ที่ราก และโฟลเดอร์ระบบ
+- **repo ส่วนตัว** ใช้ได้ถ้าตั้ง `GITHUB_TOKEN` (หรือ `GH_TOKEN`) ที่เซิร์ฟเวอร์ — token ไม่ถูกส่งไปเบราว์เซอร์และไม่ถูกเก็บ
+- repo ที่เป็น **React/Vite/Next จะรันในพรีวิวทันที** (ดูหัวข้อถัดไป) — ไฟล์ทั้งหมดยังดู/แก้ในแท็บ Code ได้เหมือนเดิม
+- ทาง sync สองทาง (push/pull) เป็นของโหมด Totalum ที่ `/project/<id>` ไม่ใช่โหมดนี้
+
+### พรีวิวโปรเจกต์ React/Vite/Next
+
+พรีวิวของบิลเดอร์มีสองเครื่องยนต์ เลือกอัตโนมัติจากไฟล์ในโปรเจกต์ (`detectPreviewEngine`):
+
+| เครื่องยนต์ | ใช้เมื่อ | ทำอะไร |
+| --- | --- | --- |
+| `static` (เดิม) | หน้า HTML ที่โหลดสคริปต์แบบคลาสสิก (`<script src="js/app.js">`) หรือมีแต่ HTML/CSS | อินไลน์ CSS/JS ในเครื่องเข้าเอกสารเดียวเหมือนที่ผ่านมา |
+| `react` (ใหม่) | มี `package.json` ที่พึ่ง react/react-dom/next/vite หรือมีไฟล์ `.jsx/.tsx/.ts` หรือสคริปต์ `type="module"` | คอมไพล์ TS/JSX + แก้ alias/พาธ แล้วรันด้วย module runner ในเบราว์เซอร์ |
+
+สิ่งที่เครื่องยนต์ `react` ทำ
+
+- คอมไพล์ด้วย **`@babel/standalone`** ที่โหลดเฉพาะเมื่อต้องใช้จริง (dynamic import → chunk แยก ไม่ถ่วงหน้าแรก) รองรับ `.tsx/.ts/.jsx/.js/.mjs/.cjs`, `import`/`export`, dynamic `import()`, `import.meta.env`/`import.meta.url`
+- แก้พาธให้ตรงกับรีโปด้วย **tsconfig/jsconfig `paths` + `@`/`~` → `src`** แล้วเดินตามกราฟ dependency (สูงสุด 400 โมดูล/ครั้ง)
+- ประกอบเอกสารพรีวิวเอง: React 18 + ReactDOM (vendor ไว้ใน `public/vendor/react/`), บริดจ์คอนโซลเดิม, CSS ของโปรเจกต์ (รวม CSS module ที่คืนชื่อคลาสให้โค้ดใช้จริง), JSON, และรูป/ฟอนต์ที่เขียนเป็น URL ของ `raw.githubusercontent.com`
+- จำลองแพ็กเกจที่ใช้บ่อย: `react-router`/`react-router-dom`, `next/link|image|head|router|navigation|app|document|font|themes`, `prop-types`, `classnames`, `clsx`, `class-variance-authority`, `tailwind-merge`, แพ็กเกจไอคอน และตัวจำลองอัตโนมัติของ UI คิต (`@radix-ui/*`, `@headlessui/*`, `framer-motion`, `zustand`, `@tanstack/*`…) เพื่อให้หน้าแรกยังเรนเดอร์ได้
+- โปรเจกต์ **Next** ที่ไม่มี `index.html` จะ mount หน้าแรกให้เอง (เลือก `pages/index` → `app/page` → หน้าตื้นสุด) ครอบด้วย `_app`/`layout` ถ้ามี และใช้ `globals.css` ให้
+- อะไรที่รันไม่ได้จะไม่ทำให้หน้าพัง: ถ้าไฟล์ใดคอมไพล์ไม่ผ่านหรือแพ็กเกจใดไม่มี จะขึ้น **แบนเนอร์วินิจฉัยในพรีวิว** เป็นภาษาไทย ส่วนแอปที่โยน error ตอนเรนเดอร์จะเห็นข้อความอธิบายพร้อมสาเหตุ (ไม่ใช่หน้าเปล่า)
+- เครื่องยนต์พรีวิวเป็นของบิลเดอร์เอง (`src/lib/react-runtime/`) ไม่ได้อัปโหลดหรือรันโค้ดของคุณบนเซิร์ฟเวอร์ — ทุกอย่างเกิดในเบราว์เซอร์ของคุณ
+
+ข้อจำกัดที่ยังคงอยู่ (พรีวิวเป็น client-side ล้วน)
+
+- ไม่มี **SSR** ของ Next, ไม่มี API routes/server actions/middleware, ไม่มี `npm install` จริง และไม่มีคีย์ secrets/ฐานข้อมูล — แพ็กเกจที่ไม่มีจะถูกจำลองหรือรายงานไว้ในแบนเนอร์
+- ไม่มี PostCSS/Tailwind build: ไฟล์ CSS ถูกอินไลน์ตามต้นฉบับ ดังนั้นคลาสที่ Tailwind สร้างตอน build (utility) อาจไม่ครบ — โปรเจกต์ที่ commit CSS ที่ build แล้วจะครบกว่า
+- CSP ของพรีวิวยังปิดเครือข่าย (`connect-src 'none'`) และไม่มี same-origin — เรียก API จริงไม่ได้; รูป/ฟอนต์จาก GitHub แสดงได้ผ่าน `img-src https:`
+- โปรเจกต์ที่ build เป็นบันเดิลแล้ว (`dist/`) จะถูกมองเป็น static และรันตรง ๆ ซึ่งเป็นเส้นทางที่ถูกต้องอยู่แล้ว
 
 ### โหมด Totalum (เส้นทาง full-stack เดิม)
 
@@ -66,7 +113,7 @@ cp .env.example .env.local
 ## ตรวจสอบ
 
 ```bash
-npm test                     # 33 unit tests (ไม่มีเทสต์ที่ต้องใช้เน็ต/บัญชีจริง)
+npm test                     # 75 unit tests (ไม่มีเทสต์ที่ต้องใช้เน็ต/บัญชีจริง)
 npm run check-types-errors
 npm run build
 npm start -- --hostname 0.0.0.0
@@ -81,6 +128,10 @@ npm start -- --hostname 0.0.0.0
 | `tests/puter-token.test.cjs` | อ่าน token จาก SDK (ไม่ได้ → ค่อยดู localStorage), ไม่พังเมื่อ storage โยน error, มาสก์ token และคำสั่งเทอร์มินัลไม่ฝัง token |
 | `tests/build-modes.test.cjs` | โหมดครบ ไม่ซ้ำ และ system prompt ต่อกับกติกากลางถูกต้อง |
 | `tests/agent-export.test.cjs` | `agent.yaml` parse ได้ด้วย `yaml`, ชี้ที่ Puter endpoint, และข้อความผู้ใช้ที่พยายามแทรก YAML ต้องไม่เปลี่ยนโครงสร้าง |
+| `tests/github-import.test.cjs` | โคลนจาก GitHub แบบไม่ต่อเครือข่าย: parse URL ทุกรูปแบบ, แตก tar สังเคราะห์ (ustar/pax/GNU longname), จำแนกไฟล์, กันพาธหลุด repo และ `planImport` เลือกหน้าแรก/เขียน URL ทับไฟล์ไบนารี/เคารพเพดาน 400 KB–800 KB |
+| `tests/react-runtime.test.cjs` | คอมไพเลอร์ React/Vite/Next: เลือก engine, alias จาก tsconfig, TS/JSX, JSON, CSS module, สไตล์ที่อ้างใน HTML, asset → URL ของ GitHub, entry ของ Next, alias `@/*` → รากโปรเจกต์ และ error ที่อ่านรู้เรื่อง |
+| `tests/react-runner.test.cjs` | runner ที่ฝังในพรีวิวรันใน VM: โหลดโมดูลตามกราฟ, ฉีดสไตล์, คืนค่า CSS module, อ่าน JSON, กดปุ่มแล้ว state เปลี่ยน, ไอคอนที่ไม่มีไม่ทำแอปพัง และรายงานไฟล์ที่หาย |
+| `tests/react-preview.test.cjs` | เอกสารพรีวิว+runtime จริงใน jsdom พร้อม React/ReactDOM UMD ตัวจริง: โปรเจกต์ Vite+React เรนเดอร์จริง (คลิกได้), Next ที่ไม่มี HTML ถูก mount ให้พร้อม `next/head`, แอปที่พังเห็นข้อความอธิบายแทนหน้าเปล่า, และโปรเจกต์ static เดินเส้นทางเดิม |
 
 Optional browser regression: `tests/browser-smoke.cjs` ใช้ Playwright ที่ติดตั้งแยก ไม่เพิ่ม dependency ให้แอป และ **mock Puter SDK** เพื่อไม่ใช้เครดิตจริง:
 
