@@ -212,7 +212,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       setDraftPath(defaultPage(files));
       setPage(defaultPage(files));
       setPrompt(sessionStorage.getItem(`gupan:prompt:${projectId}`) || "");
-      const savedMode = localStorage.getItem(`gupan:mode:${projectId}`);
+      const savedModel = localStorage.getItem(`gupan:model:${projectId}`);\n      if (savedModel !== null) setModel(savedModel);\n      const savedMode = localStorage.getItem(`gupan:mode:${projectId}`);
       if (savedMode && BUILD_MODES.some((item) => item.id === savedMode)) setMode(savedMode);
     } catch (e) {
       setError(String(e));
