@@ -89,6 +89,8 @@ npm run dev -- --hostname 0.0.0.0
 - ประกอบเอกสารพรีวิวเอง: React 18 + ReactDOM (vendor ไว้ใน `public/vendor/react/`), บริดจ์คอนโซลเดิม, CSS ของโปรเจกต์ (รวม CSS module ที่คืนชื่อคลาสให้โค้ดใช้จริง), JSON, และรูป/ฟอนต์ที่เขียนเป็น URL ของ `raw.githubusercontent.com`
 - จำลองแพ็กเกจที่ใช้บ่อย: `react-router`/`react-router-dom`, `next/link|image|head|router|navigation|app|document|font|themes`, `prop-types`, `classnames`, `clsx`, `class-variance-authority`, `tailwind-merge`, แพ็กเกจไอคอน และตัวจำลองอัตโนมัติของ UI คิต (`@radix-ui/*`, `@headlessui/*`, `framer-motion`, `zustand`, `@tanstack/*`…) เพื่อให้หน้าแรกยังเรนเดอร์ได้
 - โปรเจกต์ **Next** ที่ไม่มี `index.html` จะ mount หน้าแรกให้เอง (เลือก `pages/index` → `app/page` → หน้าตื้นสุด) ครอบด้วย `_app`/`layout` ถ้ามี และใช้ `globals.css` ให้
+- **หาโมดูลตั้งต้นเองได้**: ถ้า `index.html` ไม่ได้อ้าง `<script>` (แบบ create-react-app ที่ react-scripts ฉีดสคริปต์ตอน build) จะใช้ `src/main.*` → `src/index.*` → `src/App.*` เป็น entry ให้แทนการปล่อยพรีวิวว่าง
+- **พรีวิวไม่เป็นจอขาวอีก**: มีหน้า "กำลังคอมไพล์…" ใน iframe ระหว่างเตรียมไฟล์, การ์ดกลางจอเมื่อหา entry ไม่เจอ/โหลดโมดูลไม่ผ่าน (บอกสาเหตุ), หน้าแจ้งพังเมื่อคอมไพล์ไม่สำเร็จ และแบนเนอร์วินิจฉัยเมื่อมีแพ็กเกจที่ถูกจำลอง
 - อะไรที่รันไม่ได้จะไม่ทำให้หน้าพัง: ถ้าไฟล์ใดคอมไพล์ไม่ผ่านหรือแพ็กเกจใดไม่มี จะขึ้น **แบนเนอร์วินิจฉัยในพรีวิว** เป็นภาษาไทย ส่วนแอปที่โยน error ตอนเรนเดอร์จะเห็นข้อความอธิบายพร้อมสาเหตุ (ไม่ใช่หน้าเปล่า)
 - เครื่องยนต์พรีวิวเป็นของบิลเดอร์เอง (`src/lib/react-runtime/`) ไม่ได้อัปโหลดหรือรันโค้ดของคุณบนเซิร์ฟเวอร์ — ทุกอย่างเกิดในเบราว์เซอร์ของคุณ
 
@@ -113,7 +115,7 @@ cp .env.example .env.local
 ## ตรวจสอบ
 
 ```bash
-npm test                     # 75 unit tests (ไม่มีเทสต์ที่ต้องใช้เน็ต/บัญชีจริง)
+npm test                     # 80 unit tests (ไม่มีเทสต์ที่ต้องใช้เน็ต/บัญชีจริง)
 npm run check-types-errors
 npm run build
 npm start -- --hostname 0.0.0.0
@@ -131,7 +133,7 @@ npm start -- --hostname 0.0.0.0
 | `tests/github-import.test.cjs` | โคลนจาก GitHub แบบไม่ต่อเครือข่าย: parse URL ทุกรูปแบบ, แตก tar สังเคราะห์ (ustar/pax/GNU longname), จำแนกไฟล์, กันพาธหลุด repo และ `planImport` เลือกหน้าแรก/เขียน URL ทับไฟล์ไบนารี/เคารพเพดาน 400 KB–800 KB |
 | `tests/react-runtime.test.cjs` | คอมไพเลอร์ React/Vite/Next: เลือก engine, alias จาก tsconfig, TS/JSX, JSON, CSS module, สไตล์ที่อ้างใน HTML, asset → URL ของ GitHub, entry ของ Next, alias `@/*` → รากโปรเจกต์ และ error ที่อ่านรู้เรื่อง |
 | `tests/react-runner.test.cjs` | runner ที่ฝังในพรีวิวรันใน VM: โหลดโมดูลตามกราฟ, ฉีดสไตล์, คืนค่า CSS module, อ่าน JSON, กดปุ่มแล้ว state เปลี่ยน, ไอคอนที่ไม่มีไม่ทำแอปพัง และรายงานไฟล์ที่หาย |
-| `tests/react-preview.test.cjs` | เอกสารพรีวิว+runtime จริงใน jsdom พร้อม React/ReactDOM UMD ตัวจริง: โปรเจกต์ Vite+React เรนเดอร์จริง (คลิกได้), Next ที่ไม่มี HTML ถูก mount ให้พร้อม `next/head`, แอปที่พังเห็นข้อความอธิบายแทนหน้าเปล่า, และโปรเจกต์ static เดินเส้นทางเดิม |
+| `tests/react-preview.test.cjs` | เอกสารพรีวิว+runtime จริงใน jsdom พร้อม React/ReactDOM UMD ตัวจริง: โปรเจกต์ Vite+React เรนเดอร์จริง (คลิกได้), โปรเจกต์แบบ create-react-app (HTML ไม่มี `<script>`) ที่ใช้ `src/index.js` เป็น entry, Next ที่ไม่มี HTML ถูก mount ให้พร้อม `next/head`, แอปที่พังเห็นข้อความอธิบายแทนหน้าเปล่า (การ์ดกลางจอ + หน้าแจ้งพัง) และโปรเจกต์ static เดินเส้นทางเดิม |
 
 Optional browser regression: `tests/browser-smoke.cjs` ใช้ Playwright ที่ติดตั้งแยก ไม่เพิ่ม dependency ให้แอป และ **mock Puter SDK** เพื่อไม่ใช้เครดิตจริง:
 
@@ -140,6 +142,18 @@ PLAYWRIGHT_MODULE=/path/to/playwright node tests/browser-smoke.cjs
 ```
 
 ทดสอบ create → login mock → streaming → preview interaction → code save → reload → ZIP → follow-up context → provider error/invalid HTML → stop → restore → import → mobile layout → reopen
+
+### วินิจฉัยพรีวิวระหว่างพัฒนา (dev)
+
+พรีวิวรันในเบราว์เซอร์ จึงมองไม่เห็น console ของผู้ใช้จากฝั่งเซิร์ฟเวอร์ ในโหมด `next dev` แอปจึงส่งข้อความสั้น ๆ ไปที่ `POST /api/debug-log` (เขียนลง log ของเซิร์ฟเวอร์เท่านั้น ไม่เก็บลงดิสก์ และ route จะปิดตัวเองเมื่อเป็น production):
+
+```
+[preview-diag] preview-build: engine=react page=index.html files=42
+[preview-diag] preview-compiled: modules=13 errors=0 missing=0 mount=synthetic | {...}
+[preview-diag] preview-console: แพ็กเกจ web-vitals ยังไม่มีในพรีวิวนี้ …
+```
+
+ถ้าผู้ใช้เจอพรีวิวผิดปกติ ให้ดู log ของ `next dev` บรรทัดที่ขึ้นต้นด้วย `[preview-diag]` — บอกได้ว่าเลือกเครื่องยนต์ไหน คอมไพล์กี่โมดูล และ error อะไรเกิดขึ้นในเบราว์เซอร์
 
 การผ่าน test/build ไม่ได้แปลว่าได้ยืนยัน Puter login, โมเดล AI, quota หรือ Totalum บนบัญชีจริง ต้องลองด้วยบัญชีของผู้ใช้เองอีกครั้ง
 

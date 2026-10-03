@@ -862,8 +862,19 @@ export async function compileReactProject(input: CompileInput): Promise<RuntimeB
   // มี <script src> ในเครื่องแล้ว = ใช้ตัวนั้นเป็น entry เสมอ (Vite/HTML) —
   // synthetic entry ของ Next ใช้เฉพาะโปรเจกต์ที่ไม่มี HTML ให้ mount เอง
   const nextPage = entryScripts.length ? null : pickNextPage(files);
+  // ไม่มี <script> ใน HTML และไม่ใช่ Next: ใช้ไฟล์ main/index ที่รันตัวเองได้
+  // (แบบ create-react-app) แทนการปล่อยให้พรีวิวว่างเปล่า
+  const clientEntry =
+    entryScripts.length || nextPage ? null : pickClientEntry(files);
   let mount: RuntimeBundle["mount"] = entryScripts.length ? "self" : "synthetic";
   let entryModule: string | null = entryScripts[0] ?? null;
+  if (clientEntry) {
+    mount = "self";
+    entryModule = clientEntry;
+    warnings.push(
+      `หน้า HTML ไม่ได้อ้างสคริปต์ — ใช้ ${clientEntry} เป็นโมดูลตั้งต้นให้`,
+    );
+  }
 
   /** รายการโมดูลตั้งต้นที่ต้องคอมไพล์ (entry จาก HTML + หน้าแรก/เลย์เอาต์ของ Next) */
   const queue: string[] = [...entryScripts];
@@ -905,6 +916,7 @@ export async function compileReactProject(input: CompileInput): Promise<RuntimeB
     if (ctx.modules.get(path) === path || files[path] !== undefined) pending.push(path);
   };
   for (const item of queue) enqueue(item);
+  if (clientEntry) enqueue(clientEntry);
   if (nextPage) enqueue(nextPage);
   if (entryModule) enqueue(entryModule);
 
@@ -976,7 +988,7 @@ export async function compileReactProject(input: CompileInput): Promise<RuntimeB
     errors.push({
       path: htmlPath ?? "index.html",
       message:
-        "ไม่พบไฟล์ JavaScript/TypeScript ที่ผูกกับหน้า HTML — ตรวจ <script src> หรือไฟล์ main ของโปรเจกต์",
+        "หาไฟล์ตั้งต้นของแอปไม่เจอ — หน้า HTML ไม่มี <script src> และไม่พบไฟล์ src/main.* หรือ src/index.* ในโปรเจกต์",
     });
   }
 
@@ -995,6 +1007,23 @@ export async function compileReactProject(input: CompileInput): Promise<RuntimeB
 // ── Next.js (แบบจำกัด) ────────────────────────────────────────────────
 
 /** หน้าที่จะ mount: pages/index.* → app/page.* → หน้าอื่นที่ตื้นที่สุด */
+/**
+ * ไฟล์ตั้งต้นที่ "รันตัวเองได้" — โปรเจกต์อย่าง create-react-app ไม่มี `<script>`
+ * ใน `public/index.html` เลย (react-scripts ฉีดให้ตอน build) แต่ `src/index.js`
+ * เรียก `createRoot(...).render(...)` เองอยู่แล้ว จึงใช้ไฟล์นั้นเป็น entry ได้
+ */
+export function pickClientEntry(files: Record<string, string>): string | null {
+  const candidates = [
+    "src/main.tsx", "src/main.jsx", "src/main.ts", "src/main.js",
+    "src/index.tsx", "src/index.jsx", "src/index.ts", "src/index.js",
+    "src/app.tsx", "src/app.jsx", "src/app.ts", "src/app.js",
+    "src/App.tsx", "src/App.jsx", "src/App.ts", "src/App.js",
+    "index.tsx", "index.jsx", "index.ts", "index.js",
+    "main.tsx", "main.jsx", "main.js",
+  ];
+  return candidates.find((path) => files[path] !== undefined) ?? null;
+}
+
 /**
  * โปรเจกต์นี้เป็น Next.js จริงไหม — ดูจาก dependency `next` หรือไฟล์ที่เป็นเอกลักษณ์
  * ของ Next (`pages/_app`, `app/layout`, `next.config`) เพราะโปรเจกต์ Vite บางตัวก็มี

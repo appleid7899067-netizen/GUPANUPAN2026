@@ -74,7 +74,12 @@ import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
 import GithubCloneDialog, {
   type GithubCloneResult,
 } from "./GithubCloneDialog";
-import { buildPreviewDocument } from "@/lib/react-runtime/preview";
+import {
+  buildPreviewDocument,
+  previewFailureDocument,
+  previewPlaceholderDocument,
+} from "@/lib/react-runtime/preview";
+import { reportToServer } from "@/lib/dev-report";
 import { detectPreviewEngine } from "@/lib/react-runtime/transform";
 import PuterAccountButton from "./PuterAccountButton";
 import SandboxPanel from "./SandboxPanel";
@@ -253,10 +258,30 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         ...old.slice(-99),
         { level: event.data.level, text: event.data.text.slice(0, 2000) },
       ]);
+      // ช่วยวินิจฉัย: error จากในพรีวิวจะไปโผล่ใน log ของ dev server ด้วย
+      if (event.data.level === "error") {
+        reportToServer("preview-console", event.data.text.slice(0, 600));
+      }
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
   }, [channel]);
+  // วินิจฉัย: error ที่หลุดจากฝั่งแอปบิลเดอร์เอง (ไม่ใช่ในพรีวิว) ก็ควรเห็นใน log ของ dev
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const onError = (event: ErrorEvent) =>
+      reportToServer("builder-window", event.message || "unknown error");
+    const onRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason as { message?: string } | undefined;
+      reportToServer("builder-promise", reason?.message ?? String(event.reason));
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty || busy) {
@@ -305,6 +330,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       return;
     }
     const engine = detectPreviewEngine(files);
+    reportToServer("preview-build", `engine=${engine} page=${page} files=${Object.keys(files).length}`);
     if (engine === "static") {
       setSrcDoc(previewDocument(files, page, channel));
       setPreviewBusy(false);
@@ -313,11 +339,24 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     }
     setPreviewBusy(true);
     setPreviewNote("");
+    // ให้ iframe แสดงสถานะกำลังคอมไพล์ของตัวเอง ระหว่างโหลด Babel/คอมไพล์
+    setSrcDoc(previewPlaceholderDocument());
     buildPreviewDocument(files, page, channel, { engine, origin }, previewDocument)
       .then((result) => {
         if (ticket !== previewTicket.current) return; // มีการแก้โค้ดใหม่ระหว่างคอมไพล์
         setSrcDoc(result.doc);
         setPreviewBusy(false);
+        if (result.bundle) {
+          reportToServer(
+            "preview-compiled",
+            `modules=${result.bundle.modules.length} errors=${result.bundle.errors.length} missing=${result.bundle.missing.length} mount=${result.bundle.mount}`,
+            {
+              entry: result.bundle.entryModule,
+              errors: result.bundle.errors.slice(0, 3),
+              missing: result.bundle.missing.slice(0, 3).map((item) => item.specifier),
+            },
+          );
+        }
         const problems = result.bundle
           ? result.bundle.errors.length + result.bundle.missing.length
           : 0;
@@ -331,9 +370,12 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       })
       .catch((e) => {
         if (ticket !== previewTicket.current) return;
-        setSrcDoc(previewDocument(files, page, channel));
+        // ไม่ fallback ไปเป็น HTML เปล่า (ผู้ใช้จะเห็นจอขาว) — แสดงสาเหตุในพรีวิวเลย
+        const message = errorText(e);
+        reportToServer("preview-failed", message);
+        setSrcDoc(previewFailureDocument(message, "คอมไพล์โปรเจกต์นี้ไม่สำเร็จ"));
         setPreviewBusy(false);
-        setPreviewNote(`คอมไพล์ไม่สำเร็จ: ${errorText(e)} — แสดง HTML เดิมแทน`);
+        setPreviewNote(`คอมไพล์ไม่สำเร็จ: ${message}`);
       });
   }, [files, origin, page, channel]);
 

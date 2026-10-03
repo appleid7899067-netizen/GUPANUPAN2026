@@ -74,6 +74,7 @@ function createDom() {
     getElementById: (id) => byId[id] ?? null,
     getElementsByTagName: (tag) => (tag === "head" ? [head] : [body]),
     addEventListener() {},
+    querySelector: () => null,
     querySelectorAll: () => [],
   };
   return { document, head, body, root };

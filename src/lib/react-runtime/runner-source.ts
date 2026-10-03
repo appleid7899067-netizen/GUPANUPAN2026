@@ -735,6 +735,34 @@ function gupanRunner(): void {
     "i18next",
     "@apollo/",
     "@sentry/",
+    "web-vitals",
+    "react-app-polyfill",
+    "history",
+    "react-transition-group",
+    "react-select",
+    "react-datepicker",
+    "react-modal",
+    "react-tooltip",
+    "react-spinners",
+    "react-loading-skeleton",
+    "react-intersection-observer",
+    "react-dropzone",
+    "react-markdown",
+    "react-syntax-highlighter",
+    "react-copy-to-clipboard",
+    "clipboard",
+    "dompurify",
+    "prismjs",
+    "highlight.js",
+    "marked",
+    "slugify",
+    "superjson",
+    "@testing-library/",
+    "msw",
+    "miragejs",
+    "@faker-js/",
+    "faker",
+    "firebase",
     "dotenv",
     // โมดูลของ Node ที่บางโปรเจกต์เผลอ import เข้ามาในโค้ดฝั่งเบราว์เซอร์
     "fs",
@@ -997,6 +1025,45 @@ function gupanRunner(): void {
     return req;
   }
 
+  /**
+   * การ์ดกลางจอสำหรับกรณีที่ "ไม่มีอะไรเรนเดอร์ได้เลย" — จอขาวคือสิ่งที่ผู้ใช้
+   * ตีความว่าแอปพัง จึงต้องมีข้อความบอกเสมอ
+   */
+  function showFatal(title: string, detail: string): void {
+    function mount(): void {
+      if (!document.body) return;
+      if (document.querySelector("[data-gupan-fatal]")) return;
+      var box = document.createElement("div");
+      box.setAttribute("data-gupan-fatal", "1");
+      box.style.cssText =
+        "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:28px;" +
+        "background:#16151a;color:#f3f0ff;font:14px/1.75 system-ui,-apple-system,Segoe UI,sans-serif;" +
+        "text-align:left;z-index:2147483646;overflow:auto";
+      var inner = document.createElement("div");
+      inner.style.cssText = "max-width:560px";
+      var heading = document.createElement("div");
+      heading.style.cssText = "font-weight:600;font-size:17px;margin-bottom:10px;color:#fff";
+      heading.textContent = title;
+      var body = document.createElement("div");
+      body.style.cssText = "white-space:pre-wrap;opacity:.9";
+      body.textContent = detail;
+      var hint = document.createElement("div");
+      hint.style.cssText = "margin-top:14px;opacity:.7";
+      hint.textContent =
+        "พรีวิวรันในเบราว์เซอร์ (ไม่มีเซิร์ฟเวอร์/npm) — แก้โค้ดในแท็บ Code หรือสั่ง AI ให้ปรับให้รันแบบ static ได้";
+      inner.appendChild(heading);
+      inner.appendChild(body);
+      inner.appendChild(hint);
+      box.appendChild(inner);
+      document.body.appendChild(box);
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", mount);
+    } else {
+      mount();
+    }
+  }
+
   // ── 6) แบนเนอร์วินิจฉัย (เฉพาะเมื่อมีปัญหา) ────────────────────────────
   function showDiagnostics(): void {
     if (!problems.length) return;
@@ -1093,16 +1160,33 @@ function gupanRunner(): void {
   }
   (window as any).__gupanMountWithBoundary = mountWithBoundary;
 
+  var entryFailed: any = null;
   if (!React) {
     problems.push("ไม่พบ React ในเอกสารพรีวิว (ไฟล์ vendor ไม่ถูกโหลด)");
+    showFatal(
+      "โหลด React สำหรับพรีวิวไม่สำเร็จ",
+      "ไฟล์ React ที่ฝังมากับเอกสารพรีวิวไม่ถูกเรียกใช้ — ลองกดปุ่มโหลดพรีวิวใหม่ หรือตรวจว่าหน้าแอปเสิร์ฟ /vendor/react/* ได้",
+    );
   } else if (!cfg.entry) {
     problems.push("ไม่พบโมดูลตั้งต้นของโปรเจกต์");
+    showFatal(
+      "หาไฟล์ตั้งต้นของแอปไม่เจอ",
+      "หน้า HTML ไม่ได้อ้าง <script src> และไม่พบไฟล์ src/main.* หรือ src/index.* ในโปรเจกต์\n" +
+        "ตรวจชื่อไฟล์ในแท็บ Code แล้วกดโหลดพรีวิวใหม่",
+    );
   } else {
     try {
       load(cfg.entry);
     } catch (error) {
+      entryFailed = error;
       // รายละเอียดถูกส่งเข้า console แล้วด้านบน
     }
+  }
+  if (entryFailed) {
+    showFatal(
+      "แอปนี้ยังรันในพรีวิวไม่ได้",
+      (entryFailed && entryFailed.message) || String(entryFailed),
+    );
   }
 
   // เก็บกวาด: ถ้ามีปัญหาแต่ยังไม่ทัน append ให้รอ DOM พร้อมก่อน

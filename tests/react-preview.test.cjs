@@ -212,6 +212,71 @@ createRoot(document.getElementById("root")).render(<App />);
   dom.window.close();
 });
 
+test("โปรเจกต์แบบ create-react-app (HTML ไม่มี <script>) ยัง mount ได้", async () => {
+  // CRA ฉีดสคริปต์ตอน build — ในรีโปจึงมีแค่ src/index.js ที่รันตัวเอง
+  const files = {
+    "package.json": JSON.stringify({ dependencies: { react: "^18", "react-dom": "^18", "react-scripts": "5.0.1" } }),
+    "public/index.html": `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>CRA App</title></head>
+<body><noscript>ต้องเปิด JavaScript</noscript><div id="root"></div></body></html>`,
+    "src/index.js": `import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App";
+createRoot(document.getElementById("root")).render(<App />);
+`,
+    "src/App.js": `import logo from "./logo.svg";
+export default function App() { return (<div><img src={logo} alt="logo" width="80" /><h1>สวัสดี CRA</h1></div>); }
+`,
+    "src/index.css": "body{margin:0;background:#eef}",
+    "src/logo.svg": "<svg xmlns='http://www.w3.org/2000/svg'></svg>",
+  };
+  assert.equal(transform.detectPreviewEngine(files), "react");
+  assert.equal(transform.pickClientEntry(files), "src/index.js");
+
+  const built = await preview.buildPreviewDocument(files, "index.html", "chan-cra", {
+    engine: "react",
+  }, builder.previewDocument);
+  assert.equal(built.bundle.entryModule, "src/index.js", "ต้องใช้ src/index.js เป็น entry");
+  assert.deepEqual(built.bundle.errors, []);
+  const dom = openPreview(preview.reactPreviewDocument(built.bundle, "chan-cra", vendorScripts));
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const text = dom.window.document.body.textContent || "";
+  assert.match(text, /สวัสดี CRA/, "ต้องเห็นเนื้อหาที่ React เรนเดอร์");
+  assert.equal(dom.window.document.getElementById("root").children.length > 0, true);
+  assert.equal(dom.window.document.querySelector("[data-gupan-fatal]"), null, "ต้องไม่ขึ้นการ์ดแจ้งปัญหา");
+  dom.window.close();
+});
+
+test("โปรเจกต์ที่หา entry ไม่เจอเห็นการ์ดแจ้งปัญหากลางจอ ไม่ใช่จอขาว", async () => {
+  const files = {
+    "index.html": '<!doctype html><html><body><h1>เปล่า</h1></body></html>',
+    "styles.css": "body{font-family:sans-serif}",
+    "package.json": JSON.stringify({ dependencies: { react: "^18" } }),
+    "README.md": "# ไม่มีฟล์ตั้งต้น",
+  };
+  // จงใจให้ engine เป็น react เพื่อดูพฤติกรรมตอนหา entry ไม่เจอ
+  const built = await preview.buildPreviewDocument(files, "index.html", "chan-noentry", {
+    engine: "react",
+  }, builder.previewDocument);
+  assert.equal(built.bundle.entryModule, null);
+  assert.ok(built.bundle.errors.length > 0, "ต้องรายงานว่าไม่พบไฟล์ตั้งต้น");
+  const dom = openPreview(preview.reactPreviewDocument(built.bundle, "chan-noentry", vendorScripts));
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const card = dom.window.document.querySelector("[data-gupan-fatal]");
+  assert.ok(card, "ต้องมีการ์ดแจ้งปัญหากลางจอ");
+  assert.match(card.textContent || "", /หาไฟล์ตั้งต้นของแอปไม่เจอ/);
+  dom.window.close();
+});
+
+test("เอกสารกำลังคอมไพล์และเอกสารแจ้งพังมีข้อความให้อ่านเสมอ", () => {
+  const loading = preview.previewPlaceholderDocument();
+  assert.match(loading, /กำลัง/);
+  assert.match(loading, /Content-Security-Policy/);
+  const failed = preview.previewFailureDocument('คอมไพล์ไม่ผ่าน <script>x</script>');
+  assert.match(failed, /พรีวิวนี้ยังแสดงไม่ได้/);
+  assert.ok(!failed.includes("<script>x</script>"), "ข้อความ error ต้องถูก escape");
+  assert.match(failed, /&lt;script&gt;/);
+});
+
 test("คอมโพเนนต์ที่โยน error ตอนเรนเดอร์เห็นข้อความอธิบาย ไม่ใช่หน้าเปล่า", async () => {
   const files = {
     "index.html": '<!doctype html><html><body><div id="root"></div><script type="module" src="/main.jsx"></script></body></html>',

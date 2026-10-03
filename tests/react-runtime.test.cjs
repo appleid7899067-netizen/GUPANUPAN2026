@@ -268,6 +268,32 @@ export default function Page() { return <h1>{siteConfig.name}</h1>; }`,
   assert.ok(bundle.modules.some((mod) => mod.path === "config/site.ts"));
 });
 
+test("pickClientEntry หาไฟล์ที่รันตัวเองได้ให้โปรเจกต์ที่ HTML ไม่มีสคริปต์", () => {
+  assert.equal(transform.pickClientEntry({ "src/index.js": "", "src/App.js": "" }), "src/index.js");
+  assert.equal(transform.pickClientEntry({ "src/main.tsx": "", "src/index.tsx": "" }), "src/main.tsx");
+  assert.equal(transform.pickClientEntry({ "src/App.jsx": "", "src/index.js": "" }), "src/index.js");
+  assert.equal(transform.pickClientEntry({ "src/App.tsx": "" }), "src/App.tsx");
+  assert.equal(transform.pickClientEntry({ "src/util.ts": "" }), null);
+  assert.equal(transform.pickClientEntry({}), null);
+});
+
+test("compileReactProject เลือก src/index.js เป็น entry เมื่อ HTML ไม่มี <script>", async () => {
+  const files = {
+    "package.json": JSON.stringify({ dependencies: { react: "^18" } }),
+    "index.html": '<!doctype html><html><body><div id="root"></div></body></html>',
+    "src/index.js": 'import { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root")).render(<App />);',
+    "src/App.js": "export default function App() { return <h1>hi</h1>; }",
+  };
+  const bundle = await transform.compileReactProject({ files });
+  assert.equal(bundle.entryModule, "src/index.js");
+  assert.equal(bundle.mount, "self");
+  assert.deepEqual(bundle.errors, [], "ต้องไม่รายงานว่าหา entry ไม่เจอ");
+  assert.ok(
+    bundle.warnings.some((text) => text.includes("src/index.js")),
+    "ต้องบอกผู้ใช้ว่าใช้ไฟล์ไหนเป็นโมดูลตั้งต้น",
+  );
+});
+
 test("compileReactProject รายงานข้อผิดพลาดที่อ่านรู้เรื่องแทนการพัง", async () => {
   const files = {
     "index.html": '<!doctype html><html><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>',

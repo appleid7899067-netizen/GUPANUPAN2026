@@ -114,6 +114,58 @@ export function reactPreviewDocument(
   return insertBeforeBodyEnd(shell, scripts);
 }
 
+/**
+ * หน้า "กำลังคอมไพล์" ที่อยู่ใน iframe เอง — ระหว่างโหลด Babel (ไฟล์ใหญ่) และ
+ * คอมไพล์โปรเจกต์ ผู้ใช้จะได้ไม่เห็นจอขาว
+ */
+export function previewPlaceholderDocument(
+  message = "กำลังโหลดตัวคอมไพล์และเตรียมไฟล์โปรเจกต์…",
+): string {
+  return (
+    `<!doctype html><html lang="th"><head><meta charset="utf-8">` +
+    `<meta http-equiv="Content-Security-Policy" content="${REACT_PREVIEW_CSP}">` +
+    `<title>กำลังเตรียมพรีวิว</title><style>` +
+    `html,body{height:100%;margin:0}` +
+    `body{display:flex;align-items:center;justify-content:center;background:#16151a;color:#f3f0ff;` +
+    `font:14px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}` +
+    `.box{max-width:440px;text-align:center;padding:24px}` +
+    `.ring{width:28px;height:28px;margin:0 auto 14px;border:3px solid #3b3a42;border-top-color:#a78bfa;` +
+    `border-radius:50%;animation:spin .9s linear infinite}` +
+    `@keyframes spin{to{transform:rotate(360deg)}}` +
+    `.hint{margin-top:10px;opacity:.6;font-size:12.5px}` +
+    `</style></head><body><div class="box"><div class="ring"></div>` +
+    `<div>${message}</div>` +
+    `<div class="hint">พรีวิวรันในเบราว์เซอร์ — โปรเจกต์ใหญ่ใช้เวลาสักครู่</div>` +
+    `</div></body></html>`
+  );
+}
+
+/** หน้าแจ้งข้อผิดพลาดภายใน iframe (ใช้แทนการปล่อยพรีวิวว่างเปล่า) */
+export function previewFailureDocument(
+  message: string,
+  title = "พรีวิวนี้ยังแสดงไม่ได้",
+): string {
+  const safe = (value: string) =>
+    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return (
+    `<!doctype html><html lang="th"><head><meta charset="utf-8">` +
+    `<meta http-equiv="Content-Security-Policy" content="${REACT_PREVIEW_CSP}">` +
+    `<title>${safe(title)}</title><style>` +
+    `html,body{height:100%;margin:0}` +
+    `body{display:flex;align-items:center;justify-content:center;background:#16151a;color:#f3f0ff;` +
+    `font:14px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif}` +
+    `.box{max-width:560px;padding:26px}` +
+    `h1{margin:0 0 10px;font-size:17px}` +
+    `pre{margin:0;white-space:pre-wrap;word-break:break-word;background:#211f26;border:1px solid #3a3742;` +
+    `border-radius:10px;padding:12px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}` +
+    `.hint{margin-top:12px;opacity:.7}` +
+    `</style></head><body><div class="box"><h1>${safe(title)}</h1>` +
+    `<pre>${safe(message)}</pre>` +
+    `<div class="hint">ไฟล์ทั้งหมดยังแก้ในแท็บ Code ได้ และสั่ง AI ให้ปรับให้รันแบบ static ได้</div>` +
+    `</div></body></html>`
+  );
+}
+
 export interface BuildPreviewOptions {
   engine: PreviewEngine;
   origin?: ProjectOrigin;
