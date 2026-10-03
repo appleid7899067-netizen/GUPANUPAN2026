@@ -5,7 +5,9 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowUp,
+  Brain,
   Check,
+  ChevronsUpDown,
   Code2,
   Download,
   Eye,
@@ -16,8 +18,10 @@ import {
   MoreHorizontal,
   Package,
   Play,
+  Plus,
   RotateCcw,
   Save,
+  SlidersHorizontal,
   Smartphone,
   Square,
   Tablet,
@@ -71,6 +75,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<WorkTab>("preview");
   const [overlay, setOverlay] = useState<WorkOverlay | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showModel, setShowModel] = useState(false);
   const [mode, setMode] = useState<string>(DEFAULT_MODE_ID);
   const [device, setDevice] = useState<Device>("desktop");
   const [busy, setBusy] = useState(false);
@@ -550,7 +555,9 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           </div>
           <div className="chat-messages">
             <div className="assistant-intro">
-              <div className="assistant-symbol">✦</div>
+              <div className="assistant-wordmark" aria-hidden="true">
+                gupan
+              </div>
               <h2>จากไอเดีย สู่เว็บของคุณ</h2>
               <p>
                 สั่งสร้างเว็บ แล้วแก้ต่อได้เรื่อย ๆ AI
@@ -570,7 +577,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             ))}
             {busy && (
               <div className="build-progress" role="status">
-                <Loader2 size={17} className="spin" /> {status}
+                <Brain size={16} /> {status}
               </div>
             )}
             <div ref={chatEnd} />
@@ -612,66 +619,95 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   }
                 }}
               />
-              <div className="composer-bottom">
-                <span>Ctrl / ⌘ + Enter</span>
+              <div className="composer-row">
+                <button
+                  type="button"
+                  className="round-btn"
+                  aria-label="นำเข้า HTML"
+                  title="นำเข้า HTML"
+                  disabled={busy}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  <Plus size={16} />
+                </button>
+                <label className="mode-select">
+                  <select
+                    aria-label="โหมดการสร้าง"
+                    value={mode}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setMode(next);
+                      try {
+                        localStorage.setItem(`gupan:mode:${projectId}`, next);
+                      } catch {
+                        /* โหมดเป็นเพียงตัวช่วย ไม่กระทบการบันทึกโปรเจกต์ */
+                      }
+                      setStatus(
+                        `โหมด ${getBuildMode(next).label} · ${getBuildMode(next).hint}`,
+                      );
+                    }}
+                  >
+                    {BUILD_MODES.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronsUpDown size={12} />
+                </label>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  aria-label="ตั้งค่าโมเดล AI"
+                  title="ตั้งค่าโมเดล AI"
+                  aria-expanded={showModel}
+                  onClick={() => setShowModel((value) => !value)}
+                >
+                  <SlidersHorizontal size={15} />
+                </button>
+                <span className="row-spacer" />
                 {busy ? (
                   <button
                     type="button"
-                    className="stop-button"
+                    className="send-circle running"
+                    aria-label="หยุดรับผล"
+                    title="หยุดรับผล"
                     onClick={(e) => {
                       e.preventDefault();
                       stop();
                     }}
                   >
-                    <Square size={13} /> หยุดรับผล
+                    <Square size={12} />
                   </button>
                 ) : (
                   <button
-                    className="primary"
                     type="submit"
+                    className="send-circle"
                     disabled={!prompt.trim() || !ready}
+                    aria-label="ส่งคำสั่ง"
+                    title="ส่งคำสั่ง (Ctrl/⌘ + Enter)"
                   >
-                    <ArrowUp size={17} /> ส่งคำสั่ง
+                    <ArrowUp size={18} />
                   </button>
                 )}
               </div>
             </form>
-            <label className="mode-field">
-              โหมด{" "}
-              <select
-                aria-label="โหมดการสร้าง"
-                value={mode}
-                disabled={busy}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setMode(next);
-                  try {
-                    localStorage.setItem(`gupan:mode:${projectId}`, next);
-                  } catch {
-                    /* โหมดเป็นเพียงตัวช่วย ไม่กระทบการบันทึกโปรเจกต์ */
-                  }
-                  setStatus(`โหมด ${getBuildMode(next).label} · ${getBuildMode(next).hint}`);
-                }}
-              >
-                {BUILD_MODES.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="model-field">
-              Model{" "}
-              <input
-                aria-label="Puter model ID"
-                placeholder="ค่าเริ่มต้นของ Puter"
-                value={model}
-                disabled={busy}
-                onChange={(e) => setModel(e.target.value)}
-              />
-            </label>
+            {showModel && (
+              <label className="model-field">
+                Model{" "}
+                <input
+                  aria-label="Puter model ID"
+                  placeholder="ค่าเริ่มต้นของ Puter"
+                  value={model}
+                  disabled={busy}
+                  onChange={(e) => setModel(e.target.value)}
+                />
+              </label>
+            )}
             <small className="billing-note">
-              ใช้โควตา/ค่าบริการบัญชี Puter ของคุณ · ไม่ส่งคำสั่งอัตโนมัติ
+              ใช้โควตา/ค่าบริการบัญชี Puter ของคุณ · Ctrl/⌘ + Enter เพื่อส่ง ·
+              ไม่ส่งคำสั่งอัตโนมัติ
             </small>
           </div>
         </aside>

@@ -4,7 +4,8 @@
   --border: #303136;
   --muted: #999ba5;
   --text: #eeeef0;
-  --accent: #b6a0ff;
+  --accent: #4da3f5;
+  --bolt: #2f9df4;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-dm-sans), Arial, sans-serif;
@@ -94,13 +95,55 @@
   border-radius: 50%;
 }
 .home {
-  background:
-    radial-gradient(ellipse at 50% 21%, #30244755, transparent 47%), #111214;
+  background: #0f1013;
 }
 .home-main {
   max-width: 900px;
   margin: auto;
-  padding: 62px 28px 70px;
+  padding: 26px 20px 70px;
+}
+/* การ์ดฮีโร่สีน้ำเงินเต็มความกว้าง — ลายจุดจาง ๆ แบบ bolt.new */
+.home-hero-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 54px 22px 34px;
+  background: radial-gradient(
+    130% 100% at 50% 0%,
+    #37b0ff 0%,
+    #128ae6 48%,
+    #0a63c0 100%
+  );
+  box-shadow: 0 24px 70px #0a63c033;
+}
+.home-hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#ffffff26 1px, transparent 1.4px);
+  background-size: 22px 22px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.home-hero-card > * {
+  position: relative;
+}
+.home-hero-card h1 {
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font-size: clamp(29px, 6vw, 46px);
+  line-height: 1.3;
+  font-weight: 750;
+  letter-spacing: -1.2px;
+}
+.hero-sub {
+  margin: 14px auto 26px;
+  max-width: 460px;
+  text-align: center;
+  color: #dbeeff;
+  font-size: 13px;
+  line-height: 1.8;
 }
 /* แถบบนของทั้งสองหน้า: กลุ่มปุ่มขวามือแบบ bolt.new */
 .header-actions {
@@ -109,55 +152,17 @@
   gap: 8px;
   margin-left: auto;
 }
-.home-hero {
-  text-align: center;
-}
-.home-logo {
-  width: 52px;
-  height: 52px;
-  margin: 0 auto 22px;
-  border-radius: 15px;
-  display: grid;
-  place-items: center;
-  color: #2a1f43;
-  background: linear-gradient(145deg, #e6dcff, #b6a0ff);
-  box-shadow: 0 12px 32px #7b5fd033;
-}
-.eyebrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  font-size: 10px;
-  letter-spacing: 2.5px;
-  color: #baa8e9;
-  margin-bottom: 22px;
-}
-.home h1 {
-  text-align: center;
-  font-size: clamp(31px, 4.6vw, 48px);
-  line-height: 1.3;
-  font-weight: 650;
-  letter-spacing: -1.4px;
-  margin: 0;
-}
-.hero-description {
-  text-align: center;
-  color: var(--muted);
-  margin: 19px 0 32px;
-  line-height: 1.8;
-}
 .prompt-card {
   max-width: 720px;
   margin: auto;
-  background: #202024;
-  border: 1px solid #434049;
-  border-radius: 16px;
-  box-shadow: 0 15px 50px #0004;
+  background: #1d1d20;
+  border: 1px solid #ffffff24;
+  border-radius: 20px;
+  box-shadow: 0 18px 50px #00224455;
   overflow: hidden;
 }
 .prompt-card:focus-within {
-  border-color: #b6a0ff80;
+  border-color: #7cc0f8aa;
 }
 .prompt-card textarea {
   width: 100%;
@@ -174,13 +179,6 @@
 .builder input::placeholder {
   color: #7e7e89;
 }
-.prompt-footer {
-  padding: 0 16px 15px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
 .prompt-pill {
   display: flex;
   align-items: center;
@@ -193,51 +191,185 @@
   padding: 5px 11px;
   white-space: nowrap;
 }
-.send-button {
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  padding: 0;
-  border-radius: 50%;
-  background: #d6cafa;
-  border: 1px solid #d6cafa;
-  color: #261d39;
-}
-.send-button:hover:not(:disabled) {
-  background: #e7deff;
-}
 .builder .primary {
-  background: #d6cafa;
-  color: #261d39;
-  border: 1px solid #d6cafa;
-  border-radius: 8px;
+  background: var(--bolt);
+  color: #fff;
+  border: 1px solid var(--bolt);
+  border-radius: 9px;
   padding: 9px 13px;
   font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
 }
 .builder .primary:hover:not(:disabled) {
-  background: #e7deff;
+  background: #55b1f7;
+}
+/* ไทล์เลือกประเภทงาน 4 ช่องบนการ์ดน้ำเงิน */
+.start-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 26px auto 0;
+  max-width: 520px;
+}
+.start-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: none;
+  color: #eaf5ff;
+  font-size: 11.5px;
+}
+.start-tile .tile-box {
+  width: 100%;
+  max-width: 92px;
+  aspect-ratio: 1;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: #0a5aa8b8;
+  border: 1px solid #ffffff2e;
+  transition:
+    transform 0.15s,
+    background 0.15s;
+}
+.start-tile:hover .tile-box {
+  background: #0b67c2cc;
+  transform: translateY(-2px);
+}
+.start-tile[aria-pressed="true"] .tile-box {
+  background: #fff;
+  color: #0a63c0;
+  border-color: #fff;
+}
+.start-tile[aria-pressed="true"] {
+  font-weight: 650;
+}
+.start-from {
+  margin: 26px 0 12px;
+  text-align: center;
+  color: #d5ebff;
+  font-size: 12px;
 }
 .suggestions {
   display: flex;
   justify-content: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin: 20px auto;
+  margin: 0 auto;
   max-width: 790px;
 }
 .suggestions button {
   font-size: 11px;
-  color: #aeabb7;
-  padding: 8px 11px;
-  border: 1px solid #323036;
-  border-radius: 7px;
-  background: #19181c;
+  color: #eaf5ff;
+  padding: 8px 12px;
+  border: 1px solid #ffffff30;
+  border-radius: 999px;
+  background: #08407ecc;
 }
 .suggestions button:hover {
-  border-color: #857598;
+  border-color: #ffffff55;
+  background: #0a4f9ad9;
+}
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+.composer-row .prompt-pill {
+  margin-left: auto;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #26262b;
+  border-color: #3a3a42;
+}
+.round-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid #3d3d44;
+  background: #2a2a2f;
+  color: #cfcdd6;
+}
+.round-btn:hover:not(:disabled) {
+  background: #35353c;
+  color: #fff;
+}
+.ghost-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #9a97a4;
+}
+.ghost-btn:hover:not(:disabled) {
+  color: #e6e3ee;
+  background: #2c2c33;
+}
+.ghost-btn[aria-expanded="true"] {
+  color: #7cc0f8;
+  background: #21303d;
+}
+.row-spacer {
+  flex: 1;
+}
+.send-circle {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bolt);
+  color: #fff;
+}
+.send-circle:hover:not(:disabled) {
+  background: #55b1f7;
+}
+/* ปุ่มส่งตอนยังพิมพ์ไม่ครบ = น้ำเงินหม่นแบบ bolt ไม่ใช่จางหาย */
+.send-circle:disabled {
+  opacity: 1;
+  background: #2b5a83;
+  color: #9db8cd;
+  cursor: not-allowed;
+}
+.mode-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 44%;
+}
+.mode-select select {
+  appearance: none;
+  background: none;
+  border: 0;
+  color: #b9b6c2;
+  font-size: 11px;
+  padding: 6px 20px 6px 8px;
+  border-radius: 8px;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+.mode-select select:hover:not(:disabled) {
+  background: #2c2c33;
   color: #eee;
+}
+.mode-select svg {
+  position: absolute;
+  right: 5px;
+  color: #8a8794;
+  pointer-events: none;
+}
+.mode-select option {
+  background: #1d1d22;
+  color: #e8e6ee;
 }
 .honest-note {
   text-align: center;
@@ -474,17 +606,17 @@
   flex: 1;
   min-height: 0;
   padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
 }
-.assistant-symbol {
-  width: 35px;
-  height: 35px;
-  display: grid;
-  place-items: center;
-  background: #2b233b;
-  border: 1px solid #4a3b63;
-  border-radius: 10px;
-  font-size: 25px;
-  color: #bca3eb;
+/* wordmark ตัวหนาเอียงแบบโลโก้ bolt ในหน้าแชท */
+.assistant-wordmark {
+  align-self: flex-start;
+  font-size: 20px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.6px;
+  color: #f2f0f7;
 }
 .assistant-intro h2 {
   font-size: 15px;
@@ -509,6 +641,8 @@
   font-size: 12px;
   line-height: 1.9;
   overflow-wrap: anywhere;
+  align-self: flex-start;
+  max-width: 92%;
 }
 .chat-message small {
   font-size: 9px;
@@ -520,28 +654,43 @@
   margin: 4px 0;
 }
 .chat-message.user {
+  align-self: flex-end;
   padding: 12px 14px;
-  border-radius: 10px;
-  background: #242129;
-  border: 1px solid #35303d;
+  border-radius: 12px;
+  background: #2a2a2e;
+  border: 1px solid #3a3a40;
 }
 .build-progress {
   margin-top: 20px;
-  color: #c3abea;
+  color: #8ec7f8;
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 11px;
+  align-self: flex-start;
+}
+.build-progress svg {
+  animation: builder-pulse 1.2s ease-in-out infinite;
+}
+@keyframes builder-pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
 .composer-area {
   padding: 12px;
   border-top: 1px solid #25232b;
 }
 .composer-area form {
-  border: 1px solid #48404f;
-  border-radius: 11px;
-  background: #212024;
+  border: 1px solid #3a3a42;
+  border-left: 2px solid var(--bolt);
+  border-radius: 16px;
+  background: #232327;
   overflow: hidden;
+}
+.composer-area form:focus-within {
+  border-color: #4a4a54;
+  border-left-color: var(--bolt);
 }
 .composer-area textarea {
   width: 100%;
@@ -554,20 +703,6 @@
   font-size: 12px;
   line-height: 1.8;
   color: #efedf3;
-}
-.composer-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 9px 9px;
-}
-.composer-bottom > span {
-  font-size: 9px;
-  color: #8d8399;
-}
-.composer-bottom .primary {
-  padding: 7px 9px;
-  font-size: 10px;
 }
 .sign-in {
   width: 100%;
@@ -622,14 +757,6 @@
   color: inherit;
   font-size: 20px;
   margin-left: 8px;
-}
-.stop-button {
-  background: #4a2c36;
-  color: #f6bbc8;
-  border: 1px solid #7c3e50;
-  border-radius: 7px;
-  font-size: 10px;
-  padding: 8px;
 }
 .work-panel {
   flex: 1;
@@ -1118,10 +1245,18 @@
   .home .mode-pill {
     display: none;
   }
-  .home-logo {
-    width: 44px;
-    height: 44px;
-    margin-bottom: 16px;
+  .home-main {
+    padding: 14px 12px 50px;
+  }
+  .home-hero-card {
+    border-radius: 18px;
+    padding: 40px 14px 26px;
+  }
+  .start-tiles {
+    gap: 8px;
+  }
+  .start-tile .tile-box {
+    border-radius: 13px;
   }
   .home-footer {
     flex-wrap: wrap;
@@ -1157,9 +1292,8 @@
   .assistant-intro p {
     margin: 5px 0;
   }
-  .assistant-symbol {
-    float: left;
-    margin-right: 12px;
+  .assistant-wordmark {
+    font-size: 17px;
   }
   .scope-note {
     margin-top: 10px;
@@ -1410,22 +1544,6 @@
 .check-summary {
   font-size: 10.5px;
   color: var(--muted);
-}
-.mode-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--muted);
-}
-.mode-field select {
-  flex: 1;
-  background: #131417;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 8px;
-  font-size: 11.5px;
 }
 @media (max-width: 900px) {
   .sandbox-panel {

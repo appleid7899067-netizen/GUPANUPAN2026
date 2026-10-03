@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowUp,
   ArrowUpRight,
+  BarChart3,
   Code2,
   Folder,
+  Gamepad2,
+  Globe,
+  Lightbulb,
   Plus,
-  Sparkles,
+  Rocket,
   Trash2,
   Zap,
 } from "lucide-react";
@@ -26,13 +30,12 @@ import "./builder.css";
 /**
  * ═══ หน้า 1 จาก 2 หน้าของบิลเดอร์ (รูปแบบเดียวกับ bolt.new) ══════════════
  *
- * bolt.new มีอยู่ 2 หน้า: หน้าแรกที่มีช่องพรอมป์ใหญ่กลางจอ + รายการโปรเจกต์
- * และหน้าเวิร์กสเปซ `/build/[id]` ที่มีแชตอยู่ซ้าย พรีวิว/โค้ดอยู่ขวา
- * ไฟล์นี้คือหน้าแรก ส่วน `BuilderWorkspace.tsx` คือหน้าที่สอง
+ * จอแรกแบบ Bolt: การ์ดฮีโร่สีน้ำเงินเต็มจอที่มีหัวข้อใหญ่ + กล่องพรอมป์สีเข้ม
+ * แถวปุ่มกลม (+ / ไอเดีย / ส่ง) +ไทล์เลือกประเภทงาน 4 ช่อง + "หรือเริ่มจาก"
+ * เลื่อนลงมาเจอรายการโปรเจกต์ที่เก็บในเบราว์เซอร์นี้
  *
- * หน้าแรกทำหน้าที่เดียว: รับไอเดีย → สร้างโปรเจกต์ในเบราว์เซอร์ → พาไปหน้า 2
- * ⚠️ ห้ามเรียก AI จากหน้านี้เด็ดขาด ทุกคำขอที่เสียโควตาต้องเกิดจากผู้ใช้กด
- * ในหน้าเวิร์กสเปซเท่านั้น (ตรงกับกฎ "Never auto-submit paid requests")
+ * ⚠️ ห้ามเรียก AI จากหน้านี้เด็ดขาด — ทุกคำขอที่เสียโควตาต้องเกิดจากการกด
+ * ในหน้าเวิร์กสเปซ (`BuilderWorkspace.tsx`) เท่านั้น
  */
 
 /** ไอเดียตัวอย่าง — กดเพื่อเติมข้อความลงช่องพรอมป์ ไม่ได้ส่งคำสั่งเอง */
@@ -41,6 +44,14 @@ const STARTER_IDEAS = [
   "แดชบอร์ดรายรับรายจ่ายแบบทดลอง",
   "พอร์ตโฟลิโอช่างภาพ",
   "แอปจัดการงานพร้อมตัวกรอง",
+] as const;
+
+/** ไทล์เลือกประเภทงานล่วงหน้า = โหมดการเขียนของ `lib/build-modes.ts` */
+const START_TILES = [
+  { mode: "web-app", label: "เว็บแอป", icon: Globe },
+  { mode: "landing", label: "แลนดิ้ง", icon: Rocket },
+  { mode: "dashboard", label: "แดชบอร์ด", icon: BarChart3 },
+  { mode: "game", label: "เกม", icon: Gamepad2 },
 ] as const;
 
 /**
@@ -66,7 +77,9 @@ function timeAgo(iso: string): string {
 
 export default function BuilderHome() {
   const router = useRouter();
+  const promptRef = useRef<HTMLTextAreaElement>(null);
   const [prompt, setPrompt] = useState("");
+  const [tile, setTile] = useState<string | null>(null);
   const [projects, setProjects] = useState<BuildProject[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -79,11 +92,14 @@ export default function BuilderHome() {
       );
     }
   }, []);
-  /** สร้างโปรเจกต์ใน localStorage แล้วพาไปหน้าเวิร์กสเปซ (หน้าที่ 2) */
-  function start(text: string) {
+  /** สร้างโปรเจกต์ใน localStorage (จำโหมดที่เลือกจากไทล์ไว้) แล้วพาไปหน้าเวิร์กสเปซ */
+  function start(text: string, modeId?: string | null) {
     try {
       const project = createProject(text);
       saveProject(project);
+      if (modeId) {
+        localStorage.setItem(`gupan:mode:${project.id}`, modeId);
+      }
       if (text.trim())
         sessionStorage.setItem(`gupan:prompt:${project.id}`, text.trim());
       router.push(`/build/${project.id}`);
@@ -103,17 +119,24 @@ export default function BuilderHome() {
       setError("ลบไม่สำเร็จ");
     }
   }
+  function randomIdea() {
+    const idea = STARTER_IDEAS[Math.floor(Math.random() * STARTER_IDEAS.length)];
+    setPrompt(`สร้าง${idea} เป็นภาษาไทย ใช้งานบนมือถือได้`);
+    promptRef.current?.focus();
+  }
+  function focusPrompt() {
+    promptRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    promptRef.current?.focus({ preventScroll: true });
+  }
+  const tileLabel = START_TILES.find((item) => item.mode === tile)?.label;
   return (
     <div className="builder home">
-      {/* ── แถบบนแบบ Bolt: โลโก้ซ้าย · สถานะโหมด + บัญชี Puter ขวา ───────── */}
+      {/* ── แถบบน: โลโก้ซ้าย · บัญชี Puter + ปุ่มเริ่มเลยขวา ─────────────── */}
       <header className="builder-header">
         <Link href="/" className="brand" aria-label="GUPAN Studio หน้าหลัก">
           <Zap size={21} fill="currentColor" /> GUPAN<span>studio</span>
         </Link>
         <div className="header-actions">
-          <span className="mode-pill">
-            <i /> Puter · Frontend builder
-          </span>
           <PuterAccountButton
             onStatus={(message) => {
               setError("");
@@ -124,65 +147,100 @@ export default function BuilderHome() {
               setError(message);
             }}
           />
+          <button className="primary" onClick={focusPrompt}>
+            เริ่มเลย
+          </button>
         </div>
       </header>
 
       <main className="home-main">
-        <div className="home-hero">
-          <div className="home-logo" aria-hidden="true">
-            <Zap size={24} fill="currentColor" />
-          </div>
-          <div className="eyebrow">
-            <Sparkles size={14} /> FROM IDEA TO INTERACTIVE
-          </div>
-          <h1>อยากสร้างอะไร?</h1>
-          <p className="hero-description">
-            พิมพ์ไอเดียของคุณ แล้ว AI จะเขียนโค้ดให้ ดูเว็บจริงข้าง ๆ ได้ทันที
+        {/* ── การ์ดฮีโร่สีน้ำเงินแบบ bolt.new ───────────────────────────── */}
+        <section className="home-hero-card">
+          <h1>วันนี้คุณจะสร้างอะไร?</h1>
+          <p className="hero-sub">
+            สร้างแอปและเว็บไซต์ที่ใช้งานได้จริง ด้วยการคุยกับ AI
           </p>
-        </div>
 
-        <form
-          className="prompt-card"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (prompt.trim()) start(prompt);
-          }}
-        >
-          <textarea
-            aria-label="อธิบายเว็บที่อยากสร้าง"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="สร้างเว็บร้านกาแฟ มีเมนู ราคา และตะกร้าสั่งซื้อ…"
-            maxLength={6000}
-          />
-          <div className="prompt-footer">
-            <span className="prompt-pill">
-              <Code2 size={15} /> HTML · CSS · JavaScript
-            </span>
-            <button
-              className="send-button"
-              type="submit"
-              disabled={!prompt.trim()}
-              aria-label="เริ่มสร้าง"
-              title="เริ่มสร้าง"
-            >
-              <ArrowUp size={17} />
-            </button>
+          <form
+            className="prompt-card"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (prompt.trim()) start(prompt, tile);
+            }}
+          >
+            <textarea
+              ref={promptRef}
+              aria-label="อธิบายเว็บที่อยากสร้าง"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="เล่าไอเดียของคุณ เช่น เว็บร้านกาแฟที่มีเมนูและตะกร้า…"
+              maxLength={6000}
+            />
+            <div className="composer-row">
+              <button
+                type="button"
+                className="round-btn"
+                aria-label="สร้างโปรเจกต์เปล่า"
+                title="สร้างโปรเจกต์เปล่า"
+                onClick={() => start("", tile)}
+              >
+                <Plus size={17} />
+              </button>
+              <button
+                type="button"
+                className="ghost-btn"
+                aria-label="สุ่มไอเดียตัวอย่าง"
+                title="สุ่มไอเดียตัวอย่าง"
+                onClick={randomIdea}
+              >
+                <Lightbulb size={16} />
+              </button>
+              <span className="prompt-pill">{tileLabel || "HTML · CSS · JS"}</span>
+              <button
+                className="send-circle"
+                type="submit"
+                disabled={!prompt.trim()}
+                aria-label="เริ่มสร้าง"
+                title="เริ่มสร้าง"
+              >
+                <ArrowUp size={18} />
+              </button>
+            </div>
+          </form>
+
+          <div className="start-tiles" role="group" aria-label="เลือกประเภทงาน">
+            {START_TILES.map(({ mode, label, icon: Icon }) => (
+              <button
+                key={mode}
+                type="button"
+                className="start-tile"
+                aria-pressed={tile === mode}
+                onClick={() => setTile((current) => (current === mode ? null : mode))}
+              >
+                <span className="tile-box">
+                  <Icon size={26} />
+                </span>
+                {label}
+              </button>
+            ))}
           </div>
-        </form>
 
-        <div className="suggestions">
-          {STARTER_IDEAS.map((text) => (
-            <button
-              key={text}
-              onClick={() =>
-                setPrompt(`สร้าง${text} เป็นภาษาไทย ใช้งานบนมือถือได้`)
-              }
-            >
-              {text} <ArrowUpRight size={12} />
-            </button>
-          ))}
-        </div>
+          <p className="start-from">หรือเริ่มจาก</p>
+          <div className="suggestions">
+            {STARTER_IDEAS.map((text) => (
+              <button
+                key={text}
+                type="button"
+                onClick={() => {
+                  setPrompt(`สร้าง${text} เป็นภาษาไทย ใช้งานบนมือถือได้`);
+                  promptRef.current?.focus();
+                }}
+              >
+                {text} <ArrowUpRight size={12} />
+              </button>
+            ))}
+          </div>
+        </section>
 
         {error && (
           <div className="builder-error" role="alert">
