@@ -1489,6 +1489,67 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+/* form ใน dialog GitHub (ใช้โครง publish-dialog ร่วม) */
+.gh-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: #9a95a6;
+  flex: 1;
+  min-width: 0;
+}
+.gh-field input {
+  background: #101014;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #eee;
+  font-size: 12px;
+  min-width: 0;
+}
+.gh-field input:focus {
+  outline: 1px solid #44374f;
+}
+.gh-row {
+  display: flex;
+  gap: 8px;
+}
+.gh-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #9a95a6;
+  cursor: pointer;
+}
+.gh-token-note {
+  margin: 0;
+  font-size: 10px;
+  color: #7c7889;
+  line-height: 1.7;
+}
+.gh-link-btn {
+  display: inline;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 10px;
+  color: #8ec7f8;
+  text-decoration: underline;
+}
+/* ปุ่มคู่บนหัวรายการโปรเจกต์หน้าแรก */
+.heading-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .workspace-footer {
   display: flex;
   justify-content: space-between;

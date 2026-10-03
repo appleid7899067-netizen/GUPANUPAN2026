@@ -79,6 +79,18 @@ import {
   type PublishRecord,
 } from "@/lib/puter-publish";
 import MarkdownLite from "./MarkdownLite";
+import GithubMark from "./GithubMark";
+import {
+  clearGithubToken,
+  cloneRepoFromGitHub,
+  fetchGithubUser,
+  getStoredGithubToken,
+  pushProjectToGitHub,
+  repoSlug,
+  storeGithubToken,
+  type CloneResult,
+  type PushResult,
+} from "@/lib/github-export";
 import "./builder.css";
 
 /**
@@ -153,6 +165,19 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [publishProgress, setPublishProgress] = useState("");
   const [publishError, setPublishError] = useState("");
   const [publishInfo, setPublishInfo] = useState<PublishRecord | null>(null);
+  const [ghDialog, setGhDialog] = useState<"push" | "clone" | null>(null);
+  const [ghToken, setGhToken] = useState("");
+  const [ghOwner, setGhOwner] = useState("");
+  const [ghRepo, setGhRepo] = useState("");
+  const [ghBranch, setGhBranch] = useState("");
+  const [ghPrivate, setGhPrivate] = useState(true);
+  const [ghRemember, setGhRemember] = useState(false);
+  const [ghMessage, setGhMessage] = useState("");
+  const [ghBusy, setGhBusy] = useState(false);
+  const [ghProgress, setGhProgress] = useState("");
+  const [ghError, setGhError] = useState("");
+  const [ghResult, setGhResult] = useState<PushResult | null>(null);
+  const [ghClone, setGhClone] = useState<CloneResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -205,6 +230,12 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       .catch(() => {
         /* ไม่มีประวัติเผยแพร่ = ปุ่มเผยแพร่ครั้งแรก */
       });
+    // มาจากปุ่ม "โคลน repo GitHub" หน้าแรก: เปิด dialog ให้อย่างเดียว
+    const openGhKey = `gupan:open-gh:${projectId}`;
+    if (sessionStorage.getItem(openGhKey)) {
+      sessionStorage.removeItem(openGhKey);
+      setGhDialog("clone");
+    }
     ensurePuterLoaded()
       .then((ok) => {
         if (alive) {
@@ -463,6 +494,84 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         running.current = false;
         setBusy(false);
       }
+    }
+  }
+  // เปิด dialog GitHub: เติมโทเคนที่จำไว้ + ชื่อ repo จากชื่อโปรเจกต์
+  // และถ้ามีโทเคนให้ถามชื่อผู้ใช้จาก GitHub มาเติมช่อง owner
+  useEffect(() => {
+    if (!ghDialog || !project) return;
+    const stored = getStoredGithubToken();
+    const token = ghToken || stored || "";
+    if (stored) setGhToken(stored);
+    if (!ghRepo) setGhRepo(repoSlug(project.name));
+    if (ghDialog === "push" && token && !ghOwner) {
+      fetchGithubUser(token)
+        .then((login) => setGhOwner(login))
+        .catch(() => undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ghDialog, project?.name]);
+  async function runGhPush() {
+    if (!project) return;
+    setGhBusy(true);
+    setGhError("");
+    try {
+      if (ghRemember && ghToken.trim()) storeGithubToken(ghToken.trim());
+      const result = await pushProjectToGitHub({
+        token: ghToken.trim(),
+        owner: ghOwner.trim(),
+        repo: ghRepo.trim(),
+        files: drafts,
+        message:
+          ghMessage.trim() || `อัปเดตจาก GUPAN Studio · ${project.name}`,
+        isPrivate: ghPrivate,
+        createIfMissing: true,
+        onProgress: setGhProgress,
+      });
+      setGhResult(result);
+      setStatus(`ส่งขึ้น GitHub แล้ว: ${result.repoUrl}`);
+    } catch (e) {
+      setGhError(errorText(e));
+    } finally {
+      setGhBusy(false);
+    }
+  }
+  async function runGhClone() {
+    setGhBusy(true);
+    setGhError("");
+    setGhClone(null);
+    try {
+      const result = await cloneRepoFromGitHub({
+        owner: ghOwner.trim(),
+        repo: ghRepo.trim(),
+        branch: ghBranch.trim() || undefined,
+        token: ghToken.trim() || undefined,
+        onProgress: setGhProgress,
+      });
+      setGhClone(result);
+    } catch (e) {
+      setGhError(errorText(e));
+    } finally {
+      setGhBusy(false);
+    }
+  }
+  function ghImport() {
+    if (!project || !ghClone) return;
+    if (
+      !confirm(
+        "นำเข้าไฟล์จาก GitHub แทนไฟล์ปัจจุบัน? เวอร์ชันเดิมยังอยู่ในประวัติโค้ด",
+      )
+    )
+      return;
+    try {
+      apply(checkpoint(project, ghClone.files, "ก่อนโคลนจาก GitHub"));
+      setTab("preview");
+      setGhDialog(null);
+      setStatus(
+        `นำเข้า ${Object.keys(ghClone.files).length} ไฟล์จาก GitHub แล้ว`,
+      );
+    } catch (e) {
+      setError(errorText(e));
     }
   }
   function commitRename() {
@@ -770,6 +879,32 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   }}
                 >
                   <Package size={15} /> ส่งออก Agent kit
+                </button>
+                <button
+                  role="menuitem"
+                  disabled={busy}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setGhError("");
+                    setGhResult(null);
+                    setGhProgress("");
+                    setGhDialog("push");
+                  }}
+                >
+                  <GithubMark size={15} /> ส่งไป GitHub
+                </button>
+                <button
+                  role="menuitem"
+                  disabled={busy}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setGhError("");
+                    setGhClone(null);
+                    setGhProgress("");
+                    setGhDialog("clone");
+                  }}
+                >
+                  <GithubMark size={15} /> โคลนจาก GitHub
                 </button>
                 <button
                   role="menuitem"
@@ -1438,6 +1573,241 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           </div>
         </section>
       </div>
+      {ghDialog && (
+        <div
+          className="publish-backdrop"
+          role="dialog"
+          aria-label={
+            ghDialog === "push"
+              ? "ส่งโปรเจกต์ขึ้น GitHub"
+              : "โคลน repo จาก GitHub"
+          }
+          onClick={() => {
+            if (!ghBusy) setGhDialog(null);
+          }}
+        >
+          <div
+            className="publish-dialog gh-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header>
+              <span>
+                <GithubMark size={16} />{" "}
+                {ghDialog === "push"
+                  ? "ส่งโปรเจกต์ขึ้น GitHub"
+                  : "โคลน repo จาก GitHub"}
+              </span>
+              <button
+                className="icon-button"
+                aria-label="ปิด"
+                disabled={ghBusy}
+                onClick={() => setGhDialog(null)}
+              >
+                <X size={16} />
+              </button>
+            </header>
+            <div className="gh-form">
+              <label className="gh-field">
+                Personal Access Token
+                {ghDialog === "clone" ? " (repo สาธารณะเว้นว่างได้)" : ""}
+                <input
+                  type="password"
+                  value={ghToken}
+                  onChange={(e) => setGhToken(e.target.value)}
+                  placeholder="ghp_… หรือ github_pat_…"
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={ghBusy}
+                />
+              </label>
+              {ghDialog === "push" && (
+                <p className="gh-token-note">
+                  โทเคนถูกใช้เรียก api.github.com
+                  ตรงจากเบราว์เซอร์เครื่องนี้เท่านั้น
+                  {ghRemember
+                    ? " และจะถูกจำไว้ในเครื่องจนกว่าจะกดล้าง"
+                    : " และจะไม่ถูกบันทึกเมื่อปิดกล่องนี้"}
+                  {getStoredGithubToken() && (
+                    <button
+                      type="button"
+                      className="gh-link-btn"
+                      onClick={() => {
+                        clearGithubToken();
+                        setGhToken("");
+                      }}
+                    >
+                      ล้างโทเคนที่จำไว้
+                    </button>
+                  )}
+                </p>
+              )}
+              <div className="gh-row">
+                <label className="gh-field">
+                  เจ้าของ (owner)
+                  <input
+                    type="text"
+                    value={ghOwner}
+                    onChange={(e) => setGhOwner(e.target.value)}
+                    placeholder="username"
+                    spellCheck={false}
+                    disabled={ghBusy}
+                  />
+                </label>
+                <label className="gh-field">
+                  ชื่อ repo
+                  <input
+                    type="text"
+                    value={ghRepo}
+                    onChange={(e) => setGhRepo(e.target.value)}
+                    placeholder="my-app"
+                    spellCheck={false}
+                    disabled={ghBusy}
+                  />
+                </label>
+              </div>
+              {ghDialog === "clone" && (
+                <label className="gh-field">
+                  Branch (เว้นว่าง = branch หลักของ repo)
+                  <input
+                    type="text"
+                    value={ghBranch}
+                    onChange={(e) => setGhBranch(e.target.value)}
+                    placeholder="main"
+                    spellCheck={false}
+                    disabled={ghBusy}
+                  />
+                </label>
+              )}
+              {ghDialog === "push" && (
+                <>
+                  <label className="gh-field">
+                    ข้อความ commit
+                    <input
+                      type="text"
+                      value={ghMessage}
+                      onChange={(e) => setGhMessage(e.target.value)}
+                      placeholder={`อัปเดตจาก GUPAN Studio · ${project.name}`}
+                      spellCheck={false}
+                      disabled={ghBusy}
+                    />
+                  </label>
+                  <label className="gh-check">
+                    <input
+                      type="checkbox"
+                      checked={ghPrivate}
+                      onChange={(e) => setGhPrivate(e.target.checked)}
+                      disabled={ghBusy}
+                    />
+                    repo ส่วนตัว (private) เมื่อต้องสร้างใหม่
+                  </label>
+                  <label className="gh-check">
+                    <input
+                      type="checkbox"
+                      checked={ghRemember}
+                      onChange={(e) => setGhRemember(e.target.checked)}
+                      disabled={ghBusy}
+                    />
+                    จำโทเคนในเครื่องนี้
+                  </label>
+                </>
+              )}
+              {ghBusy && (
+                <p className="publish-progress" role="status">
+                  {ghProgress}
+                </p>
+              )}
+              {ghError && (
+                <div className="builder-error" role="alert">
+                  {ghError}
+                </div>
+              )}
+              {ghDialog === "push" && ghResult && (
+                <p className="publish-url">
+                  <a
+                    href={ghResult.repoUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    {ghResult.repoUrl}
+                  </a>
+                  <small>
+                    {ghResult.created ? "สร้าง repo ใหม่แล้ว" : "อัปเดต repo เดิม"}{" "}
+                    · branch {ghResult.branch}
+                    {ghResult.commitUrl && (
+                      <>
+                        {" · "}
+                        <a
+                          href={ghResult.commitUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          ดู commit
+                        </a>
+                      </>
+                    )}
+                  </small>
+                </p>
+              )}
+              {ghDialog === "clone" && ghClone && (
+                <p className="publish-url">
+                  <a
+                    href={`https://github.com/${ghOwner}/${ghRepo}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    {ghOwner}/{ghRepo}
+                  </a>
+                  <small>
+                    branch {ghClone.branch} · นำเข้าได้{" "}
+                    {Object.keys(ghClone.files).length} ไฟล์ (ข้าม{" "}
+                    {ghClone.skipped}) ·{" "}
+                    {Object.keys(ghClone.files).slice(0, 4).join(", ")}
+                    {Object.keys(ghClone.files).length > 4 ? " …" : ""}
+                  </small>
+                </p>
+              )}
+            </div>
+            <div className="publish-actions">
+              {ghDialog === "push" ? (
+                <button
+                  className="primary"
+                  disabled={ghBusy}
+                  onClick={() => void runGhPush()}
+                >
+                  {ghBusy ? (
+                    <Loader2 size={15} className="spin" />
+                  ) : (
+                    <GithubMark size={14} />
+                  )}
+                  {ghResult ? "push อีกครั้ง" : "ส่งขึ้น GitHub"}
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="primary"
+                    disabled={ghBusy || !!ghClone}
+                    onClick={() => void runGhClone()}
+                  >
+                    {ghBusy ? (
+                      <Loader2 size={15} className="spin" />
+                    ) : (
+                      <GithubMark size={14} />
+                    )}
+                    {ghClone ? "โคลนแล้ว" : "โคลน repo"}
+                  </button>
+                  <button
+                    className="subtle"
+                    disabled={!ghClone || busy}
+                    onClick={ghImport}
+                  >
+                    <Download size={14} /> นำเข้าแทนโค้ดปัจจุบัน
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {publishOpen && (
         <div
           className="publish-backdrop"

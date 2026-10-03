@@ -26,6 +26,7 @@ import {
   type BuildProject,
 } from "@/lib/builder";
 import PuterAccountButton from "./PuterAccountButton";
+import GithubMark from "./GithubMark";
 import { useSpeechInput } from "./use-speech-input";
 import "./builder.css";
 
@@ -97,6 +98,19 @@ export default function BuilderHome() {
       );
     }
   }, []);
+  /** สร้างโปรเจกต์เปล่าแล้วพาไปเวิร์กสเปซพร้อมเปิด dialog โคลน GitHub ทันที */
+  function startClone() {
+    try {
+      const project = createProject("โคลนจาก GitHub");
+      saveProject(project);
+      sessionStorage.setItem(`gupan:open-gh:${project.id}`, "1");
+      router.push(`/build/${project.id}`);
+    } catch {
+      setError(
+        "บันทึกโปรเจกต์ไม่ได้ พื้นที่เบราว์เซอร์อาจเต็มหรือปิดการเก็บข้อมูลอยู่",
+      );
+    }
+  }
   /** สร้างโปรเจกต์ใน localStorage (จำโหมดที่เลือกจากไทล์ไว้) แล้วพาไปหน้าเวิร์กสเปซ */
   function start(text: string, modeId?: string | null) {
     try {
@@ -284,9 +298,14 @@ export default function BuilderHome() {
               <Folder size={18} /> โปรเจกต์ของคุณ{" "}
               <small>{projects.length}</small>
             </h2>
-            <button className="subtle" onClick={() => start("")}>
-              <Plus size={15} /> โปรเจกต์ใหม่
-            </button>
+            <div className="heading-actions">
+              <button className="subtle" onClick={startClone}>
+                <GithubMark size={14} /> โคลน repo GitHub
+              </button>
+              <button className="subtle" onClick={() => start("")}>
+                <Plus size={15} /> โปรเจกต์ใหม่
+              </button>
+            </div>
           </div>
           {!projects.length ? (
             <div className="empty-projects">
