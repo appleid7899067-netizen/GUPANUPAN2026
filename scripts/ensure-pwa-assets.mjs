@@ -46,4 +46,38 @@ for (const [name,w,h,dark] of [
   if (!fs.existsSync(file)) await sharp(Buffer.from(screenshotSvg(w,h,dark))).png().toFile(file.pathname);
 }
 
+
+const heroScreenshots = [
+  ['deck.webp', 'deck'], ['form.webp', 'form'], ['game.webp', 'game'],
+  ['landing.webp', 'landing'], ['portfolio.webp', 'portfolio'],
+  ['prototype.webp', 'prototype'], ['saas.webp', 'saas'],
+  ['software.webp', 'software'], ['ui.webp', 'ui'],
+];
+const comparisonScreenshots = {
+  'best-ai-app-builder': ['base44','bolt','bubble','glide','lovable','puter','replit','v0'],
+  'best-ai-website-builder': ['10web','durable','framer','godaddy','hostinger','jimdo','puter','squarespace','webflow','wix'],
+};
+const webpSvg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700">
+  <rect width="1200" height="700" rx="28" fill="#171c24"/>
+  <rect x="32" y="32" width="1136" height="636" rx="22" fill="#202734"/>
+  <rect x="70" y="78" width="360" height="34" rx="10" fill="#8b5cf6"/>
+  <rect x="70" y="150" width="760" height="28" rx="10" fill="#3a4556"/>
+  <rect x="70" y="204" width="620" height="28" rx="10" fill="#303b4b"/>
+  <rect x="70" y="290" width="1060" height="280" rx="20" fill="#11161e"/>
+  <text x="70" y="620" fill="#dbe4f0" font-family="Arial,sans-serif" font-size="28">${label}</text>
+</svg>`;
+
+for (const [name, label] of heroScreenshots) {
+  const file = new URL(name, shots);
+  if (!fs.existsSync(file)) await sharp(Buffer.from(webpSvg(label))).webp().toFile(file.pathname);
+}
+for (const [dir, names] of Object.entries(comparisonScreenshots)) {
+  const folder = new URL(`./${dir}/`, shots);
+  fs.mkdirSync(folder, { recursive: true });
+  for (const name of names) {
+    const file = new URL(`${name}.webp`, folder);
+    if (!fs.existsSync(file)) await sharp(Buffer.from(webpSvg(`${dir}: ${name}`))).webp().toFile(file.pathname);
+  }
+}
+
 console.log('PWA assets ready');
