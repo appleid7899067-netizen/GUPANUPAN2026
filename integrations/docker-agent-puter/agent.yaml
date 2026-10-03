@@ -1,0 +1,116 @@
+# ---------------------------------------------------------------------------
+# docker-agent + Puter
+#
+# ใช้บัญชี Puter เป็น "เจ้าของโมเดล" แทนการซื้อ API key ของ OpenAI/Anthropic/Google
+# โดยล็อกอิน Puter แล้วส่ง auth token เป็น Bearer ไปที่ endpoint ที่เข้ากันได้กับ
+# OpenAI ของ Puter:  https://api.puter.com/puterai/openai/v1/
+#
+# วิธีรัน (สคริปต์จะแนบ token ให้เอง):
+#   ./run-agent.sh "ช่วยสรุปโครงสร้างโปรเจกต์นี้ให้หน่อย"
+#
+# วิธีรันตรง (ต้องมีไฟล์ .env.puter จาก `npm run login` แล้ว):
+#   docker-agent run --env-from-file .env.puter agent.yaml
+# ---------------------------------------------------------------------------
+
+providers:
+  # provider พิเศษของเรา: เป็น OpenAI-compatible endpoint ของ Puter
+  puter:
+    provider: openai
+    # ⚠️ ต้องระบุเป็น openai_chatcompletions เสมอ
+    # ถ้าไม่ระบุ docker-agent จะเดาจากชื่อโมเดล เช่น gpt-5.x → openai_responses
+    # ซึ่ง Puter ไม่รองรับ → ได้ error 404/400
+    api_type: openai_chatcompletions
+    base_url: https://api.puter.com/puterai/openai/v1/
+    # ชื่อ "ตัวแปรสภาพแวดล้อม" ที่เก็บ token (ไม่ใช่ตัว token เอง)
+    # สคริปต์ run-agent.sh / `npm run login` จะสร้างไฟล์ .env.puter ให้
+    token_key: PUTER_AUTH_TOKEN
+
+models:
+  # โมเดลเร็ว/ถูก — เหมาะกับงานทั่วไปและ title/compaction
+  puter-fast:
+    provider: puter
+    model: gpt-5.4-nano
+    temperature: 0.3
+    max_tokens: 8192
+    provider_opts:
+      context_size: 128000
+
+  # โมเดลฉลาด — สั่งงานซับซ้อน/วิเคราะห์
+  puter-smart:
+    provider: puter
+    model: claude-sonnet-5
+    max_tokens: 16384
+    provider_opts:
+      context_size: 200000
+
+  # โมเดลบริบทใหญ่ + เร็ว — อ่านไฟล์ยาว
+  puter-gemini:
+    provider: puter
+    model: gemini-3.1-flash-lite
+    max_tokens: 8192
+    provider_opts:
+      context_size: 1000000
+
+  # โมเดลเขียนโค้ด
+  puter-code:
+    provider: puter
+    model: openai/gpt-5.3-codex
+    max_tokens: 16384
+    provider_opts:
+      context_size: 200000
+
+  # โมเดล open weights (ไม่ต้องใช้เครดิตพรีเมียม)
+  puter-oss:
+    provider: puter
+    model: openai/gpt-oss-120b
+    max_tokens: 8192
+    provider_opts:
+      context_size: 131072
+
+agents:
+  root:
+    model: puter-fast
+    description: ผู้ช่วยหลักที่ใช้โมเดลของ Puter ผ่านการล็อกอินบัญชี Puter
+    instruction: |
+      คุณคือผู้ช่วย AI ที่ตอบเป็นภาษาไทยเป็นหลัก (ยกเว้นผู้ใช้ขอเป็นภาษาอื่น)
+
+      หน้าที่ของคุณ:
+      - ตอบคำถามและช่วยงานทั่วไปอย่างกระชับ ตรงประเด็น
+      - ถ้างานต้องอ่าน/แก้ไฟล์ หรือรันคำสั่งในเครื่อง ให้ส่งงานต่อ (transfer_task)
+        ไปยัง sub-agent ชื่อ coder พร้อมอธิบายงานให้ชัดเจน
+      - ถ้างานต้องค้นข้อมูลจากเว็บ ให้ส่งงานต่อไปยัง sub-agent ชื่อ researcher
+      - ใช้เครื่องมือ think เพื่อวางแผนก่อนงานยาว และใช้ todo เพื่อติดตามงานหลายขั้นตอน
+      - ห้ามกุข้อมูล: ถ้าไม่รู้หรือไม่มีเครื่องมือ ให้บอกผู้ใช้ตามตรงว่าข้อมูลไม่พอ
+    toolsets:
+      - type: think
+      - type: todo
+    sub_agents: [coder, researcher]
+
+  coder:
+    model: puter-code
+    description: ผู้ช่วยเขียนโค้ด อ่าน/แก้ไฟล์ในเครื่อง และรันคำสั่ง shell
+    instruction: |
+      คุณคือวิศวกรซอฟต์แวร์ที่ทำงานกับไฟล์จริงในเครื่องของผู้ใช้
+
+      กฎ:
+      - อ่านไฟล์ก่อนแก้เสมอ และอธิบายสั้น ๆ ว่าจะแก้อะไร
+      - แก้แบบ diff เล็ก ๆ ทีละจุด อย่าเขียนทับทั้งไฟล์ถ้าไม่จำเป็น
+      - รันคำสั่งตรวจสอบ (เช่น npm test, tsc) หลังแก้ ถ้าผู้ใช้อนุญาต
+      - สรุปเป็นภาษาไทยว่าทำอะไรไปแล้ว และเหลืออะไร
+    toolsets:
+      - type: filesystem
+      - type: shell
+      - type: think
+
+  researcher:
+    model: puter-gemini
+    description: ผู้ช่วยค้นและสรุปข้อมูลจากเว็บ
+    instruction: |
+      คุณคือนักวิจัยที่ค้นข้อมูลจากเว็บแล้วสรุปเป็นภาษาไทย
+
+      กฎ:
+      - อ้างอิง URL ที่มาเสมอ
+      - แยกให้ชัดว่าอันไหนคือข้อเท็จจริงจากแหล่งข้อมูล อันไหนคือความเห็นของคุณ
+    toolsets:
+      - type: fetch
+      - type: think

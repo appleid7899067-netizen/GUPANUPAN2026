@@ -13,6 +13,7 @@ import {
   Loader2,
   LogIn,
   Monitor,
+  Package,
   Play,
   RotateCcw,
   Save,
@@ -24,7 +25,6 @@ import {
 } from "lucide-react";
 import { zipSync, strToU8 } from "fflate";
 import {
-  BUILD_SYSTEM_PROMPT,
   checkpoint,
   extractHtml,
   loadProject,
@@ -33,7 +33,17 @@ import {
   saveProject,
   type BuildProject,
 } from "@/lib/builder";
+import { BUILD_MODES, DEFAULT_MODE_ID, getBuildMode, systemPromptFor } from "@/lib/build-modes";
+import {
+  AGENT_KIT_DIR,
+  AGENT_KIT_FILES,
+  buildAgentYaml,
+  buildHandoffReadme,
+  DEFAULT_AGENT_MODEL,
+} from "@/lib/agent-export";
 import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
+import PuterAccountButton from "./PuterAccountButton";
+import SandboxPanel from "./SandboxPanel";
 import "./builder.css";
 
 type LogLine = { level: string; text: string };
@@ -42,7 +52,8 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [tab, setTab] = useState<"preview" | "code" | "history">("preview");
+  const [tab, setTab] = useState<"preview" | "code" | "sandbox" | "history">("preview");
+  const [mode, setMode] = useState<string>(DEFAULT_MODE_ID);
   const [mobile, setMobile] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -69,6 +80,8 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       setProject(stored);
       setDraft(stored?.html || "");
       setPrompt(sessionStorage.getItem(`gupan:prompt:${projectId}`) || "");
+      const savedMode = localStorage.getItem(`gupan:mode:${projectId}`);
+      if (savedMode && BUILD_MODES.some((item) => item.id === savedMode)) setMode(savedMode);
     } catch (e) {
       setError(String(e));
     }
@@ -188,7 +201,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       const generate = async () => {
         const stream = await window.puter.ai.chat(
           [
-            { role: "system", content: BUILD_SYSTEM_PROMPT },
+            { role: "system", content: systemPromptFor(mode) },
             ...project.messages.slice(-6),
             {
               role: "user",
@@ -290,6 +303,55 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       setError(errorText(e));
     }
   }
+  function saveZip(files: Record<string, Uint8Array>, name: string) {
+    const url = URL.createObjectURL(
+      new Blob([new Uint8Array(zipSync(files, { level: 6 }))], { type: "application/zip" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /**
+   * ส่งออก "ชุดทำงานต่อ" สำหรับ docker-agent + บัญชี Puter
+   * แนบสคริปต์ล็อกอินจริงจาก /agent-kit เพื่อให้รันต่อได้ทันทีโดยไม่ต้องตั้งค่าเอง
+   */
+  async function downloadAgentKit() {
+    if (!project || busy) return;
+    try {
+      setStatus("กำลังเตรียมชุด agent…");
+      const options = { mode, model: model.trim() || DEFAULT_AGENT_MODEL };
+      const files: Record<string, Uint8Array> = {
+        [`${AGENT_KIT_DIR}/agent.yaml`]: strToU8(buildAgentYaml(project, options)),
+        [`${AGENT_KIT_DIR}/README.md`]: strToU8(buildHandoffReadme(project, options)),
+        [`${AGENT_KIT_DIR}/index.html`]: strToU8(draft),
+      };
+      let attached = 0;
+      for (const path of AGENT_KIT_FILES) {
+        try {
+          const response = await fetch(`/agent-kit/${path}`);
+          if (response.ok) {
+            files[`${AGENT_KIT_DIR}/${path}`] = new Uint8Array(await response.arrayBuffer());
+            attached += 1;
+          }
+        } catch {
+          /* ไม่มีสคริปต์ก็ยังใช้ agent.yaml ที่เหลือได้ */
+        }
+      }
+      saveZip(files, `gupan-agent-kit-${projectId}.zip`);
+      setError("");
+      setStatus(
+        attached === AGENT_KIT_FILES.length
+          ? "ดาวน์โหลดชุด agent แล้ว · ปลด ZIP แล้วทำตาม README.md"
+          : "ดาวน์โหลดชุด agent แล้ว (ไม่พบสคริปต์ล็อกอิน ให้สร้าง token จาก puter.com/dashboard)",
+      );
+    } catch (e) {
+      setError(errorText(e));
+      setStatus("");
+    }
+  }
   async function importHtml(file?: File) {
     if (!file || !project) return;
     try {
@@ -355,6 +417,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             </>
           )}
         </span>
+        <PuterAccountButton
+          onStatus={(message) => {
+            setError("");
+            setStatus(message);
+          }}
+          onError={(message) => setError(message)}
+        />
         <button
           className="subtle"
           disabled={busy}
@@ -365,6 +434,14 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         </button>
         <button className="primary" onClick={download}>
           <Download size={15} /> Export ZIP
+        </button>
+        <button
+          className="subtle"
+          disabled={busy}
+          title="ชุดไฟล์สำหรับทำงานต่อด้วย docker-agent โดยใช้บัญชี Puter"
+          onClick={() => void downloadAgentKit()}
+        >
+          <Package size={15} /> <span>Agent kit</span>
         </button>
         <input
           ref={fileInput}
@@ -470,6 +547,30 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 )}
               </div>
             </form>
+            <label className="mode-field">
+              โหมด{" "}
+              <select
+                aria-label="โหมดการสร้าง"
+                value={mode}
+                disabled={busy}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setMode(next);
+                  try {
+                    localStorage.setItem(`gupan:mode:${projectId}`, next);
+                  } catch {
+                    /* โหมดเป็นเพียงตัวช่วย ไม่กระทบการบันทึกโปรเจกต์ */
+                  }
+                  setStatus(`โหมด ${getBuildMode(next).label} · ${getBuildMode(next).hint}`);
+                }}
+              >
+                {BUILD_MODES.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="model-field">
               Model{" "}
               <input
@@ -491,6 +592,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               {(
                 [
                   { id: "preview", icon: Eye, label: "Preview" },
+                  { id: "sandbox", icon: Terminal, label: "Sandbox" },
                   { id: "code", icon: Code2, label: "Code" },
                   { id: "history", icon: History, label: "History" },
                 ] as const
@@ -555,6 +657,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               </div>
             </div>
           )}
+          {tab === "sandbox" && <SandboxPanel html={project.html} />}
           {tab === "code" && (
             <div className="code-panel">
               <div className="code-toolbar">
