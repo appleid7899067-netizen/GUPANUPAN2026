@@ -46,7 +46,12 @@ EOS
   exit 1
 fi
 
-# 2) ต้องมีไฟล์ config
+# 2) ต้องมีไฟล์ config (ทำพาธให้อยู่ในรูปมาตรฐาน อ่านง่าย)
+if [[ -e "$AGENT_FILE" ]]; then
+  AGENT_DIR="$(cd "$(dirname "$AGENT_FILE")" && pwd)"
+  AGENT_FILE="$AGENT_DIR/$(basename "$AGENT_FILE")"
+fi
+
 if [[ ! -f "$AGENT_FILE" ]]; then
   echo "✘ ไม่พบไฟล์ config: $AGENT_FILE" >&2
   exit 1

@@ -14,7 +14,7 @@ import http from "node:http";
 import { once } from "node:events";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -122,9 +122,15 @@ test("run-agent.sh อ่าน token จากไฟล์และส่ง ar
   child.stdout.on("data", (c) => (stdout += c.toString()));
   child.stderr.on("data", (c) => (stdout += c.toString()));
 
+  // ค่าเริ่มต้นของไฟล์ config ต่างกันได้ตาม layout (ในรีโพ docker-agent ใช้ $HERE/../examples/puter.yaml)
+  // สคริปต์แปลงพาธของไฟล์ config ให้เป็น absolute เสมอเมื่อไฟล์มีอยู่
+  const defaultAgent = existsSync(resolve(HERE, "../examples/puter.yaml"))
+    ? resolve(HERE, "../examples/puter.yaml")
+    : resolve(HERE, "agent.yaml");
+
   const [code] = await once(child, "exit");
   assert.equal(code, 0, `ควรจบด้วย exit 0 แต่ได้ ${code}\n${stdout}`);
-  const expected = `ARGS: run --env-from-file ${envFile} agent.yaml สวัสดี`;
+  const expected = `ARGS: run --env-from-file ${envFile} ${defaultAgent} สวัสดี`;
   assert.ok(
     stdout.includes(expected),
     `คำสั่งที่ส่งให้ docker-agent ไม่ถูกต้อง\nคาดหวัง: ${expected}\nได้:\n${stdout}`
