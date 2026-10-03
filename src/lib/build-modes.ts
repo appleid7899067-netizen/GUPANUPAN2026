@@ -33,10 +33,13 @@ export const BUILD_MODES: BuildMode[] = [
     label: "เว็บแอปใช้งานจริง",
     hint: "แอปที่กดเล่นได้จริง มี state ในหน่วยความจำ",
     instruction: [
-      "MODE: interactive web app.",
-      "Include at least three working interactions (create/edit/delete, filter, sort, or toggles) that update the DOM immediately.",
-      "Keep state in memory only; label any simulated data as example data.",
-      "Add a visible primary action and an empty state.",
+      "MODE: complete interactive web application.",
+      "Treat the request as a real product, not a landing page or HTML demo.",
+      "Choose the smallest appropriate stack from the request (HTML/CSS/JS for simple sites; React/Vite or another supported project structure for substantial apps).",
+      "For a substantial app, output a complete project manifest and source entry plus all required modules/components/styles.",
+      "Include real navigation, state, forms, loading/error/empty states and meaningful primary actions.",
+      "Use in-memory state for temporary UI state and Puter.js for requested cloud capabilities.",
+      "Before returning code, mentally check imports, file paths, entry points and package scripts for consistency."
     ].join("\n"),
   },
   {
