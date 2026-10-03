@@ -8,8 +8,8 @@
  *     แบบเดียวกับที่ `transform.ts` จับคู่ไว้
  *   - ให้โมดูล npm ที่ vendor ไว้: react, react-dom, react/jsx-runtime,
  *     prop-types, classnames/clsx และตัวจำลอง react-router กับ Next บางตัว
- *   - ไอคอนจากแพ็กเกจที่ไม่มีในออฟไลน์ (lucide-react, react-icons, …) แสดงเป็น
- *     placeholder แทนการทำให้ทั้งหน้าพัง พร้อมรายงานในแบนเนอร์วินิจฉัย
+ *   - ไม่ปลอมแพ็กเกจที่ไม่มีใน runtime: dependency ที่ไม่มีจะทำให้ preview ถูกวินิจฉัยว่า
+ *     "ยัง build ไม่ผ่าน" แทนการแสดง UI ปลอมที่ดูเหมือนใช้งานได้
  *   - ข้อผิดพลาดทุกอย่างต้องเห็นได้: console ของบิลเดอร์รับ log/warn/error อยู่แล้ว
  *     และ runner ยังโชว์แบนเนอร์สรุปเมื่อมีปัญหา
  *
@@ -660,181 +660,16 @@ function gupanRunner(): void {
     shims["@vercel/speed-insights/next"] = { __esModule: true, SpeedInsights: function () { return null; } };
   }
 
-  /** แพ็กเกจไอคอน/ตัวครอบที่พิสูจน์แล้วว่า "ไม่มีก็ยังใช้ได้" */
-  var ICON_PACKAGES = [
-    "lucide-react",
-    "react-icons",
-    "@fortawesome/react-fontawesome",
-    "@fortawesome/free-solid-svg-icons",
-    "@fortawesome/free-regular-svg-icons",
-    "@fortawesome/free-brands-svg-icons",
-    "@heroicons/react",
-    "react-feather",
-    "react-bootstrap-icons",
-    "bootstrap-icons",
-    "@tabler/icons-react",
-    "@mui/icons-material",
-    "react-helmet",
-    "react-helmet-async",
-  ];
-  function stubFor(name: string): any {
-    if (ICON_PACKAGES.indexOf(name) >= 0 || name.indexOf("react-icons/") === 0 || name.indexOf("@fortawesome/") === 0 || name.indexOf("@heroicons/") === 0) {
-      if (name.indexOf("helmet") >= 0) return passthrough();
-      if (name.indexOf("icons") >= 0 || name.indexOf("feather") >= 0) return iconStub();
-      return passthrough();
-    }
-    return null;
-  }
-
   /**
-   * แพ็กเกจ UI/ยูทิลิตี้ที่ "จำลองแล้วแอปยังเดินต่อได้" — หน้าตาอาจไม่ครบและ
-   * ปุ่มบางอย่างอาจไม่ทำงาน แต่ดีกว่าปล่อยให้ทั้งหน้าเรนเดอร์ไม่ได้เลย
+   * Preview ต้องซื่อสัตย์กับแอปจริง: ห้ามแทน dependency ที่ไม่มีด้วย stub เพราะ
+   * stub ทำให้หน้าตา/interaction ต่างจาก build จริงและทำให้ผู้ใช้คิดว่าแอปผ่านแล้ว.
+   * Dependency ที่รองรับต้องมี shim ระบุไว้ด้านบนเท่านั้น.
    */
-  var AUTO_STUB_PREFIXES = [
-    // หมายเหตุ: เรียงจากยาวไปสั้นไม่ได้มีผล — เทียบแบบ prefix จากบนลงล่าง
-    "@radix-ui/",
-    "@headlessui/",
-    "@floating-ui/",
-    "@ariakit/",
-    "@reach/",
-    "@chakra-ui/",
-    "@mantine/",
-    "@mui/material",
-    "@emotion/",
-    "styled-components",
-    "framer-motion",
-    "motion",
-    "gsap",
-    "@tanstack/",
-    "swr",
-    "zustand",
-    "jotai",
-    "react-hook-form",
-    "react-error-boundary",
-    "zod",
-    "yup",
-    "axios",
-    "lodash",
-    "date-fns",
-    "dayjs",
-    "moment",
-    "nanoid",
-    "uuid",
-    "js-cookie",
-    "cookies-next",
-    "react-hot-toast",
-    "sonner",
-    "recharts",
-    "chart.js",
-    "react-chartjs-2",
-    "query-string",
-    "immer",
-    "react-use",
-    "usehooks-ts",
-    "react-i18next",
-    "i18next",
-    "@apollo/",
-    "@sentry/",
-    "web-vitals",
-    "react-app-polyfill",
-    "history",
-    "react-transition-group",
-    "react-select",
-    "react-datepicker",
-    "react-modal",
-    "react-tooltip",
-    "react-spinners",
-    "react-loading-skeleton",
-    "react-intersection-observer",
-    "react-dropzone",
-    "react-markdown",
-    "react-syntax-highlighter",
-    "react-copy-to-clipboard",
-    "clipboard",
-    "dompurify",
-    "prismjs",
-    "highlight.js",
-    "marked",
-    "slugify",
-    "superjson",
-    "@testing-library/",
-    "msw",
-    "miragejs",
-    "@faker-js/",
-    "faker",
-    "firebase",
-    "dotenv",
-    // โมดูลของ Node ที่บางโปรเจกต์เผลอ import เข้ามาในโค้ดฝั่งเบราว์เซอร์
-    "fs",
-    "path",
-    "os",
-    "crypto",
-    "util",
-    "events",
-    "stream",
-    "buffer",
-    "url",
-    "node:",
-  ];
-
-  /**
-   * ตัวจำลองอัตโนมัติ: ใช้เป็นคอมโพเนนต์ได้ (เรนเดอร์ children ต่อ), เรียกเป็น
-   * ฟังก์ชันได้ และเข้าถึงพร็อพერვตีต่อเนื่องได้ (เช่น `motion.div`)
-   */
-  function autoStub(name: string): any {
-    function make(): any {
-      var fn: any = function () {
-        var first = arguments[0];
-        if (first && typeof first === "object" && !Array.isArray(first)) {
-          if (first.children !== undefined) return first.children;
-          if (first.className !== undefined || first.style !== undefined || first.onClick !== undefined) return null;
-        }
-        // เรียกแบบ "รวมคลาส" (สตริงล้วน) คืนสตริงได้ — แต่ถ้ามีตัวเลข/อ็อบเจกต์ปนมา
-        // (เช่น zod: .min(1, "ข้อความ") ) ต้องคืนตัวจำลองต่อ ไม่ใช่สตริง
-        var stringsOnly = arguments.length > 0;
-        var joined = "";
-        for (var i = 0; i < arguments.length; i++) {
-          if (typeof arguments[i] !== "string") {
-            stringsOnly = false;
-            break;
-          }
-          joined += (i ? " " : "") + arguments[i];
-        }
-        if (stringsOnly) return joined;
-        return make();
-      };
-      return new Proxy(fn, {
-        apply: function (_target: any, _self: any, args: any[]) {
-          return fn.apply(null, args);
-        },
-        construct: function () {
-          return make();
-        },
-        get: function (target: any, key: any) {
-          if (key === "default") return target;
-          if (key === "__esModule") return true;
-          if (key === "then" || key === "displayName" || key === "name") return undefined;
-          if (key === Symbol.toPrimitive || key === "toString" || key === "valueOf") {
-            return function () {
-              return "[gupan stub " + name + "]";
-            };
-          }
-          if (typeof key === "symbol") return undefined;
-          return make();
-        },
-      });
-    }
-    return make();
-  }
-
-  function autoStubFor(name: string): any {
-    if (name.indexOf("node:") === 0) name = name.slice(5);
-    for (var i = 0; i < AUTO_STUB_PREFIXES.length; i++) {
-      if (name === AUTO_STUB_PREFIXES[i] || name.indexOf(AUTO_STUB_PREFIXES[i]) === 0) {
-        return autoStub(name);
-      }
-    }
-    return null;
+  function unsupportedPackage(name: string): never {
+    var message =
+      "แพ็กเกจ " + name + " ยังไม่มีใน Preview Runtime — ต้องติดตั้งและ build โปรเจกต์จริงก่อน";
+    problems.push(message);
+    throw new Error(message);
   }
 
   var moduleCache: any = {};
@@ -997,23 +832,7 @@ function gupanRunner(): void {
         problems.push(message);
         throw new Error(message);
       }
-      var stub = stubFor(pkgName);
-      var auto = stub ? null : autoStubFor(pkgName);
-      if (stub || auto) {
-        if (!iconsStub.has(pkgName)) {
-          iconsStub.add(pkgName);
-          problems.push(
-            stub
-              ? "แพ็กเกจ " + pkgName + " ไม่มีในพรีวิวออฟไลน์ — แสดงเป็นคอมโพเนนต์เปล่าแทน"
-              : "แพ็กเกจ " + pkgName + " ไม่มีในพรีวิวออฟไลน์ — ใช้ตัวจำลองให้แอปเรนเดอร์ต่อได้ (หน้าตา/ปุ่มอาจไม่ครบ)",
-          );
-          console.warn("[gupan] แทน " + pkgName + " ด้วยตัวจำลอง");
-        }
-        return stub || auto;
-      }
-      var missing = "แพ็กเกจ " + pkgName + " ยังไม่มีในพรีวิวนี้ (รันในเบราว์เซอร์ ติดตั้ง npm packages ไม่ได้)";
-      problems.push(missing);
-      throw new Error(missing);
+      unsupportedPackage(pkgName);
     };
     req.resolve = function (spec: string) {
       return normalize(spec, from);
@@ -1050,7 +869,7 @@ function gupanRunner(): void {
       var hint = document.createElement("div");
       hint.style.cssText = "margin-top:14px;opacity:.7";
       hint.textContent =
-        "พรีวิวรันในเบราว์เซอร์ (ไม่มีเซิร์ฟเวอร์/npm) — แก้โค้ดในแท็บ Code หรือสั่ง AI ให้ปรับให้รันแบบ static ได้";
+        "นี่เป็น browser preview เท่านั้น ไม่ใช่ผล build จริง — ให้รันโปรเจกต์ใน E2B เพื่อยืนยัน dependency และ runtime";
       inner.appendChild(heading);
       inner.appendChild(body);
       inner.appendChild(hint);
@@ -1100,7 +919,7 @@ function gupanRunner(): void {
     box.appendChild(list);
     var hint = document.createElement("p");
     hint.style.cssText = "margin:8px 0 0;opacity:.75";
-    hint.textContent = "ไฟล์ทั้งหมดยังแก้ในแท็บ Code ได้ และสั่ง AI ให้ดัดแปลงเป็นเว็บ static หรือลบ dependency ที่ไม่มีได้";
+    hint.textContent = "ยังไม่ถือว่าแอปผ่านจนกว่า Build/Run/Verify ใน E2B จะผ่าน";
     box.appendChild(hint);
     document.body.appendChild(box);
   }
@@ -1150,7 +969,7 @@ function gupanRunner(): void {
           React.createElement(
             "p",
             { style: { margin: 0, opacity: 0.7 } },
-            "พรีวิวรันในเบราว์เซอร์ ติดตั้ง npm packages หรือเรียก API จริงไม่ได้ — แก้โค้ดในแท็บ Code หรือสั่ง AI ให้ปรับให้เป็น static ได้",
+            "Preview นี้ไม่สามารถยืนยัน npm dependency หรือ server runtime ได้ — ต้อง Build/Run ใน E2B เพื่อยืนยันแอปจริง",
           ),
         );
       }
