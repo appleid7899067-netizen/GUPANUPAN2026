@@ -25,7 +25,7 @@ for (const [name, size, mask] of [
   ['maskable-192.png',192,true], ['maskable-512.png',512,true]
 ]) {
   const file = new URL(name, fav);
-  if (!fs.existsSync(file)) await sharp(Buffer.from(iconSvg(size, mask))).png().toFile(file);
+  if (!fs.existsSync(file)) await sharp(Buffer.from(iconSvg(size, mask))).png().toFile(file.pathname);
 }
 
 const screenshotSvg = (w,h,dark) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
@@ -43,7 +43,7 @@ for (const [name,w,h,dark] of [
   ['mobile-light.png',720,1280,false], ['mobile-dark.png',720,1280,true]
 ]) {
   const file = new URL(name, shots);
-  if (!fs.existsSync(file)) await sharp(Buffer.from(screenshotSvg(w,h,dark))).png().toFile(file);
+  if (!fs.existsSync(file)) await sharp(Buffer.from(screenshotSvg(w,h,dark))).png().toFile(file.pathname);
 }
 
 console.log('PWA assets ready');
