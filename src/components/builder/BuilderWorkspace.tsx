@@ -939,7 +939,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                     setOverlay("sandbox");
                   }}
                 >
-                  <Terminal size={15} /> Sandbox · REPL
+                  <Terminal size={15} /> Tools · REPL
                 </button>
                 <button
                   role="menuitem"
@@ -1261,12 +1261,29 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             {showModel && (
               <label className="model-field">
                 Model{" "}
+                <select
+                  aria-label="เลือกโมเดล AI"
+                  value={modelPresets.some((item) => item.id === model) ? model : "custom"}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const next = e.target.value === "custom" ? "" : e.target.value;
+                    setModel(next);
+                    try { localStorage.setItem(`gupan:model:${projectId}`, next); } catch {}
+                  }}
+                >
+                  {modelPresets.map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                </select>
                 <input
-                  aria-label="Puter model ID"
-                  placeholder="ค่าเริ่มต้นของ Puter"
+                  aria-label="Puter model ID กำหนดเอง"
+                  placeholder="หรือใส่ Model ID เอง"
                   value={model}
                   disabled={busy}
-                  onChange={(e) => {\n                    setModel(e.target.value);\n                    try { localStorage.setItem(`gupan:model:${projectId}`, e.target.value); } catch {}\n                  }}
+                  onChange={(e) => {
+                    setModel(e.target.value);
+                    try { localStorage.setItem(`gupan:model:${projectId}`, e.target.value); } catch {}
+                  }}
                 />
               </label>
             )}
@@ -1277,7 +1294,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           </div>
         </aside>
         <section className="work-panel">
-          {/* แท็บหลัก 2 แท็บเหมือน Bolt: Preview | Code — เครื่องมือรองอยู่ขวามือ */}
+          {/* แท็บหลัก: Preview | Code — เครื่องมือรองอยู่ขวามือ */}
           <div className="work-tabs">
             <div role="tablist" aria-label="Workspace views">
               {(
