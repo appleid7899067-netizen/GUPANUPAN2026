@@ -44,12 +44,18 @@ import {
 } from "lucide-react";
 import { zipSync, strToU8 } from "fflate";
 import {
+  changedPaths,
   checkpoint,
+  defaultPage,
+  extractFiles,
   extractHtml,
   extractSummary,
+  inlineAssets,
   loadProject,
-  MAX_HTML_SIZE,
+  MAX_FILE_SIZE,
+  MAX_TOTAL_SIZE,
   previewDocument,
+  sameFiles,
   saveProject,
   type BuildProject,
 } from "@/lib/builder";
@@ -78,7 +84,31 @@ import "./builder.css";
  */
 type LogLine = { level: string; text: string };
 type WorkTab = "preview" | "code";
-type Plan = { step: number; live: boolean; chars: number; error?: string };
+type Plan = {
+  step: number;
+  live: boolean;
+  chars: number;
+  error?: string;
+  writes?: string[];
+};
+
+/**
+ * ส่งไฟล์ปัจจุบันของโปรเจกต์ให้ AI เห็นทุกครั้งที่จะแก้
+ * ถ้ารวมกันใหญ่เกิน 60 KB ส่งเฉพาะ index.html + รายชื่อไฟล์ที่เหลือ
+ */
+function filesContext(files: Record<string, string>): string {
+  const entries = Object.entries(files);
+  const total = entries.reduce((sum, [, content]) => sum + content.length, 0);
+  if (total <= 60_000) {
+    return `Current files:
+${entries
+      .map(([path, content]) => "```file:" + path + "\n" + content + "\n```")
+      .join("\n")}`;
+  }
+  return `Current index.html:
+${files["index.html"] ?? ""}
+Other files in the project: ${Object.keys(files).join(", ")}`;
+}
 type WorkOverlay = "sandbox" | "history";
 /** ขนาดพรีวิว — Bolt ให้เลือก desktop / tablet / mobile */
 type Device = "desktop" | "tablet" | "mobile";
@@ -86,7 +116,10 @@ type Device = "desktop" | "tablet" | "mobile";
 export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<BuildProject | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [draftPath, setDraftPath] = useState("index.html");
+  const [page, setPage] = useState("index.html");
+  const [streamSummary, setStreamSummary] = useState("");
   const [prompt, setPrompt] = useState("");
   const [tab, setTab] = useState<WorkTab>("preview");
   const [overlay, setOverlay] = useState<WorkOverlay | null>(null);
@@ -117,13 +150,14 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [previewKey, setPreviewKey] = useState(0);
   const [channel, setChannel] = useState("");
   const frame = useRef<HTMLIFrameElement>(null);
+  const projectRef = useRef<BuildProject | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const menuBox = useRef<HTMLDivElement>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
   const run = useRef(0);
   const running = useRef(false);
   const cancelWait = useRef<(() => void) | null>(null);
-  const dirty = !!project && draft !== project.html;
+  const dirty = !!project && !sameFiles(drafts, project.files);
   const lastUserIndex =
     project?.messages.reduce(
       (acc, message, i) => (message.role === "user" ? i : acc),
@@ -138,7 +172,10 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     try {
       const stored = loadProject(projectId);
       setProject(stored);
-      setDraft(stored?.html || "");
+      const files = stored?.files ?? {};
+      setDrafts(files);
+      setDraftPath(defaultPage(files));
+      setPage(defaultPage(files));
       setPrompt(sessionStorage.getItem(`gupan:prompt:${projectId}`) || "");
       const savedMode = localStorage.getItem(`gupan:mode:${projectId}`);
       if (savedMode && BUILD_MODES.some((item) => item.id === savedMode)) setMode(savedMode);
@@ -167,7 +204,16 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     const receive = (event: MessageEvent) => {
       if (
         event.source !== frame.current?.contentWindow ||
-        event.data?.channel !== channel ||
+        event.data?.channel !== channel
+      )
+        return;
+      // link ภายในแอปที่สร้าง: ข้ามหน้าโดยไม่ออกจาก sandbox
+      if (typeof event.data.navigate === "string") {
+        const target = event.data.navigate.split("#")[0];
+        if (projectRef.current?.files[target] !== undefined) setPage(target);
+        return;
+      }
+      if (
         !["log", "warn", "error"].includes(event.data.level) ||
         typeof event.data.text !== "string"
       )
@@ -213,8 +259,9 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     };
   }, [overlay, menuOpen]);
   const srcDoc = useMemo(
-    () => (channel && project ? previewDocument(project.html, channel) : ""),
-    [project?.html, channel],
+    () =>
+      channel && project ? previewDocument(project.files, page, channel) : "",
+    [project?.files, page, channel],
   );
 
   /** สลับมุมมองหลัก Preview/Code และปิดแผงลอยที่ทับอยู่ */
@@ -222,17 +269,26 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     setOverlay(null);
     setTab(next);
   }
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
   function apply(next: BuildProject) {
     saveProject(next); // Don't claim a successful save or replace the preview on quota failure.
     setProject(next);
-    setDraft(next.html);
+    setDrafts(next.files);
+    setDraftPath((current) =>
+      next.files[current] !== undefined ? current : defaultPage(next.files),
+    );
+    setPage((current) =>
+      next.files[current] !== undefined ? current : defaultPage(next.files),
+    );
     setLogs([]);
     setPreviewKey((k) => k + 1);
   }
   function saveCode() {
     if (!project || busy) return;
     try {
-      apply(checkpoint(project, draft, "ก่อนแก้โค้ดด้วยตัวเอง"));
+      apply(checkpoint(project, drafts, "ก่อนแก้โค้ดด้วยตัวเอง"));
       setError("");
       setStatus("บันทึกแล้วในเบราว์เซอร์นี้");
     } catch (e) {
@@ -280,6 +336,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     setBusy(true);
     setError("");
     setPlan({ step: 1, live: true, chars: 0 });
+    setStreamSummary("");
     setPlanOpen(true);
     setLastBuild(null);
     setFeedback(null);
@@ -294,7 +351,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             ...project.messages.slice(-6),
             {
               role: "user",
-              content: `Current index.html:\n${project.html}\n\nRequested change:\n${request}`,
+              content: `${filesContext(project.files)}\n\nRequested change:\n${request}`,
             },
           ],
           { stream: true, ...(model.trim() ? { model: model.trim() } : {}) },
@@ -307,9 +364,14 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             setPlan((p) => (p ? { ...p, step: 2 } : p)); // เชื่อมต่อ AI สำเร็จ
           }
           if (typeof chunk?.text === "string") text += chunk.text;
-          if (text.length > MAX_HTML_SIZE + 1000)
+          if (text.length > MAX_TOTAL_SIZE + 1000)
             throw new Error("คำตอบ AI ใหญ่เกินขีดจำกัด");
           setPlan((p) => (p ? { ...p, chars: text.length } : p));
+          // สตรีมส่วนสรุปคำต่อคำลงแชทแบบ Bolt (หยุดที่ fence ไฟล์แรก)
+          const fenceAt = text.indexOf("```");
+          const head = fenceAt === -1 ? text : text.slice(0, fenceAt);
+          if (!/^\s*<!doctype|^\s*<html/i.test(head))
+            setStreamSummary(head.slice(0, 700));
           setStatus(
             `AI กำลังเขียนโค้ด · ${text.length.toLocaleString()} ตัวอักษร`,
           );
@@ -330,10 +392,11 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         }),
       ]);
       if (ticket !== run.current) return;
-      setPlan((p) => (p ? { ...p, step: 3 } : p)); // รับโค้ดครบแล้ว
-      const html = extractHtml(raw);
-      setPlan((p) => (p ? { ...p, step: 4 } : p)); // HTML สมบูรณ์
-      const next = checkpoint(project, html, `ก่อน: ${request}`);
+      setPlan((p) => (p ? { ...p, step: 3 } : p)); // รับคำตอบครบแล้ว
+      const files = extractFiles(raw);
+      setPlan((p) => (p ? { ...p, step: 4 } : p)); // ชุดไฟล์สมบูรณ์
+      const writes = changedPaths(project.files, files);
+      const next = checkpoint(project, files, `ก่อน: ${request}`);
       next.messages = [
         ...project.messages,
         { role: "user", content: request },
@@ -350,7 +413,8 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         at: new Date().toISOString(),
         version: next.versions.length,
       });
-      setPlan({ step: 5, live: false, chars: raw.length });
+      setPlan({ step: 5, live: false, chars: raw.length, writes });
+      setStreamSummary("");
       setPrompt("");
       try {
         sessionStorage.removeItem(`gupan:prompt:${projectId}`);
@@ -405,12 +469,17 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     if (!project) return;
     try {
       const zip = zipSync({
-        "index.html": strToU8(draft),
+        ...Object.fromEntries(
+          Object.entries(drafts).map(([path, content]) => [
+            path,
+            strToU8(content),
+          ]),
+        ),
         "README.txt": strToU8(
           "Open index.html in a browser. This is a static frontend, not a Node.js app. Review AI-generated code before publishing.\n",
         ),
         "project.json": strToU8(
-          JSON.stringify({ ...project, html: draft }, null, 2),
+          JSON.stringify({ ...project, files: drafts }, null, 2),
         ),
       });
       const url = URL.createObjectURL(
@@ -448,7 +517,12 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       const files: Record<string, Uint8Array> = {
         [`${AGENT_KIT_DIR}/agent.yaml`]: strToU8(buildAgentYaml(project, options)),
         [`${AGENT_KIT_DIR}/README.md`]: strToU8(buildHandoffReadme(project, options)),
-        [`${AGENT_KIT_DIR}/index.html`]: strToU8(draft),
+        ...Object.fromEntries(
+          Object.entries(drafts).map(([path, content]) => [
+            `${AGENT_KIT_DIR}/${path}`,
+            strToU8(content),
+          ]),
+        ),
       };
       let attached = 0;
       for (const path of AGENT_KIT_FILES) {
@@ -477,7 +551,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   async function importHtml(file?: File) {
     if (!file || !project) return;
     try {
-      if (file.size > MAX_HTML_SIZE) throw new Error("นำเข้าได้สูงสุด 400 KB");
+      if (file.size > MAX_FILE_SIZE) throw new Error("นำเข้าได้สูงสุด 400 KB");
       const html = extractHtml(await file.text());
       if (
         !confirm(
@@ -485,7 +559,13 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         )
       )
         return;
-      apply(checkpoint(project, html, "ก่อนนำเข้า HTML"));
+      apply(
+        checkpoint(
+          project,
+          { ...project.files, "index.html": html },
+          "ก่อนนำเข้า HTML",
+        ),
+      );
       setError("");
       showTab("preview");
     } catch (e) {
@@ -701,12 +781,19 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   {i === lastUserIndex && plan && (
                     <BuildActivity
                       plan={plan}
+                      reads={Object.keys(project.files)}
                       open={planOpen}
                       onToggle={() => setPlanOpen((value) => !value)}
                     />
                   )}
                 </Fragment>
               ))}
+              {busy && streamSummary && (
+                <div className="chat-message assistant streaming">
+                  <small>GUPAN</small>
+                  <MarkdownLite text={streamSummary} />
+                </div>
+              )}
               {busy && (
                 <div className="build-progress" role="status">
                   <Brain size={16} /> {status}
@@ -995,7 +1082,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 >
                   <RotateCcw size={15} />
                 </button>
-                <div className="preview-address">preview / index.html</div>
+                <div className="preview-address">preview / {page}</div>
                 <div
                   className="device-group"
                   role="group"
@@ -1045,7 +1132,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             <div className="code-panel">
               <div className="code-toolbar">
                 <span>
-                  <Code2 size={15} /> index.html
+                  <Code2 size={15} /> {draftPath}
                 </span>
                 <div>
                   <button
@@ -1053,7 +1140,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                     disabled={!dirty || busy}
                     onClick={() => {
                       if (confirm("ยกเลิกการแก้ไขที่ยังไม่บันทึก?"))
-                        setDraft(project.html);
+                        setDrafts(project.files);
                     }}
                   >
                     ยกเลิก
@@ -1067,13 +1154,38 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   </button>
                 </div>
               </div>
+              <div className="file-list" role="group" aria-label="ไฟล์ในโปรเจกต์">
+                {Object.keys(drafts)
+                  .sort((a, b) =>
+                    a === draftPath
+                      ? -1
+                      : b === draftPath
+                        ? 1
+                        : a === "index.html"
+                          ? -1
+                          : b === "index.html"
+                            ? 1
+                            : a.localeCompare(b),
+                  )
+                  .map((path) => (
+                    <button
+                      key={path}
+                      aria-pressed={path === draftPath}
+                      onClick={() => setDraftPath(path)}
+                    >
+                      {path}
+                    </button>
+                  ))}
+              </div>
               <textarea
                 className="code-editor"
-                aria-label="index.html source code"
+                aria-label={`${draftPath} source code`}
                 spellCheck={false}
-                value={draft}
+                value={drafts[draftPath] ?? ""}
                 disabled={busy}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) =>
+                  setDrafts({ ...drafts, [draftPath]: e.target.value })
+                }
                 onKeyDown={(e) => {
                   if ((e.ctrlKey || e.metaKey) && e.key === "s") {
                     e.preventDefault();
@@ -1082,8 +1194,9 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                 }}
               />
               <div className="code-footnote">
-                {draft.split("\n").length} lines ·{" "}
-                {(draft.length / 1000).toFixed(1)} KB · Ctrl/⌘ + S
+                {(drafts[draftPath] ?? "").split("\n").length} lines ·{" "}
+                {((drafts[draftPath] ?? "").length / 1000).toFixed(1)} KB ·{" "}
+                {Object.keys(drafts).length} ไฟล์ · Ctrl/⌘ + S
                 เพื่อบันทึกและอัปเดตพรีวิว
               </div>
             </div>
@@ -1118,7 +1231,12 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
               </div>
               <div className="overlay-body">
                 {overlay === "sandbox" ? (
-                  <SandboxPanel html={project.html} />
+                  <SandboxPanel
+                    html={inlineAssets(
+                      project.files[page] ?? "",
+                      project.files,
+                    )}
+                  />
                 ) : (
                   <div className="history-panel">
                     <p>เก็บโค้ดก่อนแก้ไข 8 ครั้งล่าสุดในเบราว์เซอร์นี้</p>
@@ -1150,7 +1268,7 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                               apply(
                                 checkpoint(
                                   project,
-                                  version.html,
+                                  version.files,
                                   "ก่อนกู้คืนเวอร์ชัน",
                                 ),
                               );
@@ -1231,7 +1349,7 @@ function errorText(error: unknown): string {
  * 4 ตรวจ HTML สมบูรณ์ → 5 บันทึกเวอร์ชัน/อัปเดตพรีวิว
  */
 const PLAN_STEPS = [
-  "อ่านโค้ดปัจจุบัน (index.html)",
+  "อ่านไฟล์ปัจจุบันของโปรเจกต์",
   "ส่งคำสั่งให้ Puter AI",
   "รับโค้ดชุดใหม่",
   "ตรวจความสมบูรณ์ของ HTML",
@@ -1240,31 +1358,40 @@ const PLAN_STEPS = [
 
 function BuildActivity({
   plan,
+  reads,
   open,
   onToggle,
 }: {
   plan: Plan;
+  reads: string[];
   open: boolean;
   onToggle: () => void;
 }) {
-  const written = plan.step >= 5;
+  const writes = plan.writes ?? [];
+  const shownReads = reads.slice(0, 5);
   return (
     <div className="activity-stack">
       <div className="action-card">
         <button className="action-head" aria-expanded={open} onClick={onToggle}>
-          <Eye size={15} /> {written ? 2 : 1} รายการไฟล์
+          <Eye size={15} /> {reads.length} ไฟล์ที่อ่าน
+          {writes.length > 0 && ` · ${writes.length} ไฟล์ที่เขียน`}
           <ChevronDown size={15} className={open ? "flipped" : ""} />
         </button>
         {open && (
           <div className="action-rows">
-            <span className="action-row">
-              <Eye size={13} /> อ่าน <code>index.html</code>
-            </span>
-            {written && (
-              <span className="action-row">
-                <Pencil size={13} /> เขียน <code>index.html</code>
+            {shownReads.map((path) => (
+              <span key={`r-${path}`} className="action-row">
+                <Eye size={13} /> อ่าน <code>{path}</code>
               </span>
+            ))}
+            {reads.length > shownReads.length && (
+              <span className="action-row">… อีก {reads.length - shownReads.length} ไฟล์</span>
             )}
+            {writes.map((path) => (
+              <span key={`w-${path}`} className="action-row">
+                <Pencil size={13} /> เขียน <code>{path}</code>
+              </span>
+            ))}
           </div>
         )}
       </div>

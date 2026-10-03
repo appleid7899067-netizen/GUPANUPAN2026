@@ -654,6 +654,42 @@
   color: #fff;
   font-weight: 650;
 }
+/* ฟองสรุปที่สตรีมคำต่อคำระหว่าง AI คิด — กะพริบ caret ท้ายบรรทัด */
+.chat-message.streaming {
+  opacity: 0.95;
+}
+.chat-message.streaming .md-lite > p:last-child::after {
+  content: " ▍";
+  color: #8ec7f8;
+  animation: builder-pulse 1s ease-in-out infinite;
+}
+/* รายการไฟล์ในแท็บ Code */
+.file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 15px;
+  border-bottom: 1px solid var(--border);
+  background: #141419;
+}
+.file-list button {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10.5px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #1d1d23;
+  border: 1px solid var(--border);
+  color: #a5a0b1;
+}
+.file-list button:hover {
+  color: #e8e4f0;
+  border-color: #4a4356;
+}
+.file-list button[aria-pressed="true"] {
+  color: #e5d9fa;
+  border-color: #44374f;
+  background: #2e2839;
+}
 /* wordmark ตัวหนาเอียงแบบโลโก้ bolt ในหน้าแชท */
 .assistant-wordmark {
   align-self: flex-start;
