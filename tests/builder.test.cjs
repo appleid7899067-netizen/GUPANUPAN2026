@@ -43,6 +43,16 @@ test("complete HTML and markdown-wrapped HTML parse", () => {
     b.STARTER_HTML,
   );
 });
+test("extractHtml cuts a leading summary when there is no fence", () => {
+  const reply =
+    "- เพิ่ม**เมนู**แล้ว\n<!doctype html><html><body>ok</body></html>";
+  assert.equal(b.extractHtml(reply), "<!doctype html><html><body>ok</body></html>");
+  assert.equal(b.extractSummary(reply), "- เพิ่ม**เมนู**แล้ว");
+});
+test("extractSummary is empty when the AI sends code only", () => {
+  assert.equal(b.extractSummary("```html\n" + b.STARTER_HTML + "\n```"), "");
+  assert.equal(b.extractSummary(b.STARTER_HTML), "");
+});
 test("partial, non-HTML, oversized responses are rejected", () => {
   for (const text of [
     "hello",

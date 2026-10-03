@@ -601,6 +601,13 @@
   font-size: 9px;
   padding: 3px 6px;
 }
+.chat-scroll-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .chat-messages {
   overflow: auto;
   flex: 1;
@@ -608,6 +615,44 @@
   padding: 24px 18px;
   display: flex;
   flex-direction: column;
+}
+/* ปุ่มลอยเลื่อนลงล่างสุด เหมือนลูกศรลอยในแชทของ Bolt */
+.scroll-fab {
+  position: absolute;
+  right: 50%;
+  transform: translateX(50%);
+  bottom: 12px;
+  z-index: 6;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #26262bcc;
+  border: 1px solid var(--border);
+  color: #cfcdd6;
+  backdrop-filter: blur(4px);
+}
+.scroll-fab:hover {
+  color: #fff;
+  background: #32323a;
+}
+/* ข้อความผู้ช่วยแบบ markdown เบา (bullet + ตัวหนา) เหมือนคำตอบของ Bolt */
+.md-lite p {
+  white-space: pre-wrap;
+  margin: 4px 0;
+}
+.md-lite ul {
+  margin: 8px 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.md-lite li {
+  line-height: 1.8;
+}
+.md-lite strong {
+  color: #fff;
+  font-weight: 650;
 }
 /* wordmark ตัวหนาเอียงแบบโลโก้ bolt ในหน้าแชท */
 .assistant-wordmark {
@@ -668,6 +713,153 @@
   gap: 10px;
   font-size: 11px;
   align-self: flex-start;
+}
+.activity-stack {
+  align-self: stretch;
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.action-card,
+.plan-card {
+  border: 1px solid #33323a;
+  background: #1c1c21;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.action-head {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 12px 14px;
+  background: none;
+  border: 0;
+  color: #d7d2de;
+  font-size: 12px;
+}
+.action-head svg:last-child {
+  margin-left: auto;
+  transition: transform 0.15s;
+}
+.action-head svg.flipped {
+  transform: rotate(180deg);
+}
+.action-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 0 14px 13px;
+}
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a5a0b1;
+  font-size: 11px;
+}
+.action-row code {
+  font-family: var(--font-geist-mono), monospace;
+  background: #26262c;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: #d9d4e2;
+}
+.plan-card {
+  padding: 13px 14px 15px;
+}
+.plan-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: #d7d2de;
+  margin-bottom: 11px;
+}
+.plan-card ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plan-card li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #8b8794;
+}
+.plan-card li svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.plan-card li.done {
+  color: #d9d4e2;
+}
+.plan-card li.done svg {
+  color: #35c06f;
+}
+.plan-card li.live {
+  color: #8ec7f8;
+}
+.plan-card li.live svg {
+  color: #57b1f0;
+}
+.plan-card li.final {
+  color: #58d68d;
+  font-weight: 600;
+}
+.plan-card li.failed {
+  color: #faa2b1;
+}
+.plan-card li.failed svg {
+  color: #ef6a6a;
+}
+/* แถบคัดลอก/ถูกใจ/ไม่ถูกใจ ใต้คำตอบล่าสุด */
+.feedback-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  align-self: flex-start;
+}
+.feedback-row .ghost-btn[aria-pressed="true"] {
+  color: #7cc0f8;
+  background: #21303d;
+}
+/* การ์ดเวอร์ชันหลังสร้างเสร็จ — กดแล้วเปิดประวัติโค้ด */
+.version-card {
+  width: 100%;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  background: #12283a;
+  border: 1px solid #1f4360;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.version-card:hover {
+  background: #16334a;
+}
+.version-card strong {
+  display: block;
+  font-size: 12.5px;
+  color: #eaf5ff;
+  overflow-wrap: anywhere;
+}
+.version-card small {
+  color: #8fb8d8;
+  font-size: 10.5px;
+}
+.version-card > svg {
+  flex-shrink: 0;
+  color: #57b1f0;
 }
 .build-progress svg {
   animation: builder-pulse 1.2s ease-in-out infinite;
@@ -852,30 +1044,9 @@
   align-items: center;
   gap: 7px;
 }
-/* เห็นเฉพาะจอแคบ: สลับ แชท / พรีวิว / โค้ด แบบ bolt.new บนมือถือ */
+/* เห็นเฉพาะจอแคบ: แชตมี pill เปิด pane งาน / pane งานมีปุ่มกลับสู่การสนทนา */
 .mobile-switch {
   display: none;
-  gap: 4px;
-  margin: 8px 10px 0;
-  padding: 3px;
-  background: #17171b;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  flex-shrink: 0;
-}
-.mobile-switch button {
-  flex: 1;
-  height: 34px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: #9a97a4;
-  font-size: 11px;
-  gap: 6px;
-}
-.mobile-switch button[aria-pressed="true"] {
-  background: #2e2839;
-  color: #e5d9fa;
 }
 .mic-btn[aria-pressed="true"] {
   color: #ff8080;
@@ -1219,6 +1390,54 @@
 @media (max-width: 850px) {
   .mobile-switch {
     display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 10px 0;
+    flex-shrink: 0;
+  }
+  .mobile-switch.is-chat {
+    justify-content: flex-end;
+  }
+  .switch-pill {
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #232329;
+    border: 1px solid var(--border);
+    color: #cfcdd6;
+    font-size: 11px;
+  }
+  .switch-back {
+    flex: 1;
+    justify-content: flex-start;
+    height: 36px;
+    padding: 0 12px;
+    background: #17171b;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: #cfcdd6;
+    font-size: 11.5px;
+  }
+  .switch-seg {
+    display: flex;
+    gap: 3px;
+    background: #17171b;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .switch-seg button {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 8px;
+    background: none;
+    border: 0;
+    color: #9a97a4;
+    font-size: 11px;
+  }
+  .switch-seg button[aria-pressed="true"] {
+    background: #2e2839;
+    color: #e5d9fa;
   }
   /* เต็มจอทีละ pane: แชต หรือ pane งาน — ไม่ใช่ซ้อนกันสองอัน */
   .workspace-body.show-chat .work-panel,

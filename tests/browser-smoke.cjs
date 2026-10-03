@@ -187,9 +187,9 @@ const fs = require("node:fs");
     );
     // จอแคบแบบ Bolt: แชตเต็มจอ แล้วสลับไปพรีวิว/โค้ดเองจากแถบสลับมุมมอง
     await page.getByRole("textbox", { name: "คำสั่ง AI" }).waitFor();
-    await page.getByRole("button", { name: "พรีวิว", exact: true }).click();
+    await page.getByRole("button", { name: "พรีวิวและโค้ด" }).click();
     await page.locator('iframe[title="App preview"]').waitFor();
-    await page.getByRole("button", { name: "แชท", exact: true }).click();
+    await page.getByRole("button", { name: "กลับสู่การสนทนา" }).click();
     await page.getByRole("textbox", { name: "คำสั่ง AI" }).waitFor();
     await page.goto(base);
     await page.getByRole("link", { name: /สร้างเว็บร้านกาแฟ/ }).waitFor();

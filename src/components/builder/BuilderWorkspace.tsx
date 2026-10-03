@@ -1,20 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowDown,
   ArrowLeft,
   ArrowUp,
+  Bookmark,
   Brain,
   Check,
+  CheckCircle2,
+  ChevronDown,
+  Circle,
+  Copy,
   ChevronsUpDown,
+  ListChecks,
+  Pencil,
+  ThumbsDown,
+  ThumbsUp,
+  XCircle,
   Code2,
   Download,
   Eye,
   History,
   Loader2,
   LogIn,
-  MessageSquare,
   Mic,
   Monitor,
   MoreHorizontal,
@@ -36,6 +46,7 @@ import { zipSync, strToU8 } from "fflate";
 import {
   checkpoint,
   extractHtml,
+  extractSummary,
   loadProject,
   MAX_HTML_SIZE,
   previewDocument,
@@ -54,6 +65,7 @@ import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
 import PuterAccountButton from "./PuterAccountButton";
 import SandboxPanel from "./SandboxPanel";
 import { useSpeechInput } from "./use-speech-input";
+import MarkdownLite from "./MarkdownLite";
 import "./builder.css";
 
 /**
@@ -66,6 +78,7 @@ import "./builder.css";
  */
 type LogLine = { level: string; text: string };
 type WorkTab = "preview" | "code";
+type Plan = { step: number; live: boolean; chars: number; error?: string };
 type WorkOverlay = "sandbox" | "history";
 /** ขนาดพรีวิว — Bolt ให้เลือก desktop / tablet / mobile */
 type Device = "desktop" | "tablet" | "mobile";
@@ -83,6 +96,16 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [device, setDevice] = useState<Device>("desktop");
   /** จอแคบแบบ Bolt: เห็นทีละ pane — แชตเต็มจอ หรือ pane งาน (พรีวิว/โค้ด) */
   const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
+  /** การ์ดแผนงาน: step = จำนวนขั้นที่เสร็จแล้ว (แต่ละขั้น = เหตุการณ์จริงใน pipeline) */
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [planOpen, setPlanOpen] = useState(true);
+  const [lastBuild, setLastBuild] = useState<{
+    label: string;
+    at: string;
+    version: number;
+  } | null>(null);
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [atBottom, setAtBottom] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -101,6 +124,10 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const running = useRef(false);
   const cancelWait = useRef<(() => void) | null>(null);
   const dirty = !!project && draft !== project.html;
+  const lastUserIndex = project.messages.reduce(
+    (acc, message, i) => (message.role === "user" ? i : acc),
+    -1,
+  );
   const speech = useSpeechInput((text) =>
     setPrompt((current) => (current.trim() ? `${current} ${text}` : text)),
   );
@@ -251,10 +278,15 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
     const request = prompt.trim();
     setBusy(true);
     setError("");
+    setPlan({ step: 1, live: true, chars: 0 });
+    setPlanOpen(true);
+    setLastBuild(null);
+    setFeedback(null);
     setStatus("กำลังส่งคำสั่งให้ AI…");
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const generate = async () => {
+        let gotStream = false;
         const stream = await window.puter.ai.chat(
           [
             { role: "system", content: systemPromptFor(mode) },
@@ -269,9 +301,14 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         let text = "";
         for await (const chunk of stream) {
           if (ticket !== run.current) return "";
+          if (!gotStream) {
+            gotStream = true;
+            setPlan((p) => (p ? { ...p, step: 2 } : p)); // เชื่อมต่อ AI สำเร็จ
+          }
           if (typeof chunk?.text === "string") text += chunk.text;
           if (text.length > MAX_HTML_SIZE + 1000)
             throw new Error("คำตอบ AI ใหญ่เกินขีดจำกัด");
+          setPlan((p) => (p ? { ...p, chars: text.length } : p));
           setStatus(
             `AI กำลังเขียนโค้ด · ${text.length.toLocaleString()} ตัวอักษร`,
           );
@@ -292,7 +329,9 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         }),
       ]);
       if (ticket !== run.current) return;
+      setPlan((p) => (p ? { ...p, step: 3 } : p)); // รับโค้ดครบแล้ว
       const html = extractHtml(raw);
+      setPlan((p) => (p ? { ...p, step: 4 } : p)); // HTML สมบูรณ์
       const next = checkpoint(project, html, `ก่อน: ${request}`);
       next.messages = [
         ...project.messages,
@@ -300,10 +339,17 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         {
           role: "assistant",
           content:
-            "อัปเดต index.html แล้ว ตรวจผลใน Preview หรือแก้ไขต่อใน Code ได้เลย",
+            extractSummary(raw) ||
+            "อัปเดต index.html แล้ว ตรวจผลในพรีวิว หรือแก้ไขต่อในแท็บโค้ดได้เลย",
         },
       ].slice(-40) as BuildProject["messages"];
       apply(next);
+      setLastBuild({
+        label: request.slice(0, 80),
+        at: new Date().toISOString(),
+        version: next.versions.length,
+      });
+      setPlan({ step: 5, live: false, chars: raw.length });
       setPrompt("");
       try {
         sessionStorage.removeItem(`gupan:prompt:${projectId}`);
@@ -316,6 +362,12 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
       if (ticket === run.current) {
         setError(errorText(e));
         setStatus("สร้างไม่สำเร็จ · โค้ดเดิมยังอยู่");
+        setPlan((p) => ({
+          step: p?.step ?? 0,
+          chars: p?.chars ?? 0,
+          live: false,
+          error: errorText(e),
+        }));
       }
     } finally {
       if (timer) clearTimeout(timer);
@@ -325,6 +377,19 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
         running.current = false;
         setBusy(false);
       }
+    }
+  }
+  async function copyAnswer() {
+    const last = [...project.messages]
+      .reverse()
+      .find((message) => message.role === "assistant");
+    if (!last) return;
+    try {
+      await navigator.clipboard.writeText(last.content);
+      setError("");
+      setStatus("คัดลอกคำตอบล่าสุดแล้ว");
+    } catch {
+      setError("คัดลอกอัตโนมัติไม่ได้ — กรุณาเลือกข้อความแล้วคัดลอกเอง");
     }
   }
   function stop() {
@@ -553,36 +618,41 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           onChange={(e) => void importHtml(e.target.files?.[0])}
         />
       </header>
-      {/* จอแคบแบบ Bolt: แชตเต็มจอ แล้วสลับไปพรีวิว/โค้ดเอง */}
-      <div className="mobile-switch">
-        {(
-          [
-            { id: "chat", icon: MessageSquare, label: "แชท" },
-            { id: "preview", icon: Eye, label: "พรีวิว" },
-            { id: "code", icon: Code2, label: "โค้ด" },
-          ] as const
-        ).map(({ id, icon: Icon, label }) => {
-          const active =
-            id === "chat"
-              ? mobileView === "chat"
-              : mobileView === "work" && tab === id;
-          return (
+      {/* จอแคบแบบ Bolt: immersive ทีละ pane — แชตมี pill เปิดงาน, pane งานมีปุ่มกลับ */}
+      <div
+        className={`mobile-switch ${
+          mobileView === "chat" ? "is-chat" : "is-work"
+        }`}
+      >
+        {mobileView === "chat" ? (
+          <button
+            className="switch-pill"
+            onClick={() => setMobileView("work")}
+          >
+            <Eye size={14} /> พรีวิวและโค้ด
+          </button>
+        ) : (
+          <>
             <button
-              key={id}
-              aria-pressed={active}
-              onClick={() => {
-                if (id === "chat") {
-                  setMobileView("chat");
-                } else {
-                  setMobileView("work");
-                  setTab(id);
-                }
-              }}
+              className="switch-back"
+              onClick={() => setMobileView("chat")}
             >
-              <Icon size={14} /> {label}
+              <ArrowLeft size={14} /> กลับสู่การสนทนา
             </button>
-          );
-        })}
+            <span className="switch-seg">
+              {(
+                [
+                  { id: "preview", label: "พรีวิว" },
+                  { id: "code", label: "โค้ด" },
+                ] as const
+              ).map(({ id, label }) => (
+                <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
+                  {label}
+                </button>
+              ))}
+            </span>
+          </>
+        )}
       </div>
       <div
         className={`workspace-body ${
@@ -596,34 +666,119 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
             </span>
             <span className="mode-pill">Puter AI</span>
           </div>
-          <div className="chat-messages">
-            <div className="assistant-intro">
-              <div className="assistant-wordmark" aria-hidden="true">
-                gupan
+          <div className="chat-scroll-wrap">
+            <div
+              className="chat-messages"
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                setAtBottom(
+                  el.scrollTop + el.clientHeight >= el.scrollHeight - 60,
+                );
+              }}
+            >
+              <div className="assistant-intro">
+                <div className="assistant-wordmark" aria-hidden="true">
+                  gupan
+                </div>
+                <h2>จากไอเดีย สู่เว็บของคุณ</h2>
+                <p>
+                  สั่งสร้างเว็บ แล้วแก้ต่อได้เรื่อย ๆ AI
+                  จะเห็นโค้ดล่าสุดของคุณทุกครั้ง
+                </p>
+                <div className="scope-note">
+                  โหมดนี้สร้าง HTML/CSS/JS แบบไฟล์เดียว
+                  <br />
+                  ไม่มี npm, terminal server หรือฐานข้อมูลจริง
+                </div>
               </div>
-              <h2>จากไอเดีย สู่เว็บของคุณ</h2>
-              <p>
-                สั่งสร้างเว็บ แล้วแก้ต่อได้เรื่อย ๆ AI
-                จะเห็นโค้ดล่าสุดของคุณทุกครั้ง
-              </p>
-              <div className="scope-note">
-                โหมดนี้สร้าง HTML/CSS/JS แบบไฟล์เดียว
-                <br />
-                ไม่มี npm, terminal server หรือฐานข้อมูลจริง
-              </div>
+              {project.messages.map((message, i) => (
+                <Fragment key={i}>
+                  <div className={`chat-message ${message.role}`}>
+                    <small>{message.role === "user" ? "คุณ" : "GUPAN"}</small>
+                    <MarkdownLite text={message.content} />
+                  </div>
+                  {i === lastUserIndex && plan && (
+                    <BuildActivity
+                      plan={plan}
+                      open={planOpen}
+                      onToggle={() => setPlanOpen((value) => !value)}
+                    />
+                  )}
+                </Fragment>
+              ))}
+              {busy && (
+                <div className="build-progress" role="status">
+                  <Brain size={16} /> {status}
+                </div>
+              )}
+              {!busy && lastBuild && (
+                <>
+                  <div className="feedback-row">
+                    <button
+                      className="ghost-btn"
+                      aria-label="คัดลอกคำตอบ"
+                      title="คัดลอกคำตอบ"
+                      onClick={() => void copyAnswer()}
+                    >
+                      <Copy size={15} />
+                    </button>
+                    <button
+                      className="ghost-btn"
+                      aria-label="ถูกใจคำตอบ"
+                      title="ถูกใจคำตอบ"
+                      aria-pressed={feedback === "up"}
+                      onClick={() =>
+                        setFeedback((value) => (value === "up" ? null : "up"))
+                      }
+                    >
+                      <ThumbsUp size={15} />
+                    </button>
+                    <button
+                      className="ghost-btn"
+                      aria-label="ไม่ถูกใจคำตอบ"
+                      title="ไม่ถูกใจคำตอบ"
+                      aria-pressed={feedback === "down"}
+                      onClick={() =>
+                        setFeedback((value) => (value === "down" ? null : "down"))
+                      }
+                    >
+                      <ThumbsDown size={15} />
+                    </button>
+                  </div>
+                  <button
+                    className="version-card"
+                    onClick={() => setOverlay("history")}
+                  >
+                    <span>
+                      <strong>สร้าง: {lastBuild.label}</strong>
+                      <small>
+                        เวอร์ชัน {lastBuild.version} ณ{" "}
+                        {new Date(lastBuild.at).toLocaleString("th-TH", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </small>
+                    </span>
+                    <Bookmark size={16} />
+                  </button>
+                </>
+              )}
+              <div ref={chatEnd} />
             </div>
-            {project.messages.map((message, i) => (
-              <div key={i} className={`chat-message ${message.role}`}>
-                <small>{message.role === "user" ? "คุณ" : "GUPAN"}</small>
-                <p>{message.content}</p>
-              </div>
-            ))}
-            {busy && (
-              <div className="build-progress" role="status">
-                <Brain size={16} /> {status}
-              </div>
+            {!atBottom && (
+              <button
+                className="scroll-fab"
+                aria-label="เลื่อนลงล่างสุด"
+                title="เลื่อนลงล่างสุด"
+                onClick={() =>
+                  chatEnd.current?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                <ArrowDown size={16} />
+              </button>
             )}
-            <div ref={chatEnd} />
           </div>
           <div className="composer-area">
             {error && (
@@ -1065,4 +1220,88 @@ function errorText(error: unknown): string {
     );
   }
   return String(error);
+}
+
+/**
+ * การ์ดกิจกรรมระหว่าง/หลังสร้าง เลียนแบบแชทของ Bolt:
+ * บน = การ์ดไฟล์ที่อ่าน/เขียน (พับได้) ล่าง = การ์ดแผนงาน 5 ขั้น
+ * ⚠️ ทุกขั้นผูกกับเหตุการณ์จริงใน build() ไม่ใช่แอนิเมชันหลอก:
+ * 1 อ่านโค้ดปัจจุบัน → 2 เชื่อมต่อ Puter AI → 3 รับโค้ดครบ →
+ * 4 ตรวจ HTML สมบูรณ์ → 5 บันทึกเวอร์ชัน/อัปเดตพรีวิว
+ */
+const PLAN_STEPS = [
+  "อ่านโค้ดปัจจุบัน (index.html)",
+  "ส่งคำสั่งให้ Puter AI",
+  "รับโค้ดชุดใหม่",
+  "ตรวจความสมบูรณ์ของ HTML",
+  "บันทึกเวอร์ชันและอัปเดตพรีวิว",
+] as const;
+
+function BuildActivity({
+  plan,
+  open,
+  onToggle,
+}: {
+  plan: Plan;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const written = plan.step >= 5;
+  return (
+    <div className="activity-stack">
+      <div className="action-card">
+        <button className="action-head" aria-expanded={open} onClick={onToggle}>
+          <Eye size={15} /> {written ? 2 : 1} รายการไฟล์
+          <ChevronDown size={15} className={open ? "flipped" : ""} />
+        </button>
+        {open && (
+          <div className="action-rows">
+            <span className="action-row">
+              <Eye size={13} /> อ่าน <code>index.html</code>
+            </span>
+            {written && (
+              <span className="action-row">
+                <Pencil size={13} /> เขียน <code>index.html</code>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="plan-card">
+        <span className="plan-head">
+          <ListChecks size={15} /> วางแผน
+        </span>
+        <ol>
+          {PLAN_STEPS.map((label, i) => {
+            const done = plan.step > i;
+            const live = plan.live && plan.step === i;
+            return (
+              <li key={label} className={done ? "done" : live ? "live" : ""}>
+                {done ? (
+                  <CheckCircle2 size={15} />
+                ) : live ? (
+                  <Loader2 size={15} className="spin" />
+                ) : (
+                  <Circle size={15} />
+                )}
+                {i === 2 && plan.chars > 0
+                  ? `รับโค้ดชุดใหม่ · ${plan.chars.toLocaleString()} ตัวอักษร`
+                  : label}
+              </li>
+            );
+          })}
+          {plan.step >= 5 && !plan.live && !plan.error && (
+            <li className="done final">
+              <Check size={15} /> แผนงานเสร็จสมบูรณ์
+            </li>
+          )}
+          {plan.error && (
+            <li className="failed">
+              <XCircle size={15} /> {plan.error}
+            </li>
+          )}
+        </ol>
+      </div>
+    </div>
+  );
 }

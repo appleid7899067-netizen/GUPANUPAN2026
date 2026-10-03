@@ -11,9 +11,11 @@ const { compileTsx, restoreResolver } = require("./ts-compile.cjs");
 const { mods, cleanup } = compileTsx([
   "src/components/builder/SandboxPanel.tsx",
   "src/components/builder/PuterAccountButton.tsx",
+  "src/components/builder/MarkdownLite.tsx",
 ]);
 const SandboxPanel = mods[0].default;
 const PuterAccountButton = mods[1].default;
+const MarkdownLite = mods[2].default;
 
 after(() => {
   cleanup();
@@ -52,6 +54,18 @@ test("SandboxPanel ฝังโค้ดของโปรเจกต์ลง�
   const marker = "<p>เครื่องหมาย-ทดสอบ-12345</p>";
   const html = renderToStaticMarkup(React.createElement(SandboxPanel, { html: marker }));
   assert.ok(html.includes("เครื่องหมาย-ทดสอบ-12345"), "โค้ดโปรเจกต์ต้องอยู่ในเอกสารแซนด์บ็อกซ์");
+});
+
+test("MarkdownLite แปลง bullet และตัวหนาโดยไม่ใส่ HTML ดิบ", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(MarkdownLite, {
+      text: "สรุปสิ่งที่ทำ:\n- เพิ่ม**ระบบล็อกอิน**แล้ว\n- ปรับ**สี**ใหม่\nปิดท้ายบรรทัดธรรมดา",
+    }),
+  );
+  assert.equal((html.match(/<li>/g) || []).length, 2, "ต้องมี bullet สองข้อ");
+  assert.ok(html.includes("<strong>ระบบล็อกอิน</strong>"));
+  assert.ok(!html.includes("**"), "ต้องไม่เหลือเครื่องหมายดาวดิบ");
+  assert.ok(!html.includes("<script"), "ห้ามมีสคริปต์จากข้อความ AI");
 });
 
 test("ปุ่มบัญชี Puter เรนเดอร์ได้โดยไม่ต้องมี window และไม่โชว์ token ตั้งแต่แรก", () => {
