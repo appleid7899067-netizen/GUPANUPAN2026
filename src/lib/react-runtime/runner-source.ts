@@ -631,7 +631,6 @@ function gupanRunner(): void {
         },
       },
     );
-    shims["next"] = autoStub("next");
     shims["next/font/google"] = fontModule;
     shims["next/font/local"] = fontModule;
 
