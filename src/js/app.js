@@ -1,4 +1,33 @@
-let MODEL = 'claude-opus-5-5';
+const BOSS_MODEL_STORAGE = 'bossnu.selected-model';
+const BOSS_PROVIDER_STORAGE = 'bossnu.selected-provider';
+const BOSS_MODEL_DEFAULT = 'qwen3-coder';
+let MODEL = (() => {
+    try { return window.BOSS_MODEL || localStorage.getItem(BOSS_MODEL_STORAGE) || BOSS_MODEL_DEFAULT; }
+    catch { return window.BOSS_MODEL || BOSS_MODEL_DEFAULT; }
+})();
+let MODEL_PROVIDER = (() => {
+    try { return window.BOSS_MODEL_PROVIDER || localStorage.getItem(BOSS_PROVIDER_STORAGE) || ''; }
+    catch { return window.BOSS_MODEL_PROVIDER || ''; }
+})();
+
+function bossAIOptions(extra = {}) {
+    const options = { ...extra, model: MODEL };
+    if (MODEL_PROVIDER) options.provider = MODEL_PROVIDER;
+    return options;
+}
+
+window.setBossModel = function(model, provider = '') {
+    const next = String(model || '').trim();
+    if (!next) return MODEL;
+    MODEL = next;
+    MODEL_PROVIDER = String(provider || '').trim();
+    try {
+        localStorage.setItem(BOSS_MODEL_STORAGE, MODEL);
+        if (MODEL_PROVIDER) localStorage.setItem(BOSS_PROVIDER_STORAGE, MODEL_PROVIDER);
+        else localStorage.removeItem(BOSS_PROVIDER_STORAGE);
+    } catch {}
+    return MODEL;
+};
 let system_prompt
 let chatHistory;
 let currentAppDir;
@@ -4036,11 +4065,11 @@ async function sendChatMessage(userInput = null, skipAddToHistory = false, opts 
                 // against the signal locally (abortableAwait) — otherwise an
                 // abort couldn't unstick a connection that dies mid-open.
                 const stream = await abortableAwait(puter.ai.chat(prepareHistoryForAI(turnSaveContext.chatHistory), {
-                    model: MODEL,
                     tools: turnTools,
                     stream: true,
                     reasoning_effort: 'medium',
-                    signal: abortController.signal
+                    signal: abortController.signal,
+                    ...bossAIOptions()
                 }), abortController.signal);
 
                 // Reset auto-scroll flag when starting a new message
@@ -4395,7 +4424,7 @@ async function sendChatMessage(userInput = null, skipAddToHistory = false, opts 
 
 // A fast, cheap model is plenty for short follow-up ideas (and keeps this off
 // the critical path of the main, more capable build model).
-const SUGGESTION_MODEL = 'anthropic/claude-haiku-4-5';
+const SUGGESTION_MODEL = BOSS_MODEL_DEFAULT;
 
 // Bumped whenever suggestions are cleared or a new generation starts, so an
 // older in-flight generation can detect it has been superseded and bow out.
@@ -4779,7 +4808,7 @@ async function generateContinueSuggestions(turnSaveContext) {
                 { role: 'system', content: SUGGESTION_SYSTEM_PROMPT },
                 { role: 'user', content: `Conversation so far:\n\n${transcript}${appSection}${avoidSection}\n\nSuggest 5 next steps.` },
             ],
-            { model: SUGGESTION_MODEL }
+            bossAIOptions()
         );
 
         // Discard if superseded: a newer generation/clear ran, the user switched
@@ -4807,7 +4836,7 @@ async function generateContinueSuggestions(turnSaveContext) {
 // the transcript / app-HTML snapshot helpers above.
 
 // Distinct from the user prose suggestions, but the same lightweight model.
-const PROJECT_NAME_MODEL = SUGGESTION_MODEL;
+const PROJECT_NAME_MODEL = BOSS_MODEL_DEFAULT;
 
 const PROJECT_NAME_SYSTEM_PROMPT = `You name web-app projects for the sidebar of an AI app builder.
 
@@ -4867,7 +4896,7 @@ async function maybeAutoNameProject(context) {
                 { role: 'system', content: PROJECT_NAME_SYSTEM_PROMPT },
                 { role: 'user', content: `Conversation so far:\n\n${transcript || '(no conversation text)'}${appSection}\n\nName this project.` },
             ],
-            { model: PROJECT_NAME_MODEL }
+            bossAIOptions()
         );
         const name = sanitizeProjectName(extractAIResponseText(response));
         if (!name) return;
