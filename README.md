@@ -1,531 +1,83 @@
-# GUPAN Studio — AI Web Builder
+<h3 align="center"><img width="100" alt="Build logo" src="./icon-256.png"></h3>
+<h3 align="center">AI Builder For Creating Sites and Apps!</h3>
 
-เว็บสร้างเว็บจากคำสั่ง พร้อมแชต โค้ด และพรีวิวในหน้าเดียว ได้แรงบันดาลใจจาก workflow ของ Bolt.new **ไม่ได้มี runtime หรือทุกฟีเจอร์เท่ากับ Bolt**
+<p align="center">
+    <a href="https://builder.puter.com/"><strong>« LIVE DEMO »</strong></a>
+    <br />
+    <br />
+    <a href="https://builder.puter.com">Official Site</a>
+    ·
+    <a href="https://puter.com">Puter.com</a>
+    ·
+    <a href="https://developer.puter.com/">Developers</a>
+    ·
+    <a href="https://twitter.com/HeyPuter">X</a>
+</p>
 
-## เริ่มใช้งาน (Node.js 22+)
+<h3 align="center"><img style="border-radius:5px;" alt="screenshot" src="./src/screenshots/gh.png"></h3>
 
-```bash
-npm ci
-npm run dev -- --hostname 0.0.0.0
-```
+<br>
 
-เปิด `http://localhost:3000` บนเครื่องที่รัน หรือเปิด Live Preview ของสภาพแวดล้อมที่ใช้
+## AI Builder
 
-### โหมดเริ่มต้น: Puter frontend workspace
+Use AI to build websites and applications without writing any code. An open-source alternative to Lovable, Replit, v0, and similar platforms, AI Builder is licensed under the Apache License 2.0 to ensure freedom and flexibility for developers. Fork it, customize it, and make it your own!
 
-เมื่อไม่ได้ตั้ง `TOTALUM_VCAAS_API_KEY` หน้าแรกจะเปิด GUPAN Studio:
+AI Builder uses <a href="https://developer.puter.com/">Puter.js</a> to provide everything your projects might need; from authentication, storage, and database to serverless functions, hosting, and real-time capabilities, all seamlessly integrated without requiring any additional setup.
 
-1. พิมพ์เว็บที่ต้องการ เช่น “สร้างเว็บร้านกาแฟ มีเมนูและตะกร้าทดลอง เป็นภาษาไทย” แล้วกด **เริ่มสร้าง**
-2. กด **เข้าสู่ระบบ Puter** อนุญาต popup ถ้าเบราว์เซอร์ถาม
-3. กด **ส่งคำสั่ง** ด้วยตัวเอง ไม่มีการใช้ AI/เครดิตโดยอัตโนมัติเมื่อเปิดโปรเจกต์
-4. AI ส่ง HTML แบบ streaming → ตรวจเอกสารครบ → บันทึก → อัปเดต **Preview**
-5. สั่งแก้ต่อได้ โดยส่งโค้ดปัจจุบันและข้อความล่าสุดให้ AI เป็นบริบท
-6. **Code**: แก้ `index.html` แล้วกดบันทึกและรัน หรือ Ctrl/⌘+S
-7. **History**: กู้คืนโค้ดก่อนแก้ไขได้ 8 ครั้งล่าสุด
-8. **Export ZIP**: ดาวน์โหลด `index.html`, `project.json`, `README.txt` เพื่อสำรองงาน
-9. ย้ายเว็บไปเครื่องอื่น: แตก ZIP สร้างโปรเจกต์เปล่า แล้ว **นำเข้า HTML** (ไม่ได้นำเข้าประวัติแชต/เวอร์ชัน)
-10. ปุ่ม **บัญชี Puter** (มุมขวาบน): ล็อกอิน/ออกจากระบบ และ **คัดลอก token สำหรับเทอร์มินัล** — token ถูกอ่านจาก SDK ตอนที่กดเท่านั้น ไม่ถูกบันทึกหรือส่งไปที่อื่น (ดูข้อ 5)
+<br>
 
-ใช้ AI ผ่าน Puter SDK โดยตรง ใช้ model เริ่มต้นของบริการ หรือระบุ model ID ที่บัญชีคุณใช้ได้ ไม่มี API key ฝั่งผู้ใช้ ค่าใช้จ่าย/โควตาเป็นไปตามบัญชี Puter **ไม่รับรองว่าฟรีไม่จำกัด**
+## Features
 
-### สิ่งที่มีจริงในโหมด Puter ใหม่นี้
+Go from an idea to a working website or application in your browser. AI Builder brings creation, editing, and publishing together in one place.
 
-- HTML/CSS/JavaScript แบบเอกสารเดียว ไม่ใช่ React/Next.js runtime สำหรับแอปที่สร้าง
-- พรีวิวมือถือ/เดสก์ท็อปใน `iframe sandbox="allow-scripts"` ไม่มี `allow-same-origin`
-- CSP บล็อก fetch, external scripts, forms; อนุญาต inline CSS/JS และรูป/สื่อ/ฟอนต์ HTTPS/data
-- **Sandbox tab** — รันแอปในกรอบแยกอีกชั้น แล้ว ทดลองโค้ด (REPL) และตรวจ DOM ได้:
-  Console (log/warn/error จากแอป), ทดลองโค้ด (`document.querySelectorAll('*').length`, ลองใช้ `localStorage`/`fetch` เพื่อเห็นว่าแซนด์บ็อกซ์ปิดกั้น), และตัวตรวจ 11 ข้อ
-  (viewport, lang, title, ลำดับหัวข้อ, alt ของรูป, ชื่อปุ่ม/ลิงก์, label, id ซ้ำ, ไฟล์ภายนอก, target=_blank, ปริมาณเนื้อหา)
-- **โหมดการสร้าง 8 แบบ** (เว็บแอป / แลนดิ้ง / แดชบอร์ด / เกม / เนื้อหาไทย / accessibility / รีแฟกเตอร์ / เอกสาร) — เลือกแล้ว AI ได้ข้อกำหนดเพิ่มของโหมดนั้น (แนวคิดเดียวกับ persona ของ docker-agent)
-- **Agent kit** — ปุ่มในหัวเวิร์กสเปซที่ส่งออก ZIP: `agent.yaml` (ผ่าน schema ของ docker-agent v16), `README.md`, `index.html`
-  พร้อมสคริปต์ล็อกอิน Puter เพื่อเอาโปรเจกต์ไปทำงานต่อในเทอร์มินัลด้วย docker-agent + บัญชี Puter
-- **โคลนจาก GitHub** — ดึง repo สาธารณะมาเป็นโปรเจกต์ (หลายไฟล์) พร้อมแก้และพรีวิวต่อ โดยไม่ใช้ AI/เครดิต ดูหัวข้อ “โคลนโปรเจกต์จาก GitHub” ด้านล่าง
-- **บัญชี Puter + token bridge** — ล็อกอินในบิลเดอร์ครั้งเดียว แล้วใช้ token เดียวกันกับ docker-agent ในเทอร์มินัลได้
-  (`node puter/puter-login.mjs --set-token …`) โดย token อยู่ในเบราว์เซอร์ของคุณเท่านั้น; แสดงแบบมาสก์ และมีคำเตือนความปลอดภัยในแผง
-- Console รับ log/warn/error จาก iframe ที่ตรงกันเท่านั้น (ไม่ใช่ shell terminal)
-- ไม่อนุญาตโค้ดพรีวิวเข้าถึง Puter, cookies หรือ storage ของ builder
-- เก็บโปรเจกต์ใน localStorage ของ **เบราว์เซอร์และ origin นี้เท่านั้น** ไม่มี cloud sync
-- โค้ดสูงสุด 400 KB/เวอร์ชัน; quota storage ของเบราว์เซอร์อาจเต็มก่อนถึงเพดาน แจ้ง error โดยไม่อ้างว่าบันทึกแล้ว
-- เมื่อ AI error, output ไม่ครบ หรือหยุดรับผล จะไม่ทับโค้ดที่บันทึกไว้ คำสั่งยังอยู่ให้ลองใหม่
-- ปุ่มหยุดยกเลิกการรับผลใน UI เท่านั้น ไม่รับรองยกเลิกค่าใช้จ่ายของผู้ให้บริการ
-- โปรเจกต์ที่สร้างเป็น HTML/CSS/JS ล้วน: ไม่มี backend/database/auth/payment จริง หรือ deploy ในโหมดนี้ และ **ไม่มีการ push/pull กลับไป GitHub** (มีแต่การโคลน/นำเข้าทางเดียวผ่าน route ฝั่งเซิร์ฟเวอร์)
-- โปรเจกต์ **React/Vite/Next ที่โคลนมา รันในพรีวิวได้** ด้วยตัวคอมไพล์ในเบราว์เซอร์ (`@babel/standalone`) + React 18 ที่ vendor ไว้ — แต่ไม่มี SSR/API routes/`npm install` จริง (ดูหัวข้อ “พรีวิวโปรเจกต์ React/Vite/Next”)
-- โปรเจกต์ Puter legacy เดิมยังไม่ได้ migrate เข้า storage รูปแบบใหม่นี้ และไม่ได้ถูกลบ
+- **Build with AI:** Describe what you want in plain language and turn it into a website or application, without coding or any technical knowledge.
+- **Secure and scalable apps:** Built on <a href="https://github.com/HeyPuter/puter">Puter's Open-source Internet OS</a> technology, your apps will run securely and scale effortlessly without requiring you to manage infrastructure or API keys.
+- **Batteries included:** Authentication, storage, databases, AI, networking, realtime capabilities, and serverless functions, all handled seamlessly by Puter.js.
+- **Publish and share:** Publish your project to a public URL when you're ready to share it with the world.
+- **Live preview:** See your project take shape and try it out as you make changes.
+- **Chat and visual editing:** Ask for changes in chat or select an element in the preview to tell the AI exactly what to update.
+- **Version history:** Revisit saved versions and restore an earlier state as you experiment with your project.
+- **MCP connections:** Connect remote MCP servers so the AI can use tools from your other services while it builds.
 
-ตรวจโค้ด AI ก่อนเผยแพร่เสมอ Sandbox นี้ไม่ใช่ container สำหรับรันโค้ดที่เชื่อถือไม่ได้ทุกประเภท (เช่น infinite loop ยังใช้ CPU ได้) ไฟล์ HTML ที่ export ไม่ได้มีข้อจำกัด sandbox ของ builder ติดไปด้วย
+Follow the steps below to start building your first website or app.
 
-### โคลนโปรเจกต์จาก GitHub (repo สาธารณะ)
+<br>
 
-นำ repo ที่มีอยู่แล้วเข้าเป็นโปรเจกต์ในบิลเดอร์ แล้วแก้/พรีวิวต่อได้ทันที — ขั้นตอนนี้ไม่เรียก AI และไม่ใช้เครดิต
+## Getting Started
 
-1. **หน้าหลัก `/`** กดชิป **โคลนจาก GitHub** ใต้กล่องพรอมป์ หรือ**ในเวิร์กสเปซ** เปิดเมนู ⋯ → **โคลนจาก GitHub** (จะแทนที่ไฟล์ของโปรเจกต์ที่เปิดอยู่ โดยเก็บของเดิมไว้ใน History)
-2. วาง `owner/repo`, URL เต็ม, URL แบบ `/tree/<branch>/<โฟลเดอร์>` หรือ SSH (`git@github.com:owner/repo.git`) แล้วกด **โหลด repo**
-3. ตรวจรายการไฟล์/คำเตือนในตัวอย่าง แล้วกด **สร้างโปรเจกต์จาก repo นี้** (หรือ **แทนที่ไฟล์ในโปรเจกต์นี้**)
-
-สิ่งที่เกิดขึ้นจริง
-
-- เซิร์ฟเวอร์ของแอปนี้ (`GET /api/github/import`) เป็นคนดาวน์โหลด tarball จาก `codeload.github.com` เพราะ codeload ไม่ส่ง CORS ให้ origin อื่น แล้วคลาย gzip/tar ในหน่วยความจำ (`lib/tar.ts`) — ไม่มีการเขียนไฟล์ลงดิสก์ของเซิร์ฟเวอร์
-- `lib/github-import.ts` เลือก **หน้าแรก** ของเว็บ (index.html ที่ตื้นที่สุด) ยึดโฟลเดอร์ของหน้านั้นเป็นราก ดึงไฟล์ที่หน้านั้นอ้างถึงก่อน แล้วค่อยเติมไฟล์อื่นในโฟลเดอร์เว็บจนครบเพดาน
-- **รูป/ฟอนต์/วิดีโอไม่ถูกเก็บในโปรเจกต์** แต่ถูกเขียนทับเป็น URL ตรงของ `raw.githubusercontent.com` ให้พรีวิวแสดงได้โดยไม่กินพื้นที่ (ต้องต่ออินเทอร์เน็ต) ส่วน CSS/JS ที่อ้างในเครื่องยังถูกอินไลน์ให้อัตโนมัติเหมือนเดิม
-- repo ที่ไม่มี HTML (ไลบรารี/เทมเพลต) จะได้ **หน้ารายการไฟล์ + README** เป็นหน้าแรก เพื่อให้เห็นว่าโคลนอะไรมา แล้วสั่ง AI ต่อได้
-- เพดานต่อครั้ง: repo ≤ 60 MB · ไฟล์ข้อความ ≤ 400 KB · รวม ≤ 800 KB · ≤ 600 ไฟล์ และข้าม `node_modules`, lock file, CHANGELOG, ไฟล์ config ที่ราก และโฟลเดอร์ระบบ
-- **repo ส่วนตัว** ใช้ได้ถ้าตั้ง `GITHUB_TOKEN` (หรือ `GH_TOKEN`) ที่เซิร์ฟเวอร์ — token ไม่ถูกส่งไปเบราว์เซอร์และไม่ถูกเก็บ
-- repo ที่เป็น **React/Vite/Next จะรันในพรีวิวทันที** (ดูหัวข้อถัดไป) — ไฟล์ทั้งหมดยังดู/แก้ในแท็บ Code ได้เหมือนเดิม
-- ทาง sync สองทาง (push/pull) เป็นของโหมด Totalum ที่ `/project/<id>` ไม่ใช่โหมดนี้
-
-### พรีวิวโปรเจกต์ React/Vite/Next
-
-พรีวิวของบิลเดอร์มีสองเครื่องยนต์ เลือกอัตโนมัติจากไฟล์ในโปรเจกต์ (`detectPreviewEngine`):
-
-| เครื่องยนต์ | ใช้เมื่อ | ทำอะไร |
-| --- | --- | --- |
-| `static` (เดิม) | หน้า HTML ที่โหลดสคริปต์แบบคลาสสิก (`<script src="js/app.js">`) หรือมีแต่ HTML/CSS | อินไลน์ CSS/JS ในเครื่องเข้าเอกสารเดียวเหมือนที่ผ่านมา |
-| `react` (ใหม่) | มี `package.json` ที่พึ่ง react/react-dom/next/vite หรือมีไฟล์ `.jsx/.tsx/.ts` หรือสคริปต์ `type="module"` | คอมไพล์ TS/JSX + แก้ alias/พาธ แล้วรันด้วย module runner ในเบราว์เซอร์ |
-
-สิ่งที่เครื่องยนต์ `react` ทำ
-
-- คอมไพล์ด้วย **`@babel/standalone`** ที่โหลดเฉพาะเมื่อต้องใช้จริง (dynamic import → chunk แยก ไม่ถ่วงหน้าแรก) รองรับ `.tsx/.ts/.jsx/.js/.mjs/.cjs`, `import`/`export`, dynamic `import()`, `import.meta.env`/`import.meta.url`
-- แก้พาธให้ตรงกับรีโปด้วย **tsconfig/jsconfig `paths` + `@`/`~` → `src`** แล้วเดินตามกราฟ dependency (สูงสุด 400 โมดูล/ครั้ง)
-- ประกอบเอกสารพรีวิวเอง: React 18 + ReactDOM (vendor ไว้ใน `public/vendor/react/`), บริดจ์คอนโซลเดิม, CSS ของโปรเจกต์ (รวม CSS module ที่คืนชื่อคลาสให้โค้ดใช้จริง), JSON, และรูป/ฟอนต์ที่เขียนเป็น URL ของ `raw.githubusercontent.com`
-- จำลองแพ็กเกจที่ใช้บ่อย: `react-router`/`react-router-dom`, `next/link|image|head|router|navigation|app|document|font|themes`, `prop-types`, `classnames`, `clsx`, `class-variance-authority`, `tailwind-merge`, แพ็กเกจไอคอน และตัวจำลองอัตโนมัติของ UI คิต (`@radix-ui/*`, `@headlessui/*`, `framer-motion`, `zustand`, `@tanstack/*`…) เพื่อให้หน้าแรกยังเรนเดอร์ได้
-- โปรเจกต์ **Next** ที่ไม่มี `index.html` จะ mount หน้าแรกให้เอง (เลือก `pages/index` → `app/page` → หน้าตื้นสุด) ครอบด้วย `_app`/`layout` ถ้ามี และใช้ `globals.css` ให้
-- **หาโมดูลตั้งต้นเองได้**: ถ้า `index.html` ไม่ได้อ้าง `<script>` (แบบ create-react-app ที่ react-scripts ฉีดสคริปต์ตอน build) จะใช้ `src/main.*` → `src/index.*` → `src/App.*` เป็น entry ให้แทนการปล่อยพรีวิวว่าง
-- **พรีวิวไม่เป็นจอขาวอีก**: มีหน้า "กำลังคอมไพล์…" ใน iframe ระหว่างเตรียมไฟล์, การ์ดกลางจอเมื่อหา entry ไม่เจอ/โหลดโมดูลไม่ผ่าน (บอกสาเหตุ), หน้าแจ้งพังเมื่อคอมไพล์ไม่สำเร็จ และแบนเนอร์วินิจฉัยเมื่อมีแพ็กเกจที่ถูกจำลอง
-- อะไรที่รันไม่ได้จะไม่ทำให้หน้าพัง: ถ้าไฟล์ใดคอมไพล์ไม่ผ่านหรือแพ็กเกจใดไม่มี จะขึ้น **แบนเนอร์วินิจฉัยในพรีวิว** เป็นภาษาไทย ส่วนแอปที่โยน error ตอนเรนเดอร์จะเห็นข้อความอธิบายพร้อมสาเหตุ (ไม่ใช่หน้าเปล่า)
-- เครื่องยนต์พรีวิวเป็นของบิลเดอร์เอง (`src/lib/react-runtime/`) ไม่ได้อัปโหลดหรือรันโค้ดของคุณบนเซิร์ฟเวอร์ — ทุกอย่างเกิดในเบราว์เซอร์ของคุณ
-
-ข้อจำกัดที่ยังคงอยู่ (พรีวิวเป็น client-side ล้วน)
-
-- ไม่มี **SSR** ของ Next, ไม่มี API routes/server actions/middleware, ไม่มี `npm install` จริง และไม่มีคีย์ secrets/ฐานข้อมูล — แพ็กเกจที่ไม่มีจะถูกจำลองหรือรายงานไว้ในแบนเนอร์
-- ไม่มี PostCSS/Tailwind build: ไฟล์ CSS ถูกอินไลน์ตามต้นฉบับ ดังนั้นคลาสที่ Tailwind สร้างตอน build (utility) อาจไม่ครบ — โปรเจกต์ที่ commit CSS ที่ build แล้วจะครบกว่า
-- CSP ของพรีวิวยังปิดเครือข่าย (`connect-src 'none'`) และไม่มี same-origin — เรียก API จริงไม่ได้; รูป/ฟอนต์จาก GitHub แสดงได้ผ่าน `img-src https:`
-- โปรเจกต์ที่ build เป็นบันเดิลแล้ว (`dist/`) จะถูกมองเป็น static และรันตรง ๆ ซึ่งเป็นเส้นทางที่ถูกต้องอยู่แล้ว
-
-### โหมด Totalum (เส้นทาง full-stack เดิม)
+### 💻 Installation
 
 ```bash
-cp .env.example .env.local
-# ตั้ง TOTALUM_VCAAS_API_KEY ใน .env.local ฝั่ง server เท่านั้น แล้ว restart
-```
-
-ถ้ามี key หน้าแรกใช้ dashboard เดิม และโปรเจกต์เปิดผ่าน `/project/<id>` ส่วน workspace ใหม่ใช้ `/build/<id>` ไม่ปนกัน
-
-**ห้ามเปิด Totalum สู่สาธารณะโดยไม่มี auth/ownership guards:** API เดิมเป็น single-tenant และยังไม่มีการป้องกันผู้ใช้รายอื่นใช้เครดิตของเจ้าของ key ดู `AGENTS.md` ส่วน Boilerplate mode ไม่ได้แก้ระบบสิทธิ์หรือรับรอง production readiness ในรอบนี้
-
-## ตรวจสอบ
-
-```bash
-npm test                     # 80 unit tests (ไม่มีเทสต์ที่ต้องใช้เน็ต/บัญชีจริง)
-npm run check-types-errors
-npm run build
-npm start -- --hostname 0.0.0.0
-```
-
-ชุดเทสต์ใหม่ที่ครอบของในรอบนี้
-
-| ไฟล์ | ตรวจอะไร |
-| --- | --- |
-| `tests/sandbox.test.cjs` | runtime ของแซนด์บ็อกซ์ (รันใน VM จริง): eval, error, Promise, snapshot, แยก channel; `collectSnapshot` ↔ `analyzeSnapshot` ทำงานคู่กัน; timeout และการไม่รับข้อความข้าม channel |
-| `tests/builder-ui.test.cjs` | เรนเดอร์ `SandboxPanel` + ปุ่มบัญชี Puter ด้วย `react-dom/server` — แท็บ, ปุ่ม REPL, CSP ใน `srcDoc`, `sandbox="allow-scripts"` (ห้าม same-origin) และต้องไม่โชว์ token ใน HTML |
-| `tests/puter-token.test.cjs` | อ่าน token จาก SDK (ไม่ได้ → ค่อยดู localStorage), ไม่พังเมื่อ storage โยน error, มาสก์ token และคำสั่งเทอร์มินัลไม่ฝัง token |
-| `tests/build-modes.test.cjs` | โหมดครบ ไม่ซ้ำ และ system prompt ต่อกับกติกากลางถูกต้อง |
-| `tests/agent-export.test.cjs` | `agent.yaml` parse ได้ด้วย `yaml`, ชี้ที่ Puter endpoint, และข้อความผู้ใช้ที่พยายามแทรก YAML ต้องไม่เปลี่ยนโครงสร้าง |
-| `tests/github-import.test.cjs` | โคลนจาก GitHub แบบไม่ต่อเครือข่าย: parse URL ทุกรูปแบบ, แตก tar สังเคราะห์ (ustar/pax/GNU longname), จำแนกไฟล์, กันพาธหลุด repo และ `planImport` เลือกหน้าแรก/เขียน URL ทับไฟล์ไบนารี/เคารพเพดาน 400 KB–800 KB |
-| `tests/react-runtime.test.cjs` | คอมไพเลอร์ React/Vite/Next: เลือก engine, alias จาก tsconfig, TS/JSX, JSON, CSS module, สไตล์ที่อ้างใน HTML, asset → URL ของ GitHub, entry ของ Next, alias `@/*` → รากโปรเจกต์ และ error ที่อ่านรู้เรื่อง |
-| `tests/react-runner.test.cjs` | runner ที่ฝังในพรีวิวรันใน VM: โหลดโมดูลตามกราฟ, ฉีดสไตล์, คืนค่า CSS module, อ่าน JSON, กดปุ่มแล้ว state เปลี่ยน, ไอคอนที่ไม่มีไม่ทำแอปพัง และรายงานไฟล์ที่หาย |
-| `tests/react-preview.test.cjs` | เอกสารพรีวิว+runtime จริงใน jsdom พร้อม React/ReactDOM UMD ตัวจริง: โปรเจกต์ Vite+React เรนเดอร์จริง (คลิกได้), โปรเจกต์แบบ create-react-app (HTML ไม่มี `<script>`) ที่ใช้ `src/index.js` เป็น entry, Next ที่ไม่มี HTML ถูก mount ให้พร้อม `next/head`, แอปที่พังเห็นข้อความอธิบายแทนหน้าเปล่า (การ์ดกลางจอ + หน้าแจ้งพัง) และโปรเจกต์ static เดินเส้นทางเดิม |
-
-Optional browser regression: `tests/browser-smoke.cjs` ใช้ Playwright ที่ติดตั้งแยก ไม่เพิ่ม dependency ให้แอป และ **mock Puter SDK** เพื่อไม่ใช้เครดิตจริง:
-
-```bash
-PLAYWRIGHT_MODULE=/path/to/playwright node tests/browser-smoke.cjs
-```
-
-ทดสอบ create → login mock → streaming → preview interaction → code save → reload → ZIP → follow-up context → provider error/invalid HTML → stop → restore → import → mobile layout → reopen
-
-### วินิจฉัยพรีวิวระหว่างพัฒนา (dev)
-
-พรีวิวรันในเบราว์เซอร์ จึงมองไม่เห็น console ของผู้ใช้จากฝั่งเซิร์ฟเวอร์ ในโหมด `next dev` แอปจึงส่งข้อความสั้น ๆ ไปที่ `POST /api/debug-log` (เขียนลง log ของเซิร์ฟเวอร์เท่านั้น ไม่เก็บลงดิสก์ และ route จะปิดตัวเองเมื่อเป็น production):
-
-```
-[preview-diag] preview-build: engine=react page=index.html files=42
-[preview-diag] preview-compiled: modules=13 errors=0 missing=0 mount=synthetic | {...}
-[preview-diag] preview-console: แพ็กเกจ web-vitals ยังไม่มีในพรีวิวนี้ …
-```
-
-ถ้าผู้ใช้เจอพรีวิวผิดปกติ ให้ดู log ของ `next dev` บรรทัดที่ขึ้นต้นด้วย `[preview-diag]` — บอกได้ว่าเลือกเครื่องยนต์ไหน คอมไพล์กี่โมดูล และ error อะไรเกิดขึ้นในเบราว์เซอร์
-
-การผ่าน test/build ไม่ได้แปลว่าได้ยืนยัน Puter login, โมเดล AI, quota หรือ Totalum บนบัญชีจริง ต้องลองด้วยบัญชีของผู้ใช้เองอีกครั้ง
-
-ฟอนต์ไทย self-hosted จาก `@fontsource/noto-sans-thai` (SIL OFL ใน `public/fonts/OFL-NotoSansThai.txt`) จึงไม่ต้องโหลด Google Fonts ตอน build
-
----
-
-### ใช้บัญชี Puter เป็นโมเดลให้ docker-agent (ออปชันเสริม)
-
-อยากได้ agent ฝั่งเทอร์มินัลที่ใช้โมเดลของ Puter (ไม่ต้องมี API key ของ OpenAI/Anthropic) ดูที่
-[`integrations/docker-agent-puter/`](integrations/docker-agent-puter/README.md) — มีสคริปต์ล็อกอิน Puter
-ผ่านเบราว์เซอร์แล้วป้อน token ให้ [`docker-agent`](https://github.com/docker/docker-agent) อัตโนมัติ
-
-```bash
-cd integrations/docker-agent-puter && npm install && npm run login && ./run-agent.sh "สวัสดี"
-```
-
-เวิร์กสเปซของบิลเดอร์ยังมีปุ่ม **Agent kit** ที่ส่งออก ZIP ให้โปรเจกต์ที่สร้างเสร็จแล้ว:
-`agent.yaml` (ผ่าน schema ของ docker-agent v16) + `README.md` + `index.html` + สคริปต์ล็อกอิน Puter
-— เอาไปแตกไฟล์แล้วรัน `./puter/run-agent.sh "..."` เพื่อทำงานต่อในเทอร์มินัลได้ทันที
-
-ไม่กระทบการทำงานของบิลเดอร์ในโปรเจกต์นี้ — เป็นโฟลเดอร์แยก มี `package.json` ของตัวเอง
-
----
-
-## เอกสารต้นทาง: Totalum workspace
-
-ส่วนด้านล่างเป็นคู่มือ backend **Totalum** เดิม ไม่ใช่รายการฟีเจอร์ของ Puter workspace ข้างบน
-
-## What is this?
-
-A ready-to-run AI app builder, open source under MIT.
-
-A user types what they want, for example *"a CRM with kanban boards and Stripe billing"*. The AI builds a real full-stack **Next.js** app, shows it live in the browser, and publishes it to a public URL when the user is happy.
-
-Everything a builder like this normally needs is already handled:
-
-- **The hard part is done by the [Totalum API](https://www.totalum.app/docs/api/overview).** Totalum runs the AI agent that writes the code, and hosts every generated app with its database, file storage, SSL, CDN, deploys and custom domains. One API key gives you all of it.
-- **This repo is the product on top.** It is the user interface: the prompt box, the live preview, the code editor, the visual editor, the database browser, the logs, the version history and everything else you see in the demo.
-
-> **In one sentence:** clone this repo, paste one API key, and you have your own AI app builder running in minutes, for yourself or for your customers.
-
----
-
-## 🌟 Who is it for?
-
-| You are… | What you get |
-| --- | --- |
-| 🧑‍💻 **A builder or indie hacker** | Your own free, self-hosted v0 / Lovable / Bolt alternative. Prompt → deployed app. |
-| 🏢 **A SaaS or software company** | Let *your* users build full-stack apps inside *your* product, without building the infrastructure. |
-| 🎨 **An agency or no-code team** | Ship client apps faster, under your own brand. |
-| 🧪 **Curious, not technical** | No servers to manage. One key, and everything works. |
-
----
-
-## ✨ What it does
-
-All of this works with **one API key**. No other cloud accounts, no glue code:
-
-- 🤖 **Prompt → full-stack app.** Describe an app in plain English and the AI agent builds a complete Next.js project.
-- 👀 **Live preview.** Watch the running app update while the agent works.
-- 🖱️ **Visual editor.** Click any element in the preview and change its text, size, colours or image. The change is written back to the exact file and line, and the app rebuilds.
-- 🧑‍💻 **Code editor.** A Monaco (VS Code) editor to read and edit every generated file. Save, rebuild, done.
-- 🗄️ **Database.** Every app gets a real database. Browse, query and edit its records from the UI.
-- 🔐 **Secrets and environment variables.** Managed per project and per environment.
-- 🚀 **Hosting and one-click deploy.** Every project has a live URL. Publish to production in one click.
-- 🌐 **Custom domains.** Attach your own domain with guided DNS setup and watch it go live.
-- 🔗 **GitHub sync.** Connect a repo and push or pull changes in both directions.
-- 🎨 **Figma.** Paste a Figma frame link in the chat and the agent builds from the design.
-- 📦 **Export, import and duplicate projects.** Package a whole project into an import code, restore it, or clone it in one action.
-- 🕓 **Version history.** Every AI build is a restorable checkpoint, with a diff viewer showing exactly what changed.
-- 📜 **Logs.** Read runtime logs from the preview server and from production.
-- 🧱 **Isolated sandboxes.** Each project runs in its own environment. A sleeping one wakes on demand, and the UI tells the user instead of failing silently.
-- 🏢 **Multi-tenant.** Create isolated projects per user or per customer with no extra work.
-- 🌍 **Deploy anywhere.** Vercel, Docker, or any Node.js host.
-
----
-
-## 🚀 Quick Start
-
-You can have it running locally in about three minutes.
-
-### 1. Clone and install
-
-```bash
-git clone https://github.com/totalumlabs/ai-app-builder-open.git
-cd ai-app-builder-open
+git clone https://github.com/HeyPuter/builder
+cd builder
 npm install
-```
-
-### 2. Add your API key
-
-Create a `.env` file (or `.env.local`) in the project root:
-
-```bash
-TOTALUM_VCAAS_API_KEY=your_key_here
-```
-
-> 👉 No key yet? It is free to start. See [Getting your API key](#-getting-your-api-key) just below.
-
-### 3. Run it
-
-```bash
 npm run dev
 ```
 
-Open **[http://localhost:3000](http://localhost:3000)**, type what you want to build, and watch it happen. 🎉
+<br>
 
-**Requirements:** [Node.js](https://nodejs.org) 20+ and npm. Nothing else.
+### 🌐 Live Demo
 
----
+Check out the live demo of AI Builder at [https://builder.puter.com/](https://builder.puter.com/).
 
-## 🔑 Getting your API key
+<br>
 
-The only thing this app needs is a Totalum API key. **The first 50 AI credits are free.**
 
-1. **Create an account** at **[totalum.app/api](https://www.totalum.app/api)**.
-2. During onboarding, choose **"Use the Totalum API"**.
-3. **Copy your API key** into your `.env` file as `TOTALUM_VCAAS_API_KEY`.
+## Support
 
-That single key covers hosting, databases, AI, custom domains, GitHub sync and sandboxes. No other providers are required.
+Connect with the maintainers and community through these channels:
 
----
+- Bug report or feature request? Please [open an issue](https://github.com/HeyPuter/builder/issues/new/choose).
+- X (Twitter): [x.com/HeyPuter](https://x.com/HeyPuter)
+- Security issues or abuse reports? [security@puter.com](mailto:security@puter.com)
+- Email maintainers at [hi@puter.com](mailto:hi@puter.com)
 
-## ⚙️ Environment variables
+We are always happy to help you with any questions you may have. Don't hesitate to ask!
 
-| Variable | Required | What it is |
-| --- | :---: | --- |
-| `TOTALUM_VCAAS_API_KEY` | ✅ **Yes** | Your Totalum API key. The only variable the app needs. It is read on the server only and never reaches the browser. |
-| `NEXT_PUBLIC_APP_URL` | ⬜ Optional | The public URL of your deployment, e.g. `https://your-domain.com`. Used to allow-list your origin for CSP and CORS in production. Defaults to the same host. |
+<br/>
 
-To start from the example file:
+## License
 
-```bash
-cp .env.example .env.local
-```
+This repository, including all its contents, sub-projects, modules, and components, is licensed under [Apache License 2.0](LICENSE) unless explicitly stated otherwise. Bundled third-party libraries and fonts retain their own licenses; see [Third-party notices](THIRD_PARTY_NOTICES.md).
 
-> 🔒 **Security:** the API key is only read in `src/lib/vcaas-server.ts`, which never ships to the browser. It is deliberately **not** a `NEXT_PUBLIC_` variable.
-
----
-
-## ☁️ Deploy it
-
-This is a standard Next.js app with no platform lock-in. It runs wherever Next.js runs.
-
-> ### ⚠️ Important: this project ships with NO authentication
->
-> That is on purpose — we want you to add the auth that fits how your system works, or
-> however you prefer. Out of the box every route is public and the app acts on a single
-> API key, so **anyone who can reach the URL can use it and spend that key's credits.**
->
-> **Before you publish this anywhere public, put an auth layer in front of it.** The
-> hooks are already there: make the two guards in `src/app/api/vcaas/_shared.ts` real and
-> protect the pages in `src/proxy.ts`. See [Use it as a boilerplate](#use-it-as-a-boilerplate-login--payments) for the step-by-step. Running it locally or on a private
-> network with no login is fine.
-
-### Vercel, one click
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/totalumlabs/ai-app-builder-open&env=TOTALUM_VCAAS_API_KEY)
-
-Import the repo, set `TOTALUM_VCAAS_API_KEY` under **Environment Variables**, and deploy.
-
-### Any Node.js host (VM, Docker, Railway, Render, Fly.io…)
-
-```bash
-npm run build
-npm start          # serves on $PORT (default 3000)
-```
-
-Set `TOTALUM_VCAAS_API_KEY` in the host's environment and point your process manager or container at `npm start`.
-
----
-
-## 🧩 Put it inside your own product
-
-This is not only a standalone tool. It is a drop-in AI app-builder layer for a SaaS you are launching or already run.
-
-- 🏢 **Multi-tenant by design.** Every generated app is an isolated Totalum project. Create one per user, team or customer.
-- 🎨 **White-label.** It is your codebase and your UI. Rebrand it, restyle it, embed it in your dashboard.
-- 🔌 **One integration.** A single API key gives your users hosting, databases, AI, domains, GitHub and sandboxes. You do not stitch together five vendors.
-- 📈 **A new revenue stream.** Resell app building, hosting or premium AI credits on top of your product.
-
-> **The pitch to your customers:** *"Build and ship a full-stack app right here, inside our platform."*
-
-> ⚠️ **Before you put real users behind it, read `src/app/api/vcaas/_shared.ts`.** This app runs on one API key, so "who is asking?" and "may they touch this project?" are answered with "yes" by default. That file is where you add your own auth and ownership checks. The API routes already delegate the decision to it.
-
-### Two ways to integrate
-
-- **Run it beside your product.** Deploy this app on a subdomain, put your login in front, rebrand it, and link or iframe to it. Hours, not weeks.
-- **Port the flow into your stack.** Keep the contract, not the UI: a server-side proxy that adds the `api-key` header, then `launch` → poll agent status → show the preview URL → follow-up prompts → deploy. One Totalum project per customer, ownership checked on every proxied call. The step-by-step version, with the exact files to mirror, is in [`AGENTS.md`](AGENTS.md#adding-an-ai-app-builder-to-an-existing-product-any-stack).
-
-### Use it as a boilerplate: login + payments
-
-Want to ship this as your own product? Add an auth provider such as **Supabase** for login (a `profiles` and a `projects` table, make the two guards in `_shared.ts` real, protect the pages in `src/proxy.ts`) and **Stripe** for payments (checkout for credit packs or a plan, a webhook that tops up `profiles.credits`, a 402 on spend-shaped calls when the balance is empty, which the UI already turns into a "buy credits" dialog). The concrete checklist is in [`AGENTS.md`](AGENTS.md#boilerplate-mode-login-with-supabase-payments-with-stripe).
-
----
-
-## 🔐 Auth, database and third-party providers
-
-Two different things live here, and it is worth keeping them apart:
-
-- **The apps the AI builds for you** come with a managed database, hosting, auth and everything else they need to run — all provided by the Totalum API. Nothing to install.
-- **This builder UI itself** is deliberately lean. It ships no auth, payment or AI SDK, because it needs none: it is a thin client in front of one API key. When you turn it into your own product you add exactly the providers you want — the step-by-step is in [`AGENTS.md`](AGENTS.md#boilerplate-mode-login-with-supabase-payments-with-stripe):
-
-  - **Auth**: Supabase Auth, Better Auth, Clerk, Auth0 or your own.
-  - **Payments**: Stripe, or any provider — for credit packs or plans.
-  - **Database (for your own users/billing)**: Supabase, Postgres, PlanetScale, MongoDB, anything.
-
-Add a provider by installing its SDK and setting its key in the **Secrets** panel.
-
-### What this repo actually depends on
-
-The builder runs on **Next.js 16 / React 19 / TypeScript / Tailwind 4**. The only other runtime dependencies are UI and utility libraries:
-
-| Area | Packages |
-|---|---|
-| UI primitives | Radix UI, `lucide-react`, `sonner`, `cmdk`, `next-themes`, `class-variance-authority`, `clsx`, `tailwind-merge` |
-| Code editor | `@monaco-editor/react` |
-| Forms | `react-hook-form` |
-| Dates / archives | `react-day-picker`, `fflate` |
-
-
-
----
-
-## 🏗️ How it works
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  This repo (the Next.js front-end, or your own SaaS)         │
-│                                                              │
-│   UI components ──► API client (src/lib/vcaas.ts)            │
-│                        │  same-origin fetch                  │
-│                        ▼                                     │
-│   /api/vcaas/*  (server proxy routes) ──► adds the api-key   │
-└────────────────────────────┬─────────────────────────────────┘
-                             │  HTTPS + your secret API key
-                             ▼
-        ╔═══════════════════════════════════════════╗
-        ║   Totalum API                              ║
-        ║   AI agent · hosting · sandboxes           ║
-        ║   database · deploys · domains · GitHub    ║
-        ╚═══════════════════════════════════════════╝
-```
-
-Three things worth knowing:
-
-- **The browser never sees your API key.** Client code calls same-origin proxy routes under `/api/vcaas/*`. The server adds the key and forwards the request to Totalum.
-- **Every Totalum call goes through one file.** The client side is `src/lib/vcaas.ts`, with its types in `src/lib/vcaas-types.ts`. The part that holds the key is `src/lib/vcaas-server.ts`. If you want to see how an endpoint is really called, polled and error-handled, read there.
-- **Credits belong to the operator.** Every action runs on the one API key in your environment. When that account runs out of credits the app says so once and links to the billing page. ⚠️ That message is for **you**, not your users. Remove it before you sell this to customers.
-
----
-
-## 📚 API reference
-
-Everything this app calls is documented in one Markdown file, written to be read by people and by AI coding assistants alike:
-
-### 👉 **[www.totalum.app/totalum-api.md](https://www.totalum.app/totalum-api.md)**
-
-It covers the whole core API (account and credits, projects, the AI agent, deployments, server and logs, versions, secrets, custom domains, analytics) and links to the optional areas (GitHub, Figma, database, webhooks, files, project transfer, project groups). The browsable docs are at [www.totalum.app/docs](https://www.totalum.app/docs), with the [quickstart](https://www.totalum.app/docs/quickstart) and the [OpenAPI spec](https://www.totalum.app/openapi.json).
-
-Working on this repo with an AI agent? Start from [`AGENTS.md`](AGENTS.md). It is the short, agent-oriented map of the project: commands, architecture, where each feature lives, the rules that are not obvious from the code, and how to take the next steps.
-
----
-
-## 🗂️ Project structure
-
-```
-src/
-├─ app/
-│  ├─ page.tsx                 # Dashboard: prompt box, your projects, import/duplicate
-│  ├─ project/[projectId]/     # The workspace (chat, preview, code, database, …)
-│  └─ api/
-│     ├─ vcaas/[...path]/      # Server proxy to the Totalum API
-│     ├─ preview/[projectId]/  # Same-origin proxy of a project, needed by the visual editor
-│     ├─ visual-edit/…/apply   # Turns visual changes into real source edits
-│     └─ config/               # Reports whether the API key is configured
-├─ components/
-│  └─ workspace/               # Chat, Preview, Code, Database, GitHub, Figma, Logs…
-│     └─ visual-editor/        # Inspector panel, changes bar, the editor's own hook
-├─ i18n/                       # One English dictionary + `useT()`
-├─ lib/
-│  ├─ vcaas.ts                 # 🧠 The Totalum API client (browser side)
-│  ├─ vcaas-server.ts          # The half that holds the API key, server only
-│  ├─ vcaas-types.ts           # Shared API types
-│  └─ visual-edit*.ts          # Matching a clicked element back to its source
-└─ proxy.ts                    # CORS / CSP boundary
-AGENTS.md                      # The map for AI coding agents working on this repo
-```
-
----
-
-## ❓ FAQ
-
-<details>
-<summary><b>Is it really free?</b></summary>
-
-The code is free and open source. Running it needs a Totalum API key, which is free to start (the first 50 AI credits are included). You pay only as usage grows. See [pricing](https://www.totalum.app/api#pricing).
-</details>
-
-<details>
-<summary><b>Do I need to set up a database, hosting or an AI provider?</b></summary>
-
-No. The single Totalum API key provides hosting, databases, AI, domains, GitHub and sandboxes. You can still add your own providers such as Supabase or Stripe if you want them.
-</details>
-
-<details>
-<summary><b>Can my users build apps inside my own product?</b></summary>
-
-Yes. It is multi-tenant and white-label by design. See [Put it inside your own product](#-put-it-inside-your-own-product).
-</details>
-
-<details>
-<summary><b>What can it build?</b></summary>
-
-Full-stack Next.js web apps: dashboards, CRMs, internal tools, marketplaces, SaaS MVPs, landing pages with a backend, and more.
-</details>
-
-<details>
-<summary><b>Where is the API key stored? Is it safe?</b></summary>
-
-Server side only. It is read in `src/lib/vcaas-server.ts` and never shipped to the browser. Client requests go through same-origin proxy routes that add the key on the server.
-</details>
-
-<details>
-<summary><b>Can I self-host without Vercel?</b></summary>
-
-Yes. `npm run build && npm start` runs on any Node.js host: a VM, Docker, Railway, Render, Fly.io and so on.
-</details>
-
----
-
-## 🆚 How it compares
-
-| | **AI App Builder Open** | v0 · Lovable · Bolt · Replit |
-| --- | :---: | :---: |
-| Open source | ✅ | ❌ |
-| Self-hostable | ✅ | ❌ |
-| White-label, embeddable in your SaaS | ✅ | ❌ |
-| Multi-tenant out of the box | ✅ | Limited |
-| Hosting + database + domains + GitHub included | ✅ (one key) | Varies |
-| Bring your own providers (Supabase, Stripe…) | ✅ | Limited |
-| Deploy anywhere | ✅ | ❌ |
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome, whether a bug fix, a new panel, docs or a feature idea:
-
-1. Fork the repo and create a branch: `git checkout -b my-feature`
-2. Read [`AGENTS.md`](AGENTS.md) for the layout and the rules, make your changes, and run `npm run build` to check them.
-3. Open a pull request describing what you changed and why.
-
-Found a bug or have an idea? [Open an issue](https://github.com/totalumlabs/ai-app-builder-open/issues).
-
----
-
-## 📄 License
-
-Released under the **MIT License**. Free for personal and commercial use. See [`LICENSE`](LICENSE).
-
----
-
-<div align="center">
-
-### If this project helps you, please give it a ⭐. It helps others find it.
-
-**Open-source AI app builder** · self-hosted **v0 / Lovable / Bolt / Replit alternative** · prompt-to-app · full-stack Next.js · multi-tenant · embeddable AI app builder for your SaaS.
-
-Built with ❤️ on the [Totalum API](https://www.totalum.app/api) · [Docs](https://www.totalum.app/docs) · [Get your free API key](https://www.totalum.app/api)
-
-</div>
-
----
+<br/>

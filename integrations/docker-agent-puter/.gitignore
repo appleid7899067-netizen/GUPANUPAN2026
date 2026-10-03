@@ -1,6 +1,0 @@
-# token ส่วนตัว — ห้าม commit
-node_modules/
-.env.puter
-.env.puter.*
-!.env.puter.example
-*.log
