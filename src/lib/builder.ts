@@ -143,7 +143,7 @@ export function assertFilesSize(files: Record<string, string>): void {
     total += content.length;
   }
   if (total > MAX_TOTAL_SIZE)
-    throw new Error("ไฟล์ทั้งหมดรวมกันเกิน 800 KB กรุณาลดขนาดก่อนบันทึก");
+    throw new Error("ไฟล์ทั้งหมดรวมกันเกิน 4 MB กรุณาลดขนาดก่อนบันทึก");
 }
 export function checkpoint(
   project: BuildProject,
@@ -338,8 +338,9 @@ function sanitizePath(raw: string): string {
 }
 /**
  * แปลงคำตอบ AI เป็นชุดไฟล์: บล็อก `` ```file:path `` ทุกบล็อก
- * ต้องมี index.html ที่สมบูรณ์เสมอ — ถ้า AI ตอบแบบเก่า (HTML ล้วน)
- * จะห่อเป็น index.html ให้หนึ่งไฟล์
+ * โปรเจกต์ HTML-first ต้องมี index.html ที่สมบูรณ์
+ * ส่วนโปรเจกต์จริงแบบ React/Vite/Next อนุญาตให้มี package.json + source entry
+ * โดยไม่บังคับให้ยัดทุกอย่างลง index.html
  */
 export function extractFiles(response: string): Record<string, string> {
   const files: Record<string, string> = {};
@@ -351,8 +352,21 @@ export function extractFiles(response: string): Record<string, string> {
   }
   if (Object.keys(files).length) {
     const index = files["index.html"];
-    if (!index || !isCompleteHtml(index))
-      throw new Error("AI ส่งไฟล์มาแต่ขาด index.html ที่สมบูรณ์");
+    const packageJson = files["package.json"];
+    const hasProjectManifest =
+      typeof packageJson === "string" &&
+      packageJson.trim().startsWith("{");
+    const hasSourceEntry = Object.keys(files).some((path) =>
+      /^(src\/)?(main|index|app)\.(tsx?|jsx?)$/.test(path),
+    );
+    if (!index && !(hasProjectManifest && hasSourceEntry)) {
+      throw new Error(
+        "AI ส่งโครงสร้างโปรเจกต์ไม่ครบ: ต้องมี index.html หรือ package.json พร้อม source entry",
+      );
+    }
+    if (index && !isCompleteHtml(index) && !hasProjectManifest) {
+      throw new Error("AI ส่ง index.html ไม่สมบูรณ์");
+    }
     assertFilesSize(files);
     return files;
   }
