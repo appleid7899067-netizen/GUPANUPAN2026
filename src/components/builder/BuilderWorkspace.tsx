@@ -124,10 +124,11 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const running = useRef(false);
   const cancelWait = useRef<(() => void) | null>(null);
   const dirty = !!project && draft !== project.html;
-  const lastUserIndex = project.messages.reduce(
-    (acc, message, i) => (message.role === "user" ? i : acc),
-    -1,
-  );
+  const lastUserIndex =
+    project?.messages.reduce(
+      (acc, message, i) => (message.role === "user" ? i : acc),
+      -1,
+    ) ?? -1;
   const speech = useSpeechInput((text) =>
     setPrompt((current) => (current.trim() ? `${current} ${text}` : text)),
   );
