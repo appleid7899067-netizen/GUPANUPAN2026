@@ -185,6 +185,12 @@ const fs = require("node:fs");
       ),
       "mobile layout must not overflow",
     );
+    // จอแคบแบบ Bolt: แชตเต็มจอ แล้วสลับไปพรีวิว/โค้ดเองจากแถบสลับมุมมอง
+    await page.getByRole("textbox", { name: "คำสั่ง AI" }).waitFor();
+    await page.getByRole("button", { name: "พรีวิว", exact: true }).click();
+    await page.locator('iframe[title="App preview"]').waitFor();
+    await page.getByRole("button", { name: "แชท", exact: true }).click();
+    await page.getByRole("textbox", { name: "คำสั่ง AI" }).waitFor();
     await page.goto(base);
     await page.getByRole("link", { name: /สร้างเว็บร้านกาแฟ/ }).waitFor();
     assert.ok(

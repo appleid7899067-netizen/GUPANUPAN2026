@@ -12,6 +12,7 @@ import {
   Gamepad2,
   Globe,
   Lightbulb,
+  Mic,
   Plus,
   Rocket,
   Trash2,
@@ -25,6 +26,7 @@ import {
   type BuildProject,
 } from "@/lib/builder";
 import PuterAccountButton from "./PuterAccountButton";
+import { useSpeechInput } from "./use-speech-input";
 import "./builder.css";
 
 /**
@@ -83,6 +85,9 @@ export default function BuilderHome() {
   const [projects, setProjects] = useState<BuildProject[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const speech = useSpeechInput((text) =>
+    setPrompt((current) => (current.trim() ? `${current} ${text}` : text)),
+  );
   useEffect(() => {
     try {
       setProjects(listProjects());
@@ -196,6 +201,18 @@ export default function BuilderHome() {
                 <Lightbulb size={16} />
               </button>
               <span className="prompt-pill">{tileLabel || "HTML · CSS · JS"}</span>
+              {speech.supported && (
+                <button
+                  type="button"
+                  className="ghost-btn mic-btn"
+                  aria-label="พิมพ์ด้วยเสียง"
+                  title="พิมพ์ด้วยเสียง"
+                  aria-pressed={speech.listening}
+                  onClick={speech.toggle}
+                >
+                  <Mic size={16} />
+                </button>
+              )}
               <button
                 className="send-circle"
                 type="submit"

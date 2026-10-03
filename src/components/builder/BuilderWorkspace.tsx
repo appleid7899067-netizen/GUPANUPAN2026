@@ -14,6 +14,8 @@ import {
   History,
   Loader2,
   LogIn,
+  MessageSquare,
+  Mic,
   Monitor,
   MoreHorizontal,
   Package,
@@ -51,6 +53,7 @@ import {
 import { ensurePuterAuth, ensurePuterLoaded } from "@/lib/puter";
 import PuterAccountButton from "./PuterAccountButton";
 import SandboxPanel from "./SandboxPanel";
+import { useSpeechInput } from "./use-speech-input";
 import "./builder.css";
 
 /**
@@ -78,6 +81,8 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const [showModel, setShowModel] = useState(false);
   const [mode, setMode] = useState<string>(DEFAULT_MODE_ID);
   const [device, setDevice] = useState<Device>("desktop");
+  /** จอแคบแบบ Bolt: เห็นทีละ pane — แชตเต็มจอ หรือ pane งาน (พรีวิว/โค้ด) */
+  const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -96,6 +101,9 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
   const running = useRef(false);
   const cancelWait = useRef<(() => void) | null>(null);
   const dirty = !!project && draft !== project.html;
+  const speech = useSpeechInput((text) =>
+    setPrompt((current) => (current.trim() ? `${current} ${text}` : text)),
+  );
 
   useEffect(() => {
     setChannel(crypto.randomUUID());
@@ -545,7 +553,42 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
           onChange={(e) => void importHtml(e.target.files?.[0])}
         />
       </header>
-      <div className="workspace-body">
+      {/* จอแคบแบบ Bolt: แชตเต็มจอ แล้วสลับไปพรีวิว/โค้ดเอง */}
+      <div className="mobile-switch">
+        {(
+          [
+            { id: "chat", icon: MessageSquare, label: "แชท" },
+            { id: "preview", icon: Eye, label: "พรีวิว" },
+            { id: "code", icon: Code2, label: "โค้ด" },
+          ] as const
+        ).map(({ id, icon: Icon, label }) => {
+          const active =
+            id === "chat"
+              ? mobileView === "chat"
+              : mobileView === "work" && tab === id;
+          return (
+            <button
+              key={id}
+              aria-pressed={active}
+              onClick={() => {
+                if (id === "chat") {
+                  setMobileView("chat");
+                } else {
+                  setMobileView("work");
+                  setTab(id);
+                }
+              }}
+            >
+              <Icon size={14} /> {label}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        className={`workspace-body ${
+          mobileView === "chat" ? "show-chat" : "show-work"
+        }`}
+      >
         <aside className="chat-panel">
           <div className="chat-heading">
             <span>
@@ -667,6 +710,19 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   <SlidersHorizontal size={15} />
                 </button>
                 <span className="row-spacer" />
+                {speech.supported && (
+                  <button
+                    type="button"
+                    className="ghost-btn mic-btn"
+                    aria-label="พิมพ์ด้วยเสียง"
+                    title="พิมพ์ด้วยเสียง"
+                    aria-pressed={speech.listening}
+                    disabled={busy}
+                    onClick={speech.toggle}
+                  >
+                    <Mic size={16} />
+                  </button>
+                )}
                 {busy ? (
                   <button
                     type="button"
@@ -726,7 +782,10 @@ export default function BuilderWorkspace({ projectId }: { projectId: string }) {
                   aria-selected={tab === id}
                   key={id}
                   className={tab === id ? "active" : ""}
-                  onClick={() => setTab(id)}
+                  onClick={() => {
+                    setTab(id);
+                    setMobileView("work");
+                  }}
                 >
                   <Icon size={15} />
                   {label}

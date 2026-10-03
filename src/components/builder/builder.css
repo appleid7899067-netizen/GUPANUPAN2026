@@ -852,6 +852,36 @@
   align-items: center;
   gap: 7px;
 }
+/* เห็นเฉพาะจอแคบ: สลับ แชท / พรีวิว / โค้ด แบบ bolt.new บนมือถือ */
+.mobile-switch {
+  display: none;
+  gap: 4px;
+  margin: 8px 10px 0;
+  padding: 3px;
+  background: #17171b;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  flex-shrink: 0;
+}
+.mobile-switch button {
+  flex: 1;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #9a97a4;
+  font-size: 11px;
+  gap: 6px;
+}
+.mobile-switch button[aria-pressed="true"] {
+  background: #2e2839;
+  color: #e5d9fa;
+}
+.mic-btn[aria-pressed="true"] {
+  color: #ff8080;
+  background: #3a2426;
+  animation: builder-pulse 1s ease-in-out infinite;
+}
 .work-tabs {
   height: 50px;
   display: flex;
@@ -1187,9 +1217,18 @@
   }
 }
 @media (max-width: 850px) {
+  .mobile-switch {
+    display: flex;
+  }
+  /* เต็มจอทีละ pane: แชต หรือ pane งาน — ไม่ใช่ซ้อนกันสองอัน */
+  .workspace-body.show-chat .work-panel,
+  .workspace-body.show-work .chat-panel {
+    display: none;
+  }
   .chat-panel {
-    width: 310px;
-    min-width: 260px;
+    width: 100%;
+    min-width: 0;
+    border-right: 0;
   }
   .sandbox-label {
     display: none;
@@ -1266,23 +1305,7 @@
     margin-left: 0;
     width: 100%;
   }
-  .workspace {
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
-  }
-  .workspace-body {
-    flex-direction: column;
-  }
-  .chat-panel {
-    width: 100%;
-    min-width: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
   .chat-messages {
-    max-height: 230px;
-    min-height: 120px;
     padding: 18px;
   }
   .assistant-intro h2 {
@@ -1302,13 +1325,8 @@
   .composer-area textarea {
     height: 65px;
   }
-  .work-panel {
-    min-height: 540px;
-    height: 65dvh;
-    flex: none;
-  }
   .preview-stage {
-    min-height: 340px;
+    padding: 8px;
   }
   .workspace .builder-header .brand {
     display: none;
